@@ -6,6 +6,8 @@ from strategies.moving_average import SimpleMovingAverageCrossover, ExponentialM
 from strategies.advanced_strategy import MACDRSIStrategy, BollingerRSIStrategy
 from utils.data_fetcher import fetch_historical_data
 import os
+from utils.strategy_comparison_report import read_all_results, create_comparison_table, create_strategy_ranking, plot_strategy_performance, create_html_report
+from utils.dashboard_generator import generate_dashboard_only
 
 def parse_args():
     """Parse command line arguments."""
@@ -24,8 +26,8 @@ def parse_args():
     # Backtest options
     parser.add_argument('--cash', type=float, default=10000,
                         help='Initial cash for backtesting (default: 10000)')
-    parser.add_argument('--commission', type=float, default=0.002,
-                        help='Commission rate for trades (default: 0.002)')
+    parser.add_argument('--commission', type=float, default=0.001,
+                      help='Commission rate (e.g., 0.001 for 0.1%)')
     
     # Strategy selection
     parser.add_argument('--strategies', type=str, nargs='+', 
@@ -176,19 +178,77 @@ def main():
     results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
     os.makedirs(results_dir, exist_ok=True)
     
-    # Generate and open HTML report
+    # Generate and open HTML report for this specific backtest
     from utils.backtest_report_generator import create_backtest_report
     report_path = create_backtest_report(results, args, results_dir)
     print(f"\nDetailed HTML report saved to: {report_path}")
     
     # Export to CSV if requested
     if args.csv:
-        results.to_csv(args.csv)
-        print(f"Results exported to {args.csv}")
+        csv_path = args.csv
+    else:
+        # Create a default CSV filename if not specified
+        csv_filename = f"{args.symbol}_{args.timeframe}_{args.start}_to_{end_date.replace('-', '')}.csv"
+        csv_path = os.path.join(results_dir, csv_filename)
+    
+    # Prepare results for CSV export
+    # Make sure we have a proper DataFrame with Strategy as a column
+    if isinstance(results, pd.DataFrame):
+        # If results is already a DataFrame with metrics as index and strategies as columns
+        # We need to transpose and add a Strategy column
+        if 'Strategy' not in results.columns:
+            results_for_csv = results.transpose().reset_index()
+            results_for_csv.rename(columns={'index': 'Strategy'}, inplace=True)
+        else:
+            results_for_csv = results
+    else:
+        # Convert to DataFrame if it's not already
+        results_for_csv = pd.DataFrame(results).transpose().reset_index()
+        results_for_csv.rename(columns={'index': 'Strategy'}, inplace=True)
+    
+    # Save results to CSV for the strategy comparison report
+    results_for_csv.to_csv(csv_path, index=False)
+    print(f"Results exported to {csv_path}")
+    
+    # Generate consolidated strategy comparison report
+    all_results = read_all_results(results_dir)
+    
+    if all_results:
+        # Create comparison table
+        comparison_table = create_comparison_table(all_results)
+        
+        # Create strategy ranking
+        strategy_ranking = create_strategy_ranking(all_results)
+        
+        # Create performance plot
+        performance_plot = plot_strategy_performance(strategy_ranking)
+        
+        # Create consolidated HTML report
+        consolidated_report_path = os.path.join(results_dir, "strategy_comparison_report.html")
+        create_html_report(all_results, comparison_table, strategy_ranking, performance_plot, consolidated_report_path)
+        print(f"\nConsolidated strategy comparison report saved to: {consolidated_report_path}")
+        
+        # Generate and open the dashboard (only this should open the browser)
+        dashboard_path = generate_dashboard_only()
+        print(f"\nDashboard updated at: {dashboard_path}")
+        print("To view the dashboard, run: python -m utils.dashboard_generator")
+        print("Or access it via: http://localhost:8000/dashboard.html (if server is already running)")
     
     # Plot comparison only if not disabled
     if not args.no_plots:
-        plot_strategy_comparison(results)
+        import matplotlib
+        # Set the backend to a file-based one if we're in a non-interactive environment
+        if os.environ.get('DISPLAY', '') == '' and not os.name == 'nt':
+            matplotlib.use('Agg')  # Use non-interactive backend if no display available
+            # Save the plot to a file instead of showing it
+            fig = plot_strategy_comparison(results, show_plot=False)
+            if fig:
+                plot_path = os.path.join(results_dir, f"{args.symbol}_strategy_comparison.png")
+                fig.savefig(plot_path)
+                print(f"Strategy comparison plot saved to: {plot_path}")
+        else:
+            # We're in an environment with display capability
+            plot_strategy_comparison(results)
     
     return results
 

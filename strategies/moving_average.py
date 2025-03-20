@@ -20,8 +20,8 @@ class SimpleMovingAverageCrossover(Strategy):
     """
     
     # Define parameters with descriptive names
-    fast_ma = 20  # Fast moving average period
-    slow_ma = 50  # Slow moving average period
+    fast_ma = 50  # Fast moving average period
+    slow_ma = 200  # Slow moving average period
     
     def init(self):
         """

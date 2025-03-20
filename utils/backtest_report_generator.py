@@ -128,8 +128,4 @@ def create_backtest_report(results, args, results_dir):
     with open(report_path, 'w') as f:
         f.write(html_content)
     
-    # Auto-open in browser
-    import webbrowser
-    webbrowser.open('file://' + os.path.realpath(report_path), new=2)
-    
     return report_path 
