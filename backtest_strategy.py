@@ -62,8 +62,8 @@ def parse_args():
                       help='Trading timeframe')
     parser.add_argument('--initial-capital', type=float, default=10000,
                       help='Initial capital for backtesting')
-    parser.add_argument('--commission', type=float, default=0.001,
-                      help='Commission rate (e.g., 0.001 for 0.1%)')
+    parser.add_argument('--commission', type=float, default=0.0,
+                      help='Commission rate (default: 0.0 for Alpaca commission-free trading)')
     
     # Strategy parameters
     parser.add_argument('--fast-ma', type=int, default=50,
@@ -158,7 +158,7 @@ def run_backtest(args):
         # Generate plot
         output = os.path.join(results_dir, 
                             f"{args.ticker}_{config['name']}_{args.timeframe}_{args.start_date}_{args.end_date}.html")
-        bt.plot(filename=output, open_browser=True)
+        bt.plot(filename=output, open_browser=False)
         print(f"{config['name']} Plot saved to: {output}")
     
     # Print comparison if multiple strategies were run
@@ -185,7 +185,14 @@ def run_backtest(args):
     # After the results comparison, replace the create_html_report call with:
     report_path = create_backtest_report(results, args, results_dir)
     print(f"\nDetailed HTML report saved to: {report_path}")
-    
+
+    # Generate the dashboard and print instructions for viewing it
+    from utils.dashboard_generator import generate_dashboard_only
+    dashboard_path = generate_dashboard_only()
+    print(f"\nDashboard updated at: {dashboard_path}")
+    print("To view the dashboard, run: python -m utils.dashboard_generator")
+    print("Or access it via: http://localhost:8000/dashboard.html (if server is already running)")
+
     return results
 
 if __name__ == "__main__":
