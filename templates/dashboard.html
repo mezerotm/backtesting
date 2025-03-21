@@ -211,9 +211,9 @@
                             <div class="relative">
                                 <select id="symbol" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-900 dark:border-gray-700 dark:text-gray-400">
                                     <option value="all">All Symbols</option>
-                                    
-                                    <option value="NVDA">NVDA</option>
-                                    
+                                    {% for symbol in symbols %}
+                                    <option value="{{ symbol }}">{{ symbol }}</option>
+                                    {% endfor %}
                                 </select>
                                 <div class="absolute inset-y-0 end-0 flex items-center pointer-events-none pe-3">
                                     <svg class="flex-shrink-0 size-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -229,9 +229,9 @@
                             <div class="relative">
                                 <select id="strategy" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-900 dark:border-gray-700 dark:text-gray-400">
                                     <option value="all">All Strategies</option>
-                                    
-                                    <option value="SMA">SMA</option>
-                                    
+                                    {% for strategy in strategies %}
+                                    <option value="{{ strategy }}">{{ strategy }}</option>
+                                    {% endfor %}
                                 </select>
                                 <div class="absolute inset-y-0 end-0 flex items-center pointer-events-none pe-3">
                                     <svg class="flex-shrink-0 size-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -276,7 +276,7 @@
                         
                         <!-- Last Updated Indicator -->
                         <div class="text-sm text-gray-500 dark:text-gray-400">
-                            Last updated: <span id="last-updated">2025-03-21 13:45:45</span>
+                            Last updated: <span id="last-updated">{{ now }}</span>
                         </div>
                     </div>
                     
@@ -295,67 +295,52 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                                
-                                    
+                                {% if reports %}
+                                    {% for report in reports %}
                                         <tr class="report-row hover:bg-gray-100 dark:hover:bg-slate-700" 
-                                            data-type="chart" 
-                                            data-symbol="NVDA" 
-                                            data-strategy="SMA"
-                                            data-start-date="2022-01-01"
-                                            data-end-date="2025-03-21">
+                                            data-type="{{ report.type }}" 
+                                            data-symbol="{{ report.get('symbol', '') }}" 
+                                            data-strategy="{{ report.get('strategy', '') }}"
+                                            data-start-date="{{ report.get('start_date', '') }}"
+                                            data-end-date="{{ report.get('end_date', '') }}">
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                <a href="results/NVDA_SMA_1d_2022-01-01_2025-03-21.html" target="_blank" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium">View Report</a>
+                                                <a href="results/{{ report.path }}" target="_blank" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium">View Report</a>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">NVDA</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{{ report.get('symbol', 'Unknown') }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                
+                                                {% if report.type == 'comparison' %}
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">Comparison</span>
+                                                {% elif report.type == 'chart' %}
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">Chart</span>
-                                                
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                                                
-                                                    SMA
-                                                
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">1d</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                
-                                                    2022-01-01 to 2025-03-21
-                                                
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">2025-03-21 11:39:48</td>
-                                        </tr>
-                                    
-                                        <tr class="report-row hover:bg-gray-100 dark:hover:bg-slate-700" 
-                                            data-type="backtest" 
-                                            data-symbol="NVDA" 
-                                            data-strategy="SMA"
-                                            data-start-date="2022-01-01"
-                                            data-end-date="2025-03-21">
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                <a href="results/NVDA_backtest_report_1d_2022-01-01_2025-03-21.html" target="_blank" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium">View Report</a>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">NVDA</td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                
+                                                {% else %}
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">Backtest</span>
-                                                
+                                                {% endif %}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                                                
-                                                    SMA
-                                                
+                                                {% if report.type == 'comparison' %}
+                                                    {{ report.get('title', 'Strategy Comparison') }}
+                                                {% elif report.type == 'chart' %}
+                                                    {{ report.get('strategy', 'Unknown') }}
+                                                {% else %}
+                                                    {{ report.get('strategy', 'Unknown') }}
+                                                {% endif %}
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">1d</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ report.get('timeframe', 'Various') }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                
-                                                    2022-01-01 to 2025-03-21
-                                                
+                                                {% if report.get('start_date') and report.get('end_date') %}
+                                                    {{ report.get('start_date') }} to {{ report.get('end_date') }}
+                                                {% else %}
+                                                    Various
+                                                {% endif %}
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">2025-03-21 11:39:48</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ report.created }}</td>
                                         </tr>
-                                    
-                                
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="7" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400 italic">No reports available</td>
+                                    </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -456,7 +441,7 @@
         // Auto-refresh functionality
         let refreshInterval;
         // Define refreshIntervalMs from template variable
-        const refreshIntervalMs = Number("1000");
+        const refreshIntervalMs = Number("{{ refresh_interval }}");
         
         function startAutoRefresh() {
             // Refresh only the reports section based on configured interval
