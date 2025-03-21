@@ -180,6 +180,7 @@ def main():
     
     # Generate and open HTML report for this specific backtest
     from utils.backtest_report_generator import create_backtest_report
+    report_filename = f"{args.symbol}_strategy_comparison_{args.timeframe}_{args.start}_to_{end_date.replace('-', '')}.html"
     report_path = create_backtest_report(results, args, results_dir)
     print(f"\nDetailed HTML report saved to: {report_path}")
     
