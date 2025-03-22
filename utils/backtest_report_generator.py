@@ -1,9 +1,41 @@
 import os
 from datetime import datetime
 import pandas as pd
+from jinja2 import Environment, FileSystemLoader
+import math
+
+def format_number(value):
+    """Format a number with commas as thousands separators"""
+    if isinstance(value, (int, float)):
+        return f"{value:,.2f}"
+    return value
+
+def format_value(value):
+    """Format a value for display in the report"""
+    if pd.isna(value) or value is None or (isinstance(value, float) and math.isnan(value)):
+        return "N/A"
+    elif isinstance(value, (int, float)):
+        return f"{value:.2f}"
+    return str(value)
+
+def get_value_class(metric, value):
+    """Determine the CSS class for a value based on the metric and value"""
+    if pd.isna(value) or value is None or (isinstance(value, float) and math.isnan(value)):
+        return "neutral"
+    
+    if "Return" in metric and not "Drawdown" in metric:
+        return "positive" if value > 0 else "negative"
+    elif "Drawdown" in metric:
+        return "negative"
+    elif "Ratio" in metric or "SQN" in metric:
+        return "neutral"
+    elif "Win Rate" in metric:
+        return "positive" if value > 50 else "neutral"
+    
+    return "neutral"
 
 def create_backtest_report(results, args, results_dir):
-    """Create a detailed HTML report for the backtest results"""
+    """Create a detailed HTML report for the backtest results using a Jinja2 template"""
     
     # Convert dictionary of stats objects to DataFrame if needed
     if isinstance(results, dict) and not isinstance(results, pd.DataFrame):
@@ -29,45 +61,7 @@ def create_backtest_report(results, args, results_dir):
         # Results is already a DataFrame
         results_df = results
     
-    html_content = f"""
-    <html>
-    <head>
-        <title>Backtest Results - {args.ticker if hasattr(args, 'ticker') else args.symbol}</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 20px; }}
-            table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
-            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-            th {{ background-color: #f2f2f2; }}
-            .header {{ background-color: #4CAF50; color: white; padding: 20px; }}
-            .section {{ margin: 20px 0; }}
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>Backtest Results for {args.ticker if hasattr(args, 'ticker') else args.symbol}</h1>
-            <p>Period: {args.start_date if hasattr(args, 'start_date') else args.start} to {args.end_date if hasattr(args, 'end_date') else args.end}</p>
-        </div>
-        
-        <div class="section">
-            <h2>Test Parameters</h2>
-            <table>
-                <tr><th>Parameter</th><th>Value</th></tr>
-                <tr><td>Initial Capital</td><td>${args.initial_capital if hasattr(args, 'initial_capital') else args.cash:,.2f}</td></tr>
-                <tr><td>Commission</td><td>{args.commission*100}%</td></tr>
-                <tr><td>Timeframe</td><td>{args.timeframe}</td></tr>
-            </table>
-        </div>
-        
-        <div class="section">
-            <h2>Strategy Results</h2>
-            <table>
-                <tr>
-                    <th>Metric</th>
-                    {"".join(f"<th>{strategy}</th>" for strategy in results_df.columns)}
-                </tr>
-    """
-    
-    # Define the metrics we want to display and their mappings
+    # Define the metrics we want to display
     metrics = [
         'Return [%]',
         'Buy & Hold Return [%]',
@@ -81,43 +75,50 @@ def create_backtest_report(results, args, results_dir):
         'SQN'
     ]
     
-    # Add rows for each metric
-    for metric in metrics:
-        try:
-            if metric in results_df.index:
-                row_cells = []
-                for strategy in results_df.columns:
-                    value = results_df.loc[metric, strategy]
-                    if pd.isna(value):
-                        formatted_value = "N/A"
-                    elif isinstance(value, (int, float)):
-                        formatted_value = f"{value:.2f}"
-                    else:
-                        formatted_value = str(value)
-                    row_cells.append(f"<td>{formatted_value}</td>")
-                
-                html_content += f"""
-                    <tr>
-                        <td>{metric}</td>
-                        {"".join(row_cells)}
-                    </tr>"""
-            else:
-                print(f"Warning: Metric '{metric}' not found in results")
-                html_content += f"""
-                    <tr>
-                        <td>{metric}</td>
-                        {"".join("<td>N/A</td>" for _ in results_df.columns)}
-                    </tr>"""
-        except Exception as e:
-            print(f"Warning: Error processing metric '{metric}': {str(e)}")
-            continue
+    # Define metric descriptions for tooltips
+    metric_descriptions = {
+        'Return [%]': 'The total percentage return of the strategy over the backtest period.',
+        'Buy & Hold Return [%]': 'The percentage return from buying and holding the asset for the entire backtest period.',
+        'Max. Drawdown [%]': 'The maximum observed loss from a peak to a trough during the backtest period.',
+        'Sharpe Ratio': 'A measure of risk-adjusted return. Higher values indicate better risk-adjusted performance.',
+        'Sortino Ratio': 'Similar to Sharpe but only considers downside volatility. Higher values are better.',
+        'Calmar Ratio': 'A measure of return relative to drawdown risk. Higher values are better.',
+        'Trades': 'The total number of completed trades executed during the backtest period.',
+        'Win Rate [%]': 'The percentage of trades that resulted in a profit.',
+        'Avg. Trade [%]': 'The average percentage profit or loss per trade.',
+        'SQN': 'System Quality Number - rates trading systems based on consistency and size of profits relative to risk.'
+    }
     
-    html_content += """
-            </table>
-        </div>
-    </body>
-    </html>
-    """
+    # Set up Jinja2 environment with filters
+    env = Environment(loader=FileSystemLoader('templates'))
+    
+    # Register custom filters
+    env.filters['format_number'] = format_number
+    env.filters['format_value'] = format_value
+    
+    # Get template
+    template = env.get_template('backtest_report.html')
+    
+    # Prepare template context
+    context = {
+        'symbol': args.ticker if hasattr(args, 'ticker') else args.symbol,
+        'start_date': args.start_date if hasattr(args, 'start_date') else args.start,
+        'end_date': args.end_date if hasattr(args, 'end_date') else args.end,
+        'initial_capital': args.initial_capital if hasattr(args, 'initial_capital') else args.cash,
+        'commission': args.commission * 100,
+        'timeframe': args.timeframe,
+        'strategies': list(results_df.columns),
+        'metrics': metrics,
+        'metric_descriptions': metric_descriptions,
+        'results': {strategy: results_df[strategy].to_dict() for strategy in results_df.columns},
+        'generation_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'get_value_class': get_value_class,
+        'format_value': format_value,
+        'format_number': format_number
+    }
+    
+    # Render the template
+    html_content = template.render(**context)
     
     # Generate filename based on available args
     symbol = args.ticker if hasattr(args, 'ticker') else args.symbol

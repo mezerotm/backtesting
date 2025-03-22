@@ -59,7 +59,7 @@ results-dir:
 
 # Start dashboard server
 server:
-	python -m utils.dashboard_generator
+	$(PYTHON) -m utils.dashboard_generator
 
 .PHONY: setup freeze test-backtest \
 	compare-aapl compare-nvda test-comparison \
