@@ -261,6 +261,28 @@ class DashboardServer:
         
         # Create a custom handler that can handle the clean results request
         class CustomHTTPHandler(SimpleHTTPRequestHandler):
+            # Add this method to handle file not found errors
+            def send_error(self, code, message=None):
+                if code == 404:
+                    # Path to custom 404 page
+                    error_page_path = os.path.join(public_dir, '404.html')
+                    
+                    if os.path.exists(error_page_path):
+                        # Read the custom 404 page
+                        with open(error_page_path, 'rb') as f:
+                            content = f.read()
+                        
+                        # Send response
+                        self.send_response(404)
+                        self.send_header('Content-type', 'text/html')
+                        self.send_header('Content-Length', str(len(content)))
+                        self.end_headers()
+                        self.wfile.write(content)
+                        return
+                
+                # If no custom page or different error, use default handler
+                SimpleHTTPRequestHandler.send_error(self, code, message)
+            
             def do_GET(self):
                 if self.path == '/reports-data':
                     try:
