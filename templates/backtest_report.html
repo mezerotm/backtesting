@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtest Results for {{ symbol }}</title>
+    
+    <!-- Dark mode initialization script - must be in head before any content loads -->
+    <script>
+        // Force dark mode by default - no toggling
+        document.querySelector('html').classList.add('dark');
+    </script>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Preline UI CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/preline/dist/preline.min.css" />
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Dark mode enhancements */
+        .dark {
+            color-scheme: dark;
+        }
+        
+        /* Force dark backgrounds for main containers */
+        .dark body {
+            background-color: #0f172a !important; /* slate-900 */
+        }
+        
+        /* Improved text contrast for better readability */
+        h1, h2, h3, h4, h5, h6 {
+            color: #f8fafc !important; /* slate-50 - almost white for headings */
+        }
+        
+        /* Tooltip styling - improved positioning */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 250px;
+            background-color: #1e293b;
+            color: #f8fafc;
+            text-align: left;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            position: absolute;
+            z-index: 100;
+            bottom: 150%; /* Increased distance from icon */
+            left: 0; /* Align with left edge of icon */
+            transform: translateX(-50%); /* Center the tooltip */
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-weight: normal;
+            font-size: 0.85rem;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            pointer-events: none; /* Prevents tooltip from blocking mouse events */
+        }
+        
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        /* Value colors */
+        .positive {
+            color: #4ade80 !important; /* green-400 */
+        }
+        
+        .negative {
+            color: #f87171 !important; /* red-400 */
+        }
+        
+        .neutral {
+            color: #60a5fa !important; /* blue-400 */
+        }
+        
+        /* Glossary item icons */
+        .glossary-item i {
+            color: #4ade80 !important; /* green-400 */
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* Metric row styling with info icon */
+        .metric-row {
+            display: flex;
+            align-items: center;
+            position: relative; /* Ensure proper positioning context */
+        }
+        
+        .info-icon {
+            margin-right: 8px;
+            position: relative; /* For tooltip positioning */
+        }
+        
+        .metric-name {
+            flex: 1;
+        }
+        
+        /* Ensure tooltips are visible and not clipped */
+        .overflow-x-auto {
+            overflow: visible !important; /* Override to prevent tooltip clipping */
+        }
+        
+        table {
+            position: relative;
+            z-index: 1;
+        }
+        
+        td {
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 font-[Inter] text-slate-100">
+    <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Header -->
+        <div class="bg-green-500 text-slate-900 p-6 rounded-xl mb-6 shadow-md">
+            <h1 class="text-2xl font-bold mb-1">Backtest Results for {{ symbol }}</h1>
+            <p class="text-lg opacity-90">Period: {{ start_date }} to {{ end_date }}</p>
+        </div>
+        
+        <!-- Test Parameters Card -->
+        <div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm">
+            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-gear text-green-400"></i>
+                Test Parameters
+            </h2>
+            <div class="overflow-visible">
+                <table class="min-w-full divide-y divide-slate-700">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Parameter</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700">
+                        <tr class="bg-slate-800 hover:bg-slate-700">
+                            <td class="px-6 py-4 text-sm text-slate-300">Initial Capital</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">${{ initial_capital|format_number }}</td>
+                        </tr>
+                        <tr class="bg-slate-800 hover:bg-slate-700">
+                            <td class="px-6 py-4 text-sm text-slate-300">Commission</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">{{ commission }}%</td>
+                        </tr>
+                        <tr class="bg-slate-800 hover:bg-slate-700">
+                            <td class="px-6 py-4 text-sm text-slate-300">Timeframe</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">{{ timeframe }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Strategy Results Card -->
+        <div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm">
+            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-green-400"></i>
+                Strategy Results
+            </h2>
+            
+            <!-- Results Table -->
+            <div class="overflow-visible mb-6">
+                <table class="min-w-full divide-y divide-slate-700">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Metric</th>
+                            {% for strategy in strategies %}
+                            <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">{{ strategy }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700">
+                        {% for metric in metrics %}
+                        <tr class="bg-slate-800 hover:bg-slate-700">
+                            <td class="px-6 py-4 text-sm text-slate-300">
+                                <div class="metric-row">
+                                    <div class="tooltip info-icon">
+                                        <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                        <span class="tooltiptext">{{ metric_descriptions[metric] }}</span>
+                                    </div>
+                                    <span class="metric-name">{{ metric }}</span>
+                                </div>
+                            </td>
+                            {% for strategy in strategies %}
+                            <td class="px-6 py-4 text-sm {{ get_value_class(metric, results[strategy][metric]) }}">
+                                {{ format_value(results[strategy][metric]) }}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Key Metrics Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                <!-- Return Metric -->
+                <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="font-semibold text-lg text-slate-200">Return (%)</div>
+                        <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                            <i class="fa-solid fa-chart-line text-green-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold mb-2 {{ 'positive' if results[strategies[0]]['Return [%]'] > 0 else 'negative' }}">
+                        {{ format_value(results[strategies[0]]['Return [%]']) }}%
+                    </div>
+                    <div class="text-sm text-slate-400">
+                        The total percentage return of the strategy over the backtest period.
+                    </div>
+                </div>
+                
+                <!-- Buy & Hold Return Metric -->
+                <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="font-semibold text-lg text-slate-200">Buy & Hold Return (%)</div>
+                        <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                            <i class="fa-solid fa-hand-holding-dollar text-blue-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold mb-2 {{ 'positive' if results[strategies[0]]['Buy & Hold Return [%]'] > 0 else 'negative' }}">
+                        {{ format_value(results[strategies[0]]['Buy & Hold Return [%]']) }}%
+                    </div>
+                    <div class="text-sm text-slate-400">
+                        The percentage return from buying and holding the asset for the entire backtest period.
+                    </div>
+                </div>
+                
+                <!-- Max Drawdown Metric -->
+                <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="font-semibold text-lg text-slate-200">Max. Drawdown (%)</div>
+                        <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                            <i class="fa-solid fa-arrow-trend-down text-red-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold mb-2 negative">
+                        {{ format_value(results[strategies[0]]['Max. Drawdown [%]']) }}%
+                    </div>
+                    <div class="text-sm text-slate-400">
+                        The maximum observed loss from a peak to a trough during the backtest period.
+                    </div>
+                </div>
+                
+                <!-- Sharpe Ratio Metric -->
+                <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="font-semibold text-lg text-slate-200">Sharpe Ratio</div>
+                        <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                            <i class="fa-solid fa-scale-balanced text-purple-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold mb-2 neutral">
+                        {{ format_value(results[strategies[0]]['Sharpe Ratio']) }}
+                    </div>
+                    <div class="text-sm text-slate-400">
+                        A measure of risk-adjusted return. Higher values indicate better risk-adjusted performance.
+                    </div>
+                </div>
+                
+                <!-- Win Rate Metric -->
+                <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="font-semibold text-lg text-slate-200">Win Rate (%)</div>
+                        <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                            <i class="fa-solid fa-check text-emerald-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold mb-2 neutral">
+                        {{ format_value(results[strategies[0]]['Win Rate [%]']) }}%
+                    </div>
+                    <div class="text-sm text-slate-400">
+                        The percentage of trades that were profitable.
+                    </div>
+                </div>
+                
+                <!-- SQN Metric -->
+                <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="font-semibold text-lg text-slate-200">SQN</div>
+                        <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                            <i class="fa-solid fa-star text-yellow-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold mb-2 neutral">
+                        {{ format_value(results[strategies[0]]['SQN']) }}
+                    </div>
+                    <div class="text-sm text-slate-400">
+                        A metric that rates trading systems based on the consistency and size of profits relative to risk.
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Glossary Section -->
+        <div class="bg-slate-800 rounded-xl p-6 mt-8 border border-slate-700 shadow-sm">
+            <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-slate-700 flex items-center gap-2">
+                <i class="fa-solid fa-book text-green-400"></i>
+                Glossary of Terms
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Only including terms not already in the metrics table -->
+                <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                    <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                        <i class="fa-solid fa-chart-pie mr-2"></i>
+                        Profit Factor
+                    </h3>
+                    <p class="text-sm text-slate-400">
+                        The ratio of gross profits to gross losses. Calculated as (Sum of Profitable Trades / Sum of Losing Trades). Values greater than 1 indicate a profitable system.
+                    </p>
+                </div>
+                
+                <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                    <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                        <i class="fa-solid fa-chart-area mr-2"></i>
+                        Expectancy
+                    </h3>
+                    <p class="text-sm text-slate-400">
+                        The average amount you can expect to win (or lose) per dollar at risk. Calculated as (Win Rate × Average Win) - ((1 - Win Rate) × Average Loss).
+                    </p>
+                </div>
+                
+                <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                    <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                        <i class="fa-solid fa-arrows-up-down mr-2"></i>
+                        Volatility
+                    </h3>
+                    <p class="text-sm text-slate-400">
+                        A measure of the price fluctuations of an asset. Higher volatility indicates larger price swings and potentially higher risk.
+                    </p>
+                </div>
+                
+                <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                    <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                        <i class="fa-solid fa-calendar-days mr-2"></i>
+                        Holding Period
+                    </h3>
+                    <p class="text-sm text-slate-400">
+                        The average duration of trades from entry to exit, measured in days or bars.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center mt-8 pt-4 border-t border-slate-700 text-slate-500 text-sm">
+            <p>Generated on {{ generation_date }} | Trading Strategy Backtest Report</p>
+        </div>
+    </div>
+    
+    <!-- Preline UI JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.js"></script>
+</body>
+</html> 
