@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trading Strategy Dashboard</title>
+    
     <!-- Favicon -->
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
@@ -20,25 +21,20 @@
     <!-- Preline UI CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/preline/dist/preline.min.css" />
     
-    <!-- Preline UI JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.js"></script>
-    
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    
     
     <style>
         /* Dark mode enhancements */
         .dark {
             color-scheme: dark;
-        }
-        
-        /* Smooth transition between light/dark modes */
-        html.transition,
-        html.transition *,
-        html.transition *:before,
-        html.transition *:after {
-            transition: all 250ms !important;
-            transition-delay: 0 !important;
         }
         
         /* Force dark backgrounds for main containers - these are critical */
@@ -50,6 +46,7 @@
         body {
             background-color: #f8fafc !important; /* slate-50 */
             color: #f1f5f9 !important; /* slate-100 - much brighter base text */
+            font-family: 'Inter', sans-serif;
         }
         
         /* Fix background colors for light/dark modes */
@@ -69,620 +66,441 @@
             background-color: #0f172a !important; /* slate-900 */
         }
         
-        .dark .bg-slate-700 {
-            background-color: transparent !important;
-        }
-        
-        /* Fix select dropdowns to have only one arrow */
-        select {
-            appearance: none !important;
-            -webkit-appearance: none !important;
-            -moz-appearance: none !important;
-            background-image: none !important;
-        }
-        
-        /* Force dark table rows */
-        .dark thead th {
-            background-color: #0f172a !important; /* slate-900 */
-            color: #f8fafc !important; /* slate-50 */
-        }
-        
-        thead th {
-            background-color: #f1f5f9 !important; /* slate-100 */
-            color: #f8fafc !important; /* slate-50 - almost white */
-            font-weight: 600 !important;
-        }
-        
-        tbody tr {
-            background-color: #ffffff !important; /* white */
-        }
-        
-        tbody tr:nth-child(even) {
-            background-color: #f1f5f9 !important; /* slate-100 */
-        }
-        
-        tbody tr:hover {
-            background-color: #e2e8f0 !important; /* slate-200 */
-        }
-        
-        .dark tbody tr {
-            background-color: #1e293b !important; /* slate-800 */
-        }
-        
-        .dark tbody tr:nth-child(even) {
-            background-color: #334155 !important; /* slate-700 */
-        }
-        
-        .dark tbody tr:hover {
-            background-color: #475569 !important; /* slate-600 */
-        }
-        
         /* Improved text contrast for better readability */
         h1, h2, h3, h4, h5, h6 {
             color: #f8fafc !important; /* slate-50 - almost white for headings */
         }
         
-        /* Filter labels and section titles */
-        .filters-section label, 
-        .section-title,
-        .filter-label {
-            color: #e2e8f0 !important; /* slate-200 - very light gray */
-            font-weight: 500 !important;
+        /* Header styles */
+        .site-header {
+            background-color: #1e293b; /* slate-800 */
+            border-bottom: 1px solid #334155; /* slate-700 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         
-        /* Table data */
-        td {
-            color: #e2e8f0 !important; /* slate-200 - very light gray */
+        /* Footer styles */
+        .site-footer {
+            background-color: #1e293b; /* slate-800 */
+            border-top: 1px solid #334155; /* slate-700 */
         }
         
-        /* Glossary text */
-        .glossary-item h3 {
-            color: #f8fafc !important; /* slate-50 */
-            font-weight: 600 !important;
-        }
-        
-        .glossary-item p {
-            color: #cbd5e1 !important; /* slate-300 - light enough to read easily */
-        }
-        
-        /* Date labels */
-        .date-label {
-            color: #cbd5e1 !important; /* slate-300 */
-        }
-        
-        /* Last updated text */
-        .last-updated {
-            color: #94a3b8 !important; /* slate-400 - slightly dimmer for secondary info */
-        }
-        
-        /* Enhanced dropdown contrast for dark theme */
-        select,
-        input[type="date"],
-        input[type="text"],
-        .hs-select {
-            background-color: #0f172a !important; /* slate-900 - darker background */
-            border-color: #64748b !important; /* slate-500 - more visible border */
-            color: #f8fafc !important; /* slate-50 - almost white text */
-            padding: 0.5rem 1rem !important;
-            border-width: 1px !important;
-        }
-        
-        select:focus,
-        input[type="date"]:focus,
-        input[type="text"]:focus,
-        .hs-select:focus {
-            border-color: #3b82f6 !important; /* blue-500 */
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important; /* blue glow */
-        }
-        
-        /* Dropdown arrow styling */
-        .absolute.inset-y-0.end-0.flex.items-center.pointer-events-none .fa-chevron-down {
-            color: #e2e8f0 !important; /* slate-200 - much more visible */
-        }
-        
-        /* Button styling with permanent colors */
-        .reset-btn {
-            background-color: #475569 !important; /* slate-600 - more visible */
-            border-color: #64748b !important; /* slate-500 */
-            color: #f1f5f9 !important; /* slate-100 */
-            transition: all 0.2s ease-in-out !important;
-        }
-        
-        .reset-btn:hover {
-            background-color: #64748b !important; /* slate-500 - lighter on hover */
-            transform: translateY(-1px) !important;
-        }
-        
-        .apply-btn {
-            background-color: #2563eb !important; /* blue-600 - brighter */
+        /* Custom styling for buttons */
+        .primary-btn {
+            background-color: #2563eb !important; /* blue-600 */
             border-color: #3b82f6 !important; /* blue-500 */
             color: #f8fafc !important; /* slate-50 */
             transition: all 0.2s ease-in-out !important;
         }
         
-        .apply-btn:hover {
+        .primary-btn:hover {
             background-color: #3b82f6 !important; /* blue-500 - lighter on hover */
             transform: translateY(-1px) !important;
         }
         
-        .clean-btn {
-            background-color: #ef4444 !important; /* red-500 - brighter */
-            border-color: #f87171 !important; /* red-400 */
-            color: #f8fafc !important; /* slate-50 */
-            transition: all 0.2s ease-in-out !important;
-        }
         
-        .clean-btn:hover {
-            background-color: #f87171 !important; /* red-400 - lighter on hover */
-            transform: translateY(-1px) !important;
-        }
-        
-        /* Date picker styling */
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-            opacity: 0.8;
-        }
-        
-        /* View Report link with icon */
-        .view-report-link {
-            color: #3b82f6 !important; /* blue-500 */
-            font-weight: 500 !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 0.25rem !important;
-        }
-        
-        .view-report-link:hover {
-            color: #60a5fa !important; /* blue-400 - lighter on hover */
-            text-decoration: underline !important;
-        }
-        
-        /* Report type badge */
-        .report-type-badge {
-            background-color: #059669 !important; /* emerald-600 */
-            color: #f0fdfa !important; /* teal-50 */
-            font-weight: 500 !important;
-        }
-        
-        /* Glossary section specific styling */
-        .trading-strategy-glossary h2 {
-            color: #f8fafc !important; /* slate-50 - almost white */
-            font-weight: 600 !important;
-            margin-bottom: 1rem !important;
-        }
-        
-        /* Glossary item cards */
-        .glossary-item {
-            background-color: #1e293b !important; /* slate-800 */
-            border: 1px solid #334155 !important; /* slate-700 */
-            border-radius: 0.5rem !important;
-        }
-        
-        /* Glossary item titles */
-        .glossary-item h3,
-        .glossary-item .metric-title {
-            color: #f8fafc !important; /* slate-50 - almost white */
-            font-weight: 600 !important;
-            font-size: 1.1rem !important;
-            margin-bottom: 0.5rem !important;
-        }
-        
-        /* Glossary item descriptions */
-        .glossary-item p,
-        .glossary-item .metric-description {
-            color: #f1f5f9 !important; /* slate-100 - very light gray */
-            font-size: 0.95rem !important;
-            line-height: 1.5 !important;
-        }
-        
-        /* Glossary item icons - rounded squares instead of circles */
-        .glossary-item .metric-icon {
-            background-color: #0f172a !important; /* slate-900 */
-            border: 1px solid #334155 !important; /* slate-700 */
-            color: #f8fafc !important; /* slate-50 */
-            border-radius: 0.75rem !important; /* rounded square */
-            width: 2.5rem !important;
-            height: 2.5rem !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }
-        
-        /* Ensure icons are centered and properly sized */
-        .glossary-item .metric-icon i {
-            font-size: 1.25rem !important;
-        }
-        
-        /* Maintain the original icon colors */
-        #return-metric .metric-icon i {
-            color: #4ade80 !important; /* green-400 */
-        }
-        
-        #buy-hold-metric .metric-icon i {
-            color: #60a5fa !important; /* blue-400 */
-        }
-        
-        #drawdown-metric .metric-icon i {
-            color: #f87171 !important; /* red-400 */
-        }
-        
-        #sharpe-metric .metric-icon i {
-            color: #c084fc !important; /* purple-400 */
-        }
-        
-        #sqn-metric .metric-icon i {
-            color: #facc15 !important; /* yellow-400 */
-        }
-        
-        #win-rate-metric .metric-icon i {
-            color: #34d399 !important; /* emerald-400 */
-        }
     </style>
 </head>
-<body class="bg-slate-900">
-    <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <!-- Header -->
-        <header class="bg-slate-800 shadow-sm rounded-xl p-6 mb-6">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-white">Trading Strategy Dashboard</h1>
-                    <p class="text-gray-400">Access and analyze all your trading strategy backtest results</p>
+<body class="bg-slate-900 min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="site-header py-4 px-6">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <a href="/" class="flex items-center gap-2.5 text-xl font-bold text-white">
+                        <i class="fa-solid fa-chart-line text-green-400"></i>
+                        Trading Strategy Suite
+                    </a>
                 </div>
-                <div class="flex items-center gap-3">
-                    <button onclick="cleanResults()" class="clean-btn py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border shadow-sm disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600">
-                        <i class="fa-solid fa-trash"></i>
-                        Clean Results
-                    </button>
+                <div class="flex items-center gap-4">
+                    
+<button onclick="cleanResults()" class="clean-btn py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border shadow-sm disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600">
+    <i class="fa-solid fa-trash"></i>
+    Clean Results
+</button>
+
                 </div>
             </div>
-        </header>
-        
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Filters Panel -->
-            <div class="lg:col-span-1">
-                <div class="bg-slate-800 shadow-sm rounded-xl p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-bold text-white">Filters</h2>
-                        <button class="hs-collapse-toggle lg:hidden py-2 px-3 inline-flex justify-center items-center gap-x-2 rounded-lg border border-gray-200 bg-slate-800 text-white shadow-sm hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none" id="filter-collapse-toggle" data-hs-collapse="#filter-collapse">
-                            <span class="hs-collapse-open:hidden">Show Filters</span>
-                            <span class="hs-collapse-open:block hidden">Hide Filters</span>
-                            <i class="fa-solid fa-chevron-down hs-collapse-open:rotate-180"></i>
-                        </button>
-                    </div>
-                    
-                    <div id="filter-collapse" class="hs-collapse lg:block w-full overflow-hidden transition-[height] duration-300">
-                        <div class="mb-4">
-                            <label for="report-type" class="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
-                            <div class="relative">
-                                <select id="report-type" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <option value="all">All Reports</option>
-                                    <option value="comparison">Comparison Reports</option>
-                                    <option value="backtest">Backtest Reports</option>
-                                    <option value="chart">Chart Reports</option>
-                                </select>
-                                <div class="absolute inset-y-0 end-0 flex items-center pointer-events-none pe-3">
-                                    <i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="symbol" class="block text-sm font-medium mb-2 text-gray-300">Symbol</label>
-                            <div class="relative">
-                                <select id="symbol" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <option value="all">All Symbols</option>
-                                    
-                                    <option value="NVDA">NVDA</option>
-                                    
-                                </select>
-                                <div class="absolute inset-y-0 end-0 flex items-center pointer-events-none pe-3">
-                                    <i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="strategy" class="block text-sm font-medium mb-2 text-gray-300">Strategy</label>
-                            <div class="relative">
-                                <select id="strategy" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <option value="all">All Strategies</option>
-                                    
-                                    <option value="SMA">SMA</option>
-                                    
-                                </select>
-                                <div class="absolute inset-y-0 end-0 flex items-center pointer-events-none pe-3">
-                                    <i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-6">
-                            <label for="date-range" class="block text-sm font-medium mb-2 text-gray-300">Date Range</label>
-                            <div class="grid grid-cols-1 gap-3">
-                                <div>
-                                    <label for="start-date" class="block text-xs text-gray-500 mb-1">Start Date</label>
-                                    <input type="date" id="start-date" class="py-2 px-3 block w-full border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
-                                </div>
-                                <div>
-                                    <label for="end-date" class="block text-xs text-gray-500 mb-1">End Date</label>
-                                    <input type="date" id="end-date" class="py-2 px-3 block w-full border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <button id="reset-filters" class="reset-btn w-full mb-2 py-2 px-3 inline-flex justify-between items-center gap-x-2 text-sm font-semibold rounded-lg border disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap">
-                            Reset
-                            <i class="fa-solid fa-rotate"></i>
-                        </button>
-
-                        <button id="apply-filters" class="apply-btn w-full py-2 px-3 inline-flex justify-between items-center gap-x-2 text-sm font-semibold rounded-lg border disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600 whitespace-nowrap">
-                            Apply Filters
-                            <i class="fa-solid fa-filter"></i>
-                        </button>
-                    </div>
-                </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="flex-grow py-6">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            
+<!-- Filter Panel -->
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div class="lg:col-span-1">
+        <div class="bg-slate-800 shadow-sm rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-white">Filters</h2>
+                <button class="hs-collapse-toggle lg:hidden py-2 px-3 inline-flex justify-center items-center gap-x-2 rounded-lg border border-gray-200 bg-slate-800 text-white shadow-sm hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none" id="filter-collapse-toggle" data-hs-collapse="#filter-collapse">
+                    <span class="hs-collapse-open:hidden">Show Filters</span>
+                    <span class="hs-collapse-open:block hidden">Hide Filters</span>
+                    <i class="fa-solid fa-chevron-down hs-collapse-open:rotate-180"></i>
+                </button>
             </div>
             
-            <!-- Reports Panel -->
-            <div class="lg:col-span-3">
-                <div class="bg-slate-800 shadow-sm rounded-xl p-6">
-                    <div class="flex justify-between items-center mb-0 sticky top-0 z-10 py-0">
-                        <h2 class="text-lg font-bold text-white">Available Reports</h2>
-                        
-                        <!-- Last Updated Indicator -->
-                        <div class="text-sm text-gray-500">
-                            Last updated: <span id="last-updated">2025-03-22 13:56:05</span>
+            <div id="filter-collapse" class="hs-collapse lg:block w-full overflow-hidden transition-[height] duration-300">
+                <div class="mb-4">
+                    <label for="report-type" class="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
+                    <div class="relative">
+                        <select id="report-type" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                            <option value="all">All Reports</option>
+                            <option value="comparison">Comparison Reports</option>
+                            <option value="backtest">Backtest Reports</option>
+                            <option value="chart">Chart Reports</option>
+                        </select>
+                        <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+                            <i class="fa-solid fa-angle-down text-white"></i>
                         </div>
                     </div>
-                    
-                    <!-- Reports Table -->
-                    <div class="overflow-x-auto mt-0">
-                        <table id="reports-table" class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50 sticky top-14 z-10">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Symbol</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Report Type</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Strategy</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Timeframe</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date Range</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200">
-                                
-                                    
-                                        <tr class="report-row hover:bg-gray-700" 
-                                            data-type="chart" 
-                                            data-symbol="NVDA" 
-                                            data-strategy="SMA"
-                                            data-start-date="2022-01-01"
-                                            data-end-date="2025-03-22">
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                <a href="results/NVDA_SMA_1d_2022-01-01_2025-03-22.html" target="_blank" class="view-report-link">
-                                                    <i class="fa-solid fa-file-lines"></i>
-                                                    View Report
-                                                </a>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">NVDA</td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Chart</span>
-                                                
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
-                                                
-                                                    SMA
-                                                
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1d</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                
-                                                    2022-01-01 to 2025-03-22
-                                                
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-03-22 13:56:05</td>
-                                        </tr>
-                                    
-                                        <tr class="report-row hover:bg-gray-700" 
-                                            data-type="backtest" 
-                                            data-symbol="NVDA" 
-                                            data-strategy="SMA"
-                                            data-start-date="2022-01-01"
-                                            data-end-date="2025-03-22">
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                <a href="results/NVDA_backtest_report_1d_2022-01-01_2025-03-22.html" target="_blank" class="view-report-link">
-                                                    <i class="fa-solid fa-file-lines"></i>
-                                                    View Report
-                                                </a>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">NVDA</td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Backtest</span>
-                                                
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
-                                                
-                                                    SMA
-                                                
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1d</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                
-                                                    2022-01-01 to 2025-03-22
-                                                
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-03-22 13:56:05</td>
-                                        </tr>
-                                    
-                                
-                            </tbody>
-                        </table>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="symbol" class="block text-sm font-medium mb-2 text-gray-300">Symbol</label>
+                    <div class="relative">
+                        <select id="symbol" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                            <option value="all">All Symbols</option>
+                            
+                            <option value="NVDA">NVDA</option>
+                            
+                        </select>
+                        <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+                            <i class="fa-solid fa-angle-down text-white"></i>
+                        </div>
                     </div>
                 </div>
+                
+                <div class="mb-4">
+                    <label for="strategy" class="block text-sm font-medium mb-2 text-gray-300">Strategy</label>
+                    <div class="relative">
+                        <select id="strategy" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                            <option value="all">All Strategies</option>
+                            
+                            <option value="SMA">SMA</option>
+                            
+                        </select>
+                        <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+                            <i class="fa-solid fa-angle-down text-white"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label for="date-range" class="block text-sm font-medium mb-2 text-gray-300">Date Range</label>
+                    <div class="grid grid-cols-1 gap-3">
+                        <div>
+                            <label for="start-date" class="block text-xs text-gray-300 mb-1">Start Date</label>
+                            <input type="date" id="start-date" class="py-2 px-3 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                        </div>
+                        <div>
+                            <label for="end-date" class="block text-xs text-gray-300 mb-1">End Date</label>
+                            <input type="date" id="end-date" class="py-2 px-3 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="reset-filters" class="reset-btn w-full mb-2 py-2 px-3 inline-flex justify-between items-center gap-x-2 text-sm font-semibold rounded-lg border border-gray-600 bg-slate-700 text-white hover:bg-slate-600 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap">
+                    Reset
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
+
+                <button id="apply-filters" class="primary-btn w-full py-2 px-3 inline-flex justify-between items-center gap-x-2 text-sm font-semibold rounded-lg disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600 whitespace-nowrap">
+                    Apply Filters
+                    <i class="fa-solid fa-filter"></i>
+                </button>
             </div>
         </div>
     </div>
     
+    <!-- Reports Panel -->
+    <div class="lg:col-span-3">
+        <div class="bg-slate-800 shadow-sm rounded-xl p-6">
+            <div class="flex justify-between items-center mb-0 sticky top-0 z-10 py-0">
+                <h2 class="text-lg font-bold text-white">Available Reports</h2>
+                
+                <!-- Last Updated Indicator -->
+                <div class="text-sm text-gray-500">
+                    Last updated: <span id="last-updated">2025-03-22 17:31:09</span>
+                </div>
+            </div>
+            
+            <!-- Reports Table -->
+            <div class="overflow-x-auto mt-4 border border-gray-600 rounded-lg">
+                <table id="reports-table" class="min-w-full divide-y divide-gray-600">
+                    <thead class="bg-slate-900 sticky top-14 z-10">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Action</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Report Type</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Strategy</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Timeframe</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Date Range</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Created</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-600 bg-slate-700">
+                        
+                            
+                                <tr class="report-row hover:bg-slate-600" 
+                                    data-type="chart" 
+                                    data-symbol="NVDA" 
+                                    data-strategy="SMA"
+                                    data-start-date="2022-01-01"
+                                    data-end-date="2025-03-22">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <a href="results/NVDA_SMA_1d_2022-01-01_2025-03-22.html" class="view-report-link text-blue-400 hover:text-blue-300">
+                                            <i class="fa-solid fa-file-lines"></i>
+                                            View Report
+                                        </a>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">NVDA</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-200 text-blue-900">Chart</span>
+                                        
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
+                                        
+                                            SMA
+                                        
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">1d</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
+                                        
+                                            2022-01-01 to 2025-03-22
+                                        
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">2025-03-22 17:29:53</td>
+                                </tr>
+                            
+                                <tr class="report-row hover:bg-slate-600" 
+                                    data-type="backtest" 
+                                    data-symbol="NVDA" 
+                                    data-strategy="SMA"
+                                    data-start-date="2022-01-01"
+                                    data-end-date="2025-03-22">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <a href="results/NVDA_backtest_report_1d_2022-01-01_2025-03-22.html" class="view-report-link text-blue-400 hover:text-blue-300">
+                                            <i class="fa-solid fa-file-lines"></i>
+                                            View Report
+                                        </a>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">NVDA</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-200 text-green-900">Backtest</span>
+                                        
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
+                                        
+                                            SMA
+                                        
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">1d</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
+                                        
+                                            2022-01-01 to 2025-03-22
+                                        
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">2025-03-22 17:29:53</td>
+                                </tr>
+                            
+                        
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="site-footer py-4 px-6">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="text-slate-400 text-sm">
+                    &copy; 2025 Trading Strategy Suite. All rights reserved.
+                </div>
+                <div class="text-slate-400 text-sm">
+                    Generated on: 2025-03-22 17:31:09
+                </div>
+            </div>
+        </div>
+    </footer>
+    
     <!-- Preline UI JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.js"></script>
-    <script>
-        // Auto-refresh functionality
-        let refreshInterval;
-        // Define refreshIntervalMs from template variable
-        const refreshIntervalMs = Number("1000");
+    
+    
+<script>
+    // Auto-refresh functionality
+    let refreshInterval;
+    // Define refreshIntervalMs from template variable
+    const refreshIntervalMs = Number("1000");
+    
+    function startAutoRefresh() {
+        // Refresh only the reports section based on configured interval
+        refreshInterval = setInterval(() => {
+            fetchReportsData();
+        }, refreshIntervalMs);
+    }
+    
+    function fetchReportsData() {
+        fetch('/reports-data')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                updateReportsTable(data.reports);
+                document.getElementById('last-updated').textContent = data.timestamp;
+            })
+            .catch(error => {
+                console.error('Error fetching reports data:', error);
+            });
+    }
+    
+    function updateReportsTable(reports) {
+        const tableBody = document.querySelector('#reports-table tbody');
         
-        function startAutoRefresh() {
-            // Refresh only the reports section based on configured interval
-            refreshInterval = setInterval(() => {
-                fetchReportsData();
-            }, refreshIntervalMs);
+        // Clear existing rows
+        tableBody.innerHTML = '';
+        
+        if (reports.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-500 italic">No reports available</td>
+                </tr>
+            `;
+            return;
         }
         
-        function fetchReportsData() {
-            fetch('/reports-data')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
+        // Apply current filters to the new data
+        const reportType = document.getElementById('report-type').value;
+        const symbol = document.getElementById('symbol').value;
+        const strategy = document.getElementById('strategy').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        
+        // Filter the reports based on selected criteria
+        const filteredReports = reports.filter(report => {
+            // Filter by report type
+            if (reportType !== 'all' && report.type !== reportType) {
+                return false;
+            }
+            
+            // Filter by symbol
+            if (symbol !== 'all' && report.symbol !== symbol) {
+                return false;
+            }
+            
+            // Filter by strategy
+            if (strategy !== 'all' && report.strategy !== strategy) {
+                return false;
+            }
+            
+            // Filter by date range
+            if (startDate && report.start_date && report.start_date < startDate) {
+                return false;
+            }
+            
+            if (endDate && report.end_date && report.end_date > endDate) {
+                return false;
+            }
+            
+            return true;
+        });
+        
+        // Display message if no reports match filters
+        if (filteredReports.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-500 italic">No reports match the selected filters</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        // Create rows for filtered reports
+        filteredReports.forEach(report => {
+            const row = document.createElement('tr');
+            row.className = 'report-row hover:bg-slate-600';
+            row.dataset.type = report.type;
+            row.dataset.symbol = report.symbol || '';
+            row.dataset.strategy = report.strategy || '';
+            row.dataset.startDate = report.start_date || '';
+            row.dataset.endDate = report.end_date || '';
+            
+            // Create row content with improved contrast
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <a href="results/${report.path}" class="view-report-link text-blue-400 hover:text-blue-300">
+                        <i class="fa-solid fa-file-lines"></i>
+                        View Report
+                    </a>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-white">${report.symbol || 'Unknown'}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    ${report.type === 'comparison' 
+                        ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-200 text-red-900">Comparison</span>'
+                        : report.type === 'chart'
+                            ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-200 text-blue-900">Chart</span>'
+                            : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-200 text-green-900">Backtest</span>'
                     }
-                    return response.json();
-                })
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
+                    ${report.type === 'comparison'
+                        ? (report.title || 'Strategy Comparison')
+                        : (report.strategy || 'Unknown')
+                    }
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">${report.timeframe || 'Various'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
+                    ${(report.start_date && report.end_date)
+                        ? `${report.start_date} to ${report.end_date}`
+                        : 'Various'
+                    }
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">${report.created}</td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+    }
+    
+    function cleanResults() {
+        if (confirm('Are you sure you want to clean all results? This action cannot be undone.')) {
+            fetch('/clean-results', { method: 'POST' })
+                .then(response => response.json())
                 .then(data => {
-                    updateReportsTable(data.reports);
-                    document.getElementById('last-updated').textContent = data.timestamp;
+                    const toastEl = document.createElement('div');
+                    toastEl.className = 'hs-removing:translate-x-5 hs-removing:opacity-0 transition duration-300 bg-teal-50 border border-teal-200 text-sm text-teal-800 rounded-lg p-4 dark:bg-teal-800/10 dark:border-teal-900 dark:text-teal-500';
+                    toastEl.innerHTML = `
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-4 w-4 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                                    <path d="m9 12 2 2 4-4"/>
+                                </svg>
+                            </div>
+                            <div class="ms-3">
+                                <h3 class="font-medium text-teal-800 dark:text-teal-400">Success</h3>
+                                <div class="mt-1 text-teal-700 dark:text-teal-500">${data.message}</div>
+                            </div>
+                        </div>
+                    `;
                 })
                 .catch(error => {
-                    console.error('Error fetching reports data:', error);
+                    console.error('Error cleaning results:', error);
                 });
         }
-        
-        function updateReportsTable(reports) {
-            const tableBody = document.querySelector('#reports-table tbody');
-            
-            // Clear existing rows
-            tableBody.innerHTML = '';
-            
-            if (reports.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="px-6 py-8 text-center text-gray-500 italic">No reports available</td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            // Apply current filters to the new data
-            const reportType = document.getElementById('report-type').value;
-            const symbol = document.getElementById('symbol').value;
-            const strategy = document.getElementById('strategy').value;
-            const startDate = document.getElementById('start-date').value;
-            const endDate = document.getElementById('end-date').value;
-            
-            // Filter the reports based on selected criteria
-            const filteredReports = reports.filter(report => {
-                // Filter by report type
-                if (reportType !== 'all' && report.type !== reportType) {
-                    return false;
-                }
-                
-                // Filter by symbol
-                if (symbol !== 'all' && report.symbol !== symbol) {
-                    return false;
-                }
-                
-                // Filter by strategy
-                if (strategy !== 'all' && report.strategy !== strategy) {
-                    return false;
-                }
-                
-                // Filter by date range
-                if (startDate && report.start_date && report.start_date < startDate) {
-                    return false;
-                }
-                
-                if (endDate && report.end_date && report.end_date > endDate) {
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            // Display message if no reports match filters
-            if (filteredReports.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="px-6 py-8 text-center text-gray-500 italic">No reports match the selected filters</td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            // Create rows for filtered reports
-            filteredReports.forEach(report => {
-                const row = document.createElement('tr');
-                row.className = 'report-row hover:bg-gray-700';
-                row.dataset.type = report.type;
-                row.dataset.symbol = report.symbol || '';
-                row.dataset.strategy = report.strategy || '';
-                row.dataset.startDate = report.start_date || '';
-                row.dataset.endDate = report.end_date || '';
-                
-                // Create row content
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <a href="results/${report.path}" target="_blank" class="view-report-link">
-                            <i class="fa-solid fa-file-lines"></i>
-                            View Report
-                        </a>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">${report.symbol || 'Unknown'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        ${report.type === 'comparison' 
-                            ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Comparison</span>'
-                            : report.type === 'chart'
-                                ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Chart</span>'
-                                : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Backtest</span>'
-                        }
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
-                        ${report.type === 'comparison'
-                            ? (report.title || 'Strategy Comparison')
-                            : (report.strategy || 'Unknown')
-                        }
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${report.timeframe || 'Various'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${(report.start_date && report.end_date)
-                            ? `${report.start_date} to ${report.end_date}`
-                            : 'Various'
-                        }
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${report.created}</td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-        }
-        
-        function cleanResults() {
-            if (confirm('Are you sure you want to clean all results? This action cannot be undone.')) {
-                fetch('/clean-results', { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => {
-                        const toastEl = document.createElement('div');
-                        toastEl.className = 'hs-removing:translate-x-5 hs-removing:opacity-0 transition duration-300 bg-teal-50 border border-teal-200 text-sm text-teal-800 rounded-lg p-4 dark:bg-teal-800/10 dark:border-teal-900 dark:text-teal-500';
-                        toastEl.innerHTML = `
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-4 w-4 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-                                        <path d="m9 12 2 2 4-4"/>
-                                    </svg>
-                                </div>
-                                <div class="ms-3">
-                                    <h3 class="font-medium text-teal-800 dark:text-teal-400">Success</h3>
-                                    <div class="mt-1 text-teal-700 dark:text-teal-500">${data.message}</div>
-                                </div>
-                            </div>
-                        `
+    }
+</script>
+
+</body>
+</html> 
