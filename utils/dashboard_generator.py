@@ -182,11 +182,14 @@ def generate_dashboard(refresh_interval=1000):
     
     # Render the template with our data
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_year = datetime.now().year
+    
     dashboard_html = template.render(
         reports=reports,
         symbols=symbols,
         strategies=strategies,
         now=current_time,
+        current_year=current_year,
         refresh_interval=refresh_interval
     )
     
