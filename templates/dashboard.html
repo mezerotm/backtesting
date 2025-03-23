@@ -109,71 +109,39 @@
             </div>
             
             <!-- Reports Table -->
-            <div class="overflow-x-auto mt-4 border border-gray-600 rounded-lg">
-                <table id="reports-table" class="min-w-full divide-y divide-gray-600">
-                    <thead class="bg-slate-900 sticky top-14 z-10">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Action</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Report Type</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Strategy</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Timeframe</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Date Range</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Created</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-600 bg-slate-700">
-                        {% if reports %}
-                            {% for report in reports %}
-                                <tr class="report-row hover:bg-slate-600" 
-                                    data-type="{{ report.type }}" 
-                                    data-symbol="{{ report.get('symbol', '') }}" 
-                                    data-strategy="{{ report.get('strategy', '') }}"
-                                    data-start-date="{{ report.get('start_date', '') }}"
-                                    data-end-date="{{ report.get('end_date', '') }}">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <a href="{{ 'results/' + report.path }}" class="view-report-link text-blue-400 hover:text-blue-300">
-                                            <i class="fa-solid fa-file-lines"></i>
-                                            View Report
-                                        </a>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ report.get('symbol', 'Unknown') }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        {% if report.type == 'comparison' %}
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-200 text-red-900">Comparison</span>
-                                        {% elif report.type == 'chart' %}
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-200 text-blue-900">Chart</span>
-                                        {% else %}
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-200 text-green-900">Backtest</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
-                                        {% if report.type == 'comparison' %}
-                                            {{ report.get('title', 'Strategy Comparison') }}
-                                        {% elif report.type == 'chart' %}
-                                            {{ report.get('strategy', 'Unknown') }}
-                                        {% else %}
-                                            {{ report.get('strategy', 'Unknown') }}
-                                        {% endif %}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">{{ report.get('timeframe', 'Various') }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
-                                        {% if report.get('start_date') and report.get('end_date') %}
-                                            {{ report.get('start_date') }} to {{ report.get('end_date') }}
-                                        {% else %}
-                                            Various
-                                        {% endif %}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">{{ report.created }}</td>
-                                </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="7" class="px-6 py-8 text-center text-gray-400 italic">No reports available</td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
+            <div class="flex flex-col">
+                <div class="-m-1.5 overflow-x-auto">
+                    <div class="p-1.5 min-w-full inline-block align-middle">
+                        <div class="overflow-hidden bg-slate-900 border border-slate-700 shadow-sm rounded-lg">
+                            <table id="reports-table" class="min-w-full divide-y divide-slate-700">
+                                <thead class="bg-slate-800">
+                                    <tr>
+                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Action</th>
+                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Report Type</th>
+                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Strategy</th>
+                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Timeframe</th>
+                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Date Range</th>
+                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-700">
+                                    <!-- Dynamic content will be inserted here -->
+                                    <tr>
+                                        <td colspan="7" class="px-3 py-3 text-center text-gray-400">
+                                            <div class="flex justify-center items-center space-x-2">
+                                                <div class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-blue-600 rounded-full" role="status" aria-label="loading">
+                                                    <span class="sr-only">Loading...</span>
+                                                </div>
+                                                <span>Loading reports...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -195,44 +163,32 @@
     }
     
     function fetchReportsData() {
-        console.log('🔍 Fetching reports data...');
         fetch('/reports-data')
             .then(response => {
-                console.log('👉 Response status:', response.status);
                 if (!response.ok) {
                     throw new Error('Network response was not ok: ' + response.status);
                 }
                 return response.json();
             })
             .then(data => {
-                console.log('📊 Reports data received:', data);
                 if (!data || !data.reports) {
-                    console.error('❌ Invalid reports data format:', data);
+                    console.error('Invalid reports data format:', data);
                     return;
                 }
                 
-                // Check if the table exists
-                const tableBody = document.querySelector('#reports-table tbody');
-                if (!tableBody) {
-                    console.error('❌ Table body element not found! Selector: #reports-table tbody');
-                    // Try to find the table
-                    const table = document.querySelector('#reports-table');
-                    console.log('Table element exists:', !!table);
-                    return;
-                }
-                
-                console.log('✅ Table body found, updating with', data.reports.length, 'reports');
                 updateReportsTable(data.reports);
                 document.getElementById('last-updated').textContent = data.timestamp;
             })
             .catch(error => {
-                console.error('❌ Error fetching reports data:', error);
+                console.error('Error fetching reports data:', error);
+                
                 // Show an error message in the table
                 const tableBody = document.querySelector('#reports-table tbody');
                 if (tableBody) {
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="7" class="px-6 py-8 text-center text-red-500">
+                            <td colspan="7" class="px-6 py-4 text-center text-red-500 font-medium">
+                                <i class="fa-solid fa-circle-exclamation mr-2"></i>
                                 Failed to load reports. Error: ${error.message}
                             </td>
                         </tr>
@@ -242,118 +198,173 @@
     }
     
     function updateReportsTable(reports) {
-        console.log('🔄 Starting table update with', reports.length, 'reports');
         const tableBody = document.querySelector('#reports-table tbody');
         
         if (!tableBody) {
-            console.error('❌ Table body element not found in updateReportsTable! Selector: #reports-table tbody');
+            console.error('Table body not found');
             return;
         }
         
-        // Check the initial content of the tbody
-        console.log('👀 Initial tableBody HTML:', tableBody.innerHTML);
-        
-        // Clear existing rows
+        // Clear the table body
         tableBody.innerHTML = '';
-        console.log('🧹 Cleared table body');
         
         if (reports.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="px-6 py-8 text-center text-gray-500 italic">No reports available</td>
+                    <td colspan="7" class="py-4 text-center">
+                        <div class="flex justify-center text-gray-300">
+                            <i class="fa-solid fa-folder-open text-xl mr-2"></i>
+                            <span>No reports available</span>
+                        </div>
+                    </td>
                 </tr>
             `;
-            console.log('ℹ️ No reports available message added');
             return;
         }
         
         // Get filter values
-        const reportTypeSelect = document.getElementById('report-type');
-        const symbolSelect = document.getElementById('symbol');
-        const strategySelect = document.getElementById('strategy');
-        const startDateInput = document.getElementById('start-date');
-        const endDateInput = document.getElementById('end-date');
+        const reportType = document.getElementById('report-type')?.value || 'all';
+        const symbol = document.getElementById('symbol')?.value || 'all';
+        const strategy = document.getElementById('strategy')?.value || 'all';
+        const startDate = document.getElementById('start-date')?.value || '';
+        const endDate = document.getElementById('end-date')?.value || '';
         
-        console.log('🔍 Filter elements found:', {
-            reportType: !!reportTypeSelect,
-            symbol: !!symbolSelect,
-            strategy: !!strategySelect,
-            startDate: !!startDateInput,
-            endDate: !!endDateInput
-        });
-        
-        const reportType = reportTypeSelect ? reportTypeSelect.value : 'all';
-        const symbol = symbolSelect ? symbolSelect.value : 'all';
-        const strategy = strategySelect ? strategySelect.value : 'all';
-        const startDate = startDateInput ? startDateInput.value : '';
-        const endDate = endDateInput ? endDateInput.value : '';
-        
-        console.log('🔍 Applied filters:', { reportType, symbol, strategy, startDate, endDate });
-        
-        // Filter the reports
+        // Filter reports
         const filteredReports = reports.filter(report => {
-            // Filter by report type
-            if (reportType !== 'all' && report.type !== reportType) {
-                return false;
-            }
+            // Standard filter checks
+            if (reportType !== 'all' && report.type !== reportType) return false;
+            if (symbol !== 'all' && report.symbol !== symbol) return false;
+            if (strategy !== 'all' && report.strategy !== strategy) return false;
             
-            // Filter by symbol
-            if (symbol !== 'all' && report.symbol !== symbol) {
-                return false;
-            }
-            
-            // Filter by strategy
-            if (strategy !== 'all' && report.strategy !== strategy) {
-                return false;
-            }
-            
-            // Filter by date range
-            if (startDate && report.start_date && report.start_date < startDate) {
-                return false;
-            }
-            
-            if (endDate && report.end_date && report.end_date > endDate) {
-                return false;
-            }
+            // Date range checks
+            if (startDate && report.start_date && new Date(report.start_date) < new Date(startDate)) return false;
+            if (endDate && report.end_date && new Date(report.end_date) > new Date(endDate)) return false;
             
             return true;
         });
         
-        console.log('🔍 Filtered reports count:', filteredReports.length);
+        if (filteredReports.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="py-6">
+                        <div class="flex flex-col items-center justify-center text-center space-y-3">
+                            <div class="flex items-center text-red-400">
+                                <i class="fa-solid fa-filter-circle-xmark text-xl mr-2"></i>
+                                <span>No reports match the current filter settings</span>
+                            </div>
+                            <button onclick="resetFilters()" class="inline-flex items-center gap-x-1 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600 py-2 px-3">
+                                <i class="fa-solid fa-rotate-right"></i>
+                                Reset Filters
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
         
-        // Create and append each row
+        // Create rows for each report using Preline & Tailwind classes
         filteredReports.forEach((report, index) => {
-            try {
-                console.log(`👉 Processing report ${index}:`, report);
-                
-                const row = document.createElement('tr');
-                row.className = 'report-row hover:bg-slate-600';
-                
-                // Create row HTML with simpler content
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">View ${index}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">${report.symbol || `Symbol-${index}`}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">${report.type || `Type-${index}`}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">${report.strategy || `Strategy-${index}`}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">${report.timeframe || `TF-${index}`}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">Date Range ${index}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">Created ${index}</td>
-                `;
-                
-                console.log(`👉 Row HTML created for report ${index}`);
-                tableBody.appendChild(row);
-                console.log(`✅ Row appended for report ${index}`);
-                
-                // After appending, check the table size
-                console.log(`👀 Table now has ${tableBody.children.length} rows`);
-            } catch (err) {
-                console.error(`❌ Error creating row for report ${index}:`, err);
+            const row = document.createElement('tr');
+            
+            // Use Tailwind classes for styling rows
+            row.className = `${index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-900'} hover:bg-slate-700`;
+            
+            // Get report type badge style
+            let typeBadgeClass = '';
+            if (report.type === 'backtest') {
+                typeBadgeClass = 'bg-green-800 text-green-200';
+            } else if (report.type === 'comparison') {
+                typeBadgeClass = 'bg-rose-900 text-rose-200';
+            } else if (report.type === 'chart') {
+                typeBadgeClass = 'bg-blue-900 text-blue-200';
+            } else {
+                typeBadgeClass = 'bg-gray-700 text-gray-200';
             }
+            
+            // Format dates for display
+            const startDate = report.start_date ? formatDate(report.start_date, false, true) : '';
+            const endDate = report.end_date ? formatDate(report.end_date, false, true) : '';
+            
+            // Create row content with Tailwind classes
+            row.innerHTML = `
+                <td class="px-3 py-3 align-middle whitespace-nowrap">
+                    <a href="${'results/' + report.path}" class="inline-flex items-center gap-x-1 text-sm font-semibold rounded-lg border border-transparent text-blue-500 hover:text-blue-400 disabled:opacity-50 disabled:pointer-events-none py-1 px-3 bg-blue-800/20">
+                        <i class="fa-solid fa-file-lines text-xs"></i>
+                        View
+                    </a>
+                </td>
+                <td class="px-3 py-3 align-middle whitespace-nowrap font-medium text-white">
+                    ${report.symbol || 'Unknown'}
+                </td>
+                <td class="px-3 py-3 align-middle whitespace-nowrap">
+                    <span class="inline-flex items-center gap-x-1.5 py-1 px-2.5 text-xs font-medium rounded-full ${typeBadgeClass}">
+                        ${report.type || 'Unknown'}
+                    </span>
+                </td>
+                <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-200">
+                    ${report.strategy || 'Unknown'}
+                </td>
+                <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
+                    ${report.timeframe || '-'}
+                </td>
+                <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
+                    ${(startDate && endDate) ? `
+                    <div class="flex items-center space-x-1">
+                        <span>${startDate}</span>
+                        <i class="fa-solid fa-arrow-right text-gray-500 text-xs"></i>
+                        <span>${endDate}</span>
+                    </div>` : '-'}
+                </td>
+                <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
+                    ${report.created ? formatDate(report.created, true, true) : '-'}
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
         });
-        
-        // Check final table content
-        console.log('👀 Final table rows count:', tableBody.children.length);
-        console.log('👀 First few table rows HTML:', tableBody.innerHTML.substring(0, 200) + '...');
+    }
+    
+    // Enhanced formatDate function with compact option
+    function formatDate(dateString, includeTime = false, compact = false) {
+        try {
+            const date = new Date(dateString);
+            
+            if (compact) {
+                // More compact date format
+                const month = date.toLocaleString('en-US', { month: 'short' });
+                const day = date.getDate();
+                const year = date.getFullYear();
+                
+                let formatted = `${month} ${day}, ${year}`;
+                
+                if (includeTime) {
+                    const hours = date.getHours();
+                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                    const ampm = hours >= 12 ? 'PM' : 'AM';
+                    const displayHours = hours % 12 || 12;
+                    formatted = `${month} ${day}, ${hours}:${minutes}${ampm}`;
+                }
+                
+                return formatted;
+            } else {
+                // Original format
+                const options = { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric'
+                };
+                
+                if (includeTime) {
+                    options.hour = '2-digit';
+                    options.minute = '2-digit';
+                }
+                
+                return date.toLocaleDateString('en-US', options);
+            }
+        } catch (e) {
+            return dateString; // Return original if parsing fails
+        }
     }
     
     function cleanResults() {
@@ -382,6 +393,22 @@
                     console.error('Error cleaning results:', error);
                 });
         }
+    }
+    
+    // Add this function to help reset filters
+    function resetFilters() {
+        const filterElements = ['report-type', 'symbol', 'strategy', 'start-date', 'end-date'];
+        filterElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                if (element.tagName === 'SELECT') {
+                    element.value = 'all';
+                } else {
+                    element.value = '';
+                }
+            }
+        });
+        fetchReportsData();
     }
     
     // Initialize when document is ready
