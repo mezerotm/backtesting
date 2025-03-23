@@ -176,7 +176,7 @@ td {
                     </td>
                     {% for strategy in strategies %}
                     <td class="px-6 py-4 text-sm {{ get_value_class(metric, results[strategy][metric]) }}">
-                        {{ format_value(results[strategy][metric]) }}
+                        {{ results[strategy][metric]|format_value }}
                     </td>
                     {% endfor %}
                 </tr>
@@ -196,7 +196,7 @@ td {
                 </div>
             </div>
             <div class="text-2xl font-bold mb-2 {{ 'positive' if results[strategies[0]]['Return [%]'] > 0 else 'negative' }}">
-                {{ format_value(results[strategies[0]]['Return [%]']) }}%
+                {{ results[strategies[0]]['Return [%]']|format_value }}%
             </div>
             <div class="text-sm text-slate-400">
                 The total percentage return of the strategy over the backtest period.
@@ -212,7 +212,7 @@ td {
                 </div>
             </div>
             <div class="text-2xl font-bold mb-2 {{ 'positive' if results[strategies[0]]['Buy & Hold Return [%]'] > 0 else 'negative' }}">
-                {{ format_value(results[strategies[0]]['Buy & Hold Return [%]']) }}%
+                {{ results[strategies[0]]['Buy & Hold Return [%]']|format_value }}%
             </div>
             <div class="text-sm text-slate-400">
                 The percentage return from buying and holding the asset for the entire backtest period.
@@ -228,7 +228,7 @@ td {
                 </div>
             </div>
             <div class="text-2xl font-bold mb-2 negative">
-                {{ format_value(results[strategies[0]]['Max. Drawdown [%]']) }}%
+                {{ results[strategies[0]]['Max. Drawdown [%]']|format_value }}%
             </div>
             <div class="text-sm text-slate-400">
                 The maximum observed loss from a peak to a trough during the backtest period.
@@ -244,7 +244,7 @@ td {
                 </div>
             </div>
             <div class="text-2xl font-bold mb-2 neutral">
-                {{ format_value(results[strategies[0]]['Sharpe Ratio']) }}
+                {{ results[strategies[0]]['Sharpe Ratio']|format_value }}
             </div>
             <div class="text-sm text-slate-400">
                 A measure of risk-adjusted return. Higher values indicate better risk-adjusted performance.
@@ -260,7 +260,7 @@ td {
                 </div>
             </div>
             <div class="text-2xl font-bold mb-2 neutral">
-                {{ format_value(results[strategies[0]]['Win Rate [%]']) }}%
+                {{ results[strategies[0]]['Win Rate [%]']|format_value }}%
             </div>
             <div class="text-sm text-slate-400">
                 The percentage of trades that were profitable.
@@ -276,7 +276,7 @@ td {
                 </div>
             </div>
             <div class="text-2xl font-bold mb-2 neutral">
-                {{ format_value(results[strategies[0]]['SQN']) }}
+                {{ results[strategies[0]]['SQN']|format_value }}
             </div>
             <div class="text-sm text-slate-400">
                 A metric that rates trading systems based on the consistency and size of profits relative to risk.

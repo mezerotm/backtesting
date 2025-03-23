@@ -34,8 +34,8 @@ def get_value_class(metric, value):
     
     return "neutral"
 
-def create_backtest_report(results, args, results_dir):
-    """Create a detailed HTML report for the backtest results using a Jinja2 template"""
+def create_backtest_report(results, args, output_dir, filename="index.html"):
+    """Create a detailed HTML report for the backtest results."""
     
     # Convert dictionary of stats objects to DataFrame if needed
     if isinstance(results, dict) and not isinstance(results, pd.DataFrame):
@@ -89,44 +89,40 @@ def create_backtest_report(results, args, results_dir):
         'SQN': 'System Quality Number - rates trading systems based on consistency and size of profits relative to risk.'
     }
     
-    # Set up Jinja2 environment with filters
-    env = Environment(loader=FileSystemLoader('templates'))
+    # Get the templates directory relative to this file
+    templates_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates')
+    env = Environment(loader=FileSystemLoader(templates_dir))
     
-    # Register custom filters
+    # Register the format_number function as a filter
     env.filters['format_number'] = format_number
     env.filters['format_value'] = format_value
     
-    # Get template
+    # Load the template
     template = env.get_template('backtest_report.html')
     
-    # Prepare template context
-    context = {
-        'symbol': args.ticker if hasattr(args, 'ticker') else args.symbol,
-        'start_date': args.start_date if hasattr(args, 'start_date') else args.start,
-        'end_date': args.end_date if hasattr(args, 'end_date') else args.end,
-        'initial_capital': args.initial_capital if hasattr(args, 'initial_capital') else args.cash,
-        'commission': args.commission * 100,
-        'timeframe': args.timeframe,
-        'strategies': list(results_df.columns),
-        'metrics': metrics,
-        'metric_descriptions': metric_descriptions,
-        'results': {strategy: results_df[strategy].to_dict() for strategy in results_df.columns},
-        'generation_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'get_value_class': get_value_class,
-        'format_value': format_value,
-        'format_number': format_number
-    }
+    # Render the template with our data
+    report_html = template.render(
+        symbol=args.ticker if hasattr(args, 'ticker') else args.symbol,
+        start_date=args.start_date if hasattr(args, 'start_date') else args.start,
+        end_date=args.end_date if hasattr(args, 'end_date') else args.end,
+        initial_capital=args.initial_capital if hasattr(args, 'initial_capital') else args.cash,
+        commission=args.commission,
+        timeframe=args.timeframe,
+        strategies=list(results_df.columns),
+        metrics=metrics,
+        results={strategy: results_df[strategy].to_dict() for strategy in results_df.columns},
+        metric_descriptions=metric_descriptions,
+        format_value=format_value,
+        get_value_class=get_value_class,
+        generation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
     
-    # Render the template
-    html_content = template.render(**context)
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
     
-    # Generate filename based on available args
-    symbol = args.ticker if hasattr(args, 'ticker') else args.symbol
-    start = args.start_date if hasattr(args, 'start_date') else args.start
-    end = args.end_date if hasattr(args, 'end_date') else args.end
-    
-    report_path = os.path.join(results_dir, f"{symbol}_backtest_report_{args.timeframe}_{start}_{end}.html")
+    # Save the report to the specified file in the output directory
+    report_path = os.path.join(output_dir, filename)
     with open(report_path, 'w') as f:
-        f.write(html_content)
+        f.write(report_html)
     
     return report_path 

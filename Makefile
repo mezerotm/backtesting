@@ -51,11 +51,11 @@ test-comparisons: results-dir compare-nvda compare-aapl dashboard
 
 # Clean up results
 clean:
-	rm -rf results/*
+	rm -rf public/results/*
 
 # Create results directory if it doesn't exist
 results-dir:
-	mkdir -p results
+	mkdir -p public/results
 
 # Start dashboard server
 server:
