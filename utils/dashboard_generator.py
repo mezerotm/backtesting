@@ -227,10 +227,8 @@ class DashboardServer:
                         # Extract metadata from each report directory
                         reports = [get_report_metadata(dir) for dir in report_dirs]
                         
-                        # Sort reports: comparison reports first, then by date (newest first)
-                        reports.sort(key=lambda x: (0 if x['type'] == 'comparison' else 1, 
-                                                    x.get('created', ''), 
-                                                    x.get('symbol', '')))
+                        # Sort reports by creation time, newest first
+                        reports = sorted(reports, key=lambda report: report.get('created_timestamp', 0), reverse=True)
                         
                         # Prepare the response data
                         response_data = {
