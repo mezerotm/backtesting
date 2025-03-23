@@ -25,29 +25,13 @@ setup: activate-venv
 freeze:
 	$(PIP) freeze > requirements.txt
 
-# Basic run with AAPL (default settings)
-backtest-aapl: results-dir
-	$(PYTHON) backtest_strategy.py --ticker AAPL
-
 # Test run with NVDA and custom parameters
 backtest-nvda: results-dir
-	$(PYTHON) backtest_strategy.py --ticker NVDA
-
-test-backtest: results-dir backtest-aapl backtest-nvda dashboard
-
-# Strategy Comparison Commands
-# ----------------------------
-
-# Compare strategies on AAPL
-compare-aapl: results-dir
-	$(PYTHON) run_comparisons.py --symbol AAPL
+	$(PYTHON) backtest_strategy.py --symbol NVDA
 
 # Compare strategies on NVDA
 compare-nvda: results-dir
 	$(PYTHON) run_comparisons.py --symbol NVDA
-
-# Run a comprehensive test across multiple symbols
-test-comparisons: results-dir compare-nvda compare-aapl dashboard
 
 # Clean up results
 clean:
@@ -61,6 +45,5 @@ results-dir:
 server:
 	$(PYTHON) -m utils.dashboard_generator
 
-.PHONY: setup freeze test-backtest \
-	compare-aapl compare-nvda test-comparison \
-	results-dir generate-report test-and-report clean ensure-venv activate-venv
+.PHONY: setup freeze backtest-nvda \
+	compare-nvda clean results-dir server ensure-venv activate-venv

@@ -14,18 +14,18 @@ def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Run strategy comparisons.')
     
-    # Data options
+    # Data options - Keeping symbol as is since it's already using the right term
     parser.add_argument('--symbol', type=str, required=True, help='Symbol to backtest')
-    parser.add_argument('--start', type=str, default='2022-01-01',
+    parser.add_argument('--start-date', type=str, default='2022-01-01',
                         help='Start date for data (YYYY-MM-DD)')
-    parser.add_argument('--end', type=str, default=None,
+    parser.add_argument('--end-date', type=str, default=None,
                         help='End date for data (YYYY-MM-DD, default: today)')
     parser.add_argument('--timeframe', type=str, default='1d',
                         help='Data timeframe: e.g., 5m, 1h, 1d (default: 1d)')
     
-    # Backtest options
-    parser.add_argument('--cash', type=float, default=10000,
-                        help='Initial cash for backtesting (default: 10000)')
+    # Backtest options - Renamed cash to initial-capital for consistency
+    parser.add_argument('--initial-capital', type=float, default=10000,
+                        help='Initial capital for backtesting (default: 10000)')
     parser.add_argument('--commission', type=float, default=0.001,
                       help='Commission rate (e.g., 0.001 for 0.1%)')
     
@@ -105,15 +105,15 @@ def main():
     args = parse_args()
     
     # Set end date to today if not specified
-    if args.end is None:
+    if args.end_date is None:
         end_date = datetime.today().strftime('%Y-%m-%d')
     else:
-        end_date = args.end
+        end_date = args.end_date
     
-    print(f"Fetching data for {args.symbol} from {args.start} to {end_date} using Polygon API (timeframe: {args.timeframe})...")
+    print(f"Fetching data for {args.symbol} from {args.start_date} to {end_date} using Polygon API (timeframe: {args.timeframe})...")
     raw_data = fetch_historical_data(
-        ticker=args.symbol, 
-        start_date=args.start, 
+        ticker=args.symbol,  # Using symbol but keeping ticker parameter name for compatibility
+        start_date=args.start_date, 
         end_date=end_date, 
         timeframe=args.timeframe
     )
@@ -138,7 +138,7 @@ def main():
     results = compare_strategies(
         data=data,
         strategies=strategies,
-        cash=args.cash,
+        cash=args.initial_capital,  # Using initial_capital instead of cash
         commission=args.commission
     )
     
@@ -193,9 +193,9 @@ def main():
     metadata = generate_metadata(
         symbol=args.symbol,
         timeframe=args.timeframe,
-        start_date=args.start,
+        start_date=args.start_date,
         end_date=end_date,
-        initial_capital=args.cash,
+        initial_capital=args.initial_capital,
         commission=args.commission,
         report_type="comparison",
         strategies_compared=list(strategies.keys()),
