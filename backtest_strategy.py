@@ -3,7 +3,7 @@ import pandas as pd
 from backtesting import Backtest
 import sys
 import argparse
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 # Add the project root to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -56,18 +56,20 @@ def parse_args():
     parser.add_argument('--symbol', type=str, required=True,
                       help='Stock symbol (e.g., AAPL)')
     
-    # Optional parameters with defaults
-    parser.add_argument('--start-date', type=valid_date, default="2022-01-01",
-                      help='Start date in YYYY-MM-DD format')
-    parser.add_argument('--end-date', type=valid_date, default=date.today().strftime("%Y-%m-%d"),
-                      help='End date in YYYY-MM-DD format')
+    # Optional parameters with defaults - Align with backtest_comparisons.py
+    # Change default start date to 2 years ago instead of 10 years
+    two_years_ago = (datetime.now() - timedelta(days=365*2)).strftime("%Y-%m-%d")
+    parser.add_argument('--start-date', type=valid_date, default=two_years_ago,
+                      help='Start date in YYYY-MM-DD format (default: 2 years ago)')
+    parser.add_argument('--end-date', type=valid_date, default=None,
+                      help='End date in YYYY-MM-DD format (default: today)')
     parser.add_argument('--timeframe', type=str, default="1d",
                       choices=['1m', '5m', '15m', '30m', '1h', '1d'],
                       help='Trading timeframe')
     parser.add_argument('--initial-capital', type=float, default=10000,
                       help='Initial capital for backtesting')
-    parser.add_argument('--commission', type=float, default=0.0,
-                      help='Commission rate (default: 0.0 for Alpaca commission-free trading)')
+    parser.add_argument('--commission', type=float, default=0.001,
+                      help='Commission rate (e.g., 0.001 for 0.1%)')
     
     # Strategy parameters
     parser.add_argument('--fast-ma', type=int, default=50,
@@ -98,12 +100,29 @@ def run_backtest(args):
     else:
         strategies_to_run = args.strategies
     
+    # Set end date to today if not specified
+    if args.end_date is None:
+        end_date = datetime.today().strftime('%Y-%m-%d')
+    else:
+        end_date = args.end_date
+    
+    # Check if start date is more than 2 years ago and warn the user
+    start_date_obj = datetime.strptime(args.start_date, "%Y-%m-%d")
+    two_years_ago = datetime.now() - timedelta(days=365*2)
+    
+    if start_date_obj < two_years_ago:
+        original_start_date = args.start_date
+        args.start_date = two_years_ago.strftime("%Y-%m-%d")
+        print(f"\n⚠️ WARNING: The requested start date ({original_start_date}) is more than 2 years ago.")
+        print(f"Due to data provider limitations, only 2 years of historical data is available.")
+        print(f"Adjusting start date to {args.start_date}.\n")
+    
     # Fetch data once for all strategies - Updated to use symbol instead of ticker
-    print(f"Fetching data for {args.symbol} from {args.start_date} to {args.end_date}...")
+    print(f"Fetching data for {args.symbol} from {args.start_date} to {end_date}...")
     df = fetch_historical_data(
         ticker=args.symbol,  # Using symbol but keeping ticker parameter name for compatibility
         start_date=args.start_date,
-        end_date=args.end_date,
+        end_date=end_date,
         timeframe=args.timeframe
     )
     
@@ -181,12 +200,12 @@ def run_backtest(args):
         chart_relative_path = f"../results/{strategy_dir_name}/chart.html"
         chart_paths[config['name']] = chart_relative_path
         
-        # Create metadata.json - Updated to use symbol
+        # Create metadata.json - Updated to use symbol and end_date
         metadata = generate_metadata(
             symbol=args.symbol,
             timeframe=args.timeframe,
             start_date=args.start_date,
-            end_date=args.end_date,
+            end_date=end_date,
             initial_capital=args.initial_capital,
             commission=args.commission,
             report_type="backtest",
