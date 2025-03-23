@@ -27,7 +27,7 @@ freeze:
 
 # Test run with NVDA and custom parameters
 backtest-nvda: results-dir
-	$(PYTHON) backtest_strategy.py --symbol NVDA --strategies sma ema
+	$(PYTHON) backtest_strategy.py --symbol NVDA --strategies sma
 
 # Compare strategies on NVDA
 compare-nvda: results-dir

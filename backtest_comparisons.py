@@ -16,14 +16,17 @@ def parse_args():
     
     # Data options - Keeping symbol as is since it's already using the right term
     parser.add_argument('--symbol', type=str, required=True, help='Symbol to backtest')
-    parser.add_argument('--start-date', type=str, default='2022-01-01',
-                        help='Start date for data (YYYY-MM-DD)')
+    
+    # Change default start date to 10 years ago
+    ten_years_ago = (datetime.now() - timedelta(days=365*10)).strftime("%Y-%m-%d")
+    parser.add_argument('--start-date', type=str, default=ten_years_ago,
+                        help='Start date for data (default: 10 years ago)')
     parser.add_argument('--end-date', type=str, default=None,
                         help='End date for data (YYYY-MM-DD, default: today)')
     parser.add_argument('--timeframe', type=str, default='1d',
                         help='Data timeframe: e.g., 5m, 1h, 1d (default: 1d)')
     
-    # Backtest options - Renamed cash to initial-capital for consistency
+    # Backtest options - Already using initial-capital
     parser.add_argument('--initial-capital', type=float, default=10000,
                         help='Initial capital for backtesting (default: 10000)')
     parser.add_argument('--commission', type=float, default=0.001,
@@ -138,7 +141,7 @@ def main():
     results = compare_strategies(
         data=data,
         strategies=strategies,
-        cash=args.initial_capital,  # Using initial_capital instead of cash
+        cash=args.initial_capital,  # Already using initial_capital
         commission=args.commission
     )
     
