@@ -116,7 +116,7 @@
                             <table id="reports-table" class="min-w-full divide-y divide-slate-700">
                                 <thead class="bg-slate-800">
                                     <tr>
-                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Action</th>
+                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Actions</th>
                                         <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Symbol</th>
                                         <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Report Type</th>
                                         <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Strategy</th>
@@ -149,6 +149,9 @@
         </div>
     </div>
 </div>
+
+<!-- Add toast container at the bottom of the page -->
+<div id="toast-container" class="fixed bottom-0 end-0 z-50 p-4"></div>
 {% endblock %}
 
 {% block scripts %}
@@ -300,10 +303,14 @@
             // Create row content with Tailwind classes
             row.innerHTML = `
                 <td class="px-3 py-3 align-middle whitespace-nowrap">
-                    <a href="${'results/' + report.path}" class="inline-flex items-center gap-x-1 text-sm font-semibold rounded-lg border border-transparent text-blue-500 hover:text-blue-400 disabled:opacity-50 disabled:pointer-events-none py-1 px-3 bg-blue-800/20">
-                        <i class="fa-solid fa-file-lines text-xs"></i>
-                        View
-                    </a>
+                    <div class="flex items-center gap-2">
+                        <a href="${'results/' + report.path}" class="text-blue-500 hover:text-blue-400" title="View Report">
+                            <i class="fa-solid fa-file-lines"></i>
+                        </a>
+                        <button onclick="deleteReport('${report.dir}')" class="text-red-500 hover:text-red-400" title="Delete Report">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
                 </td>
                 <td class="px-3 py-3 align-middle whitespace-nowrap font-medium text-white">
                     ${report.symbol || 'Unknown'}
@@ -378,32 +385,208 @@
         }
     }
     
-    function cleanResults() {
-        if (confirm('Are you sure you want to clean all results? This action cannot be undone.')) {
-            fetch('/clean-results', { method: 'POST' })
-                .then(response => response.json())
+    function deleteReport(reportDir) {
+        // Show confirmation modal before deletion
+        showConfirmationModal(
+            `Are you sure you want to delete this report?`,
+            () => {
+                // Confirmed - proceed with deletion
+                fetch(`/delete-report/${reportDir}`, { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    const toastEl = document.createElement('div');
-                    toastEl.className = 'hs-removing:translate-x-5 hs-removing:opacity-0 transition duration-300 bg-teal-50 border border-teal-200 text-sm text-teal-800 rounded-lg p-4 dark:bg-teal-800/10 dark:border-teal-900 dark:text-teal-500';
-                    toastEl.innerHTML = `
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="h-4 w-4 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-                                    <path d="m9 12 2 2 4-4"/>
-                                </svg>
-                            </div>
-                            <div class="ms-3">
-                                <h3 class="font-medium text-teal-800 dark:text-teal-400">Success</h3>
-                                <div class="mt-1 text-teal-700 dark:text-teal-500">${data.message}</div>
-                            </div>
-                        </div>
-                    `;
+                    showToast('Report deleted successfully', 'success');
+                    fetchReportsData(); // Refresh the reports list
                 })
                 .catch(error => {
-                    console.error('Error cleaning results:', error);
+                    showToast('Error deleting report: ' + error.message, 'error');
+                    console.error('Delete error:', error);
                 });
+            }
+        );
+    }
+
+    function cleanResults() {
+        // Show confirmation modal before cleaning all results
+        showConfirmationModal(
+            `Are you sure you want to delete all results? This cannot be undone.`,
+            () => {
+                // Confirmed - proceed with cleaning
+                fetch('/clean-results', { method: 'POST' })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        showToast('All results cleaned successfully', 'success');
+                        fetchReportsData();
+                    })
+                    .catch(error => {
+                        showToast('Error cleaning results: ' + error.message, 'error');
+                    });
+            }
+        );
+    }
+    
+    // Replace showConfirmationToast with showConfirmationModal
+    function showConfirmationModal(message, confirmCallback) {
+        // Create modal container and backdrop
+        const modalBackdrop = document.createElement('div');
+        const uniqueId = 'modal-' + Date.now();
+        modalBackdrop.id = uniqueId + '-backdrop';
+        modalBackdrop.className = 'fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center';
+        
+        // Create the modal dialog
+        const modal = document.createElement('div');
+        modal.id = uniqueId;
+        modal.className = 'bg-slate-800 border border-slate-700 rounded-lg w-full max-w-md mx-4 overflow-hidden shadow-xl transform transition-all';
+        
+        // Create modal content
+        modal.innerHTML = `
+            <div class="p-4">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 text-red-400">
+                        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    </div>
+                    <div class="ml-4 flex-grow">
+                        <p class="text-sm text-white">${message}</p>
+                    </div>
+                    <div class="ml-4">
+                        <button type="button" 
+                                class="text-gray-400 hover:text-white focus:outline-none" 
+                                id="${uniqueId}-close">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" 
+                            class="py-1.5 px-4 inline-flex justify-center items-center text-sm font-medium rounded-lg bg-slate-700 text-white hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                            id="${uniqueId}-cancel">
+                        Cancel
+                    </button>
+                    <button type="button"
+                            class="py-1.5 px-4 inline-flex justify-center items-center text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                            id="${uniqueId}-confirm">
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to page
+        modalBackdrop.appendChild(modal);
+        document.body.appendChild(modalBackdrop);
+        
+        // Set up event listeners properly
+        document.getElementById(`${uniqueId}-close`).addEventListener('click', () => {
+            document.getElementById(`${uniqueId}-backdrop`).remove();
+        });
+        
+        document.getElementById(`${uniqueId}-cancel`).addEventListener('click', () => {
+            document.getElementById(`${uniqueId}-backdrop`).remove();
+        });
+        
+        document.getElementById(`${uniqueId}-confirm`).addEventListener('click', () => {
+            document.getElementById(`${uniqueId}-backdrop`).remove();
+            confirmCallback();
+        });
+        
+        // Add keyboard event listener to close on Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modalElement = document.getElementById(uniqueId + '-backdrop');
+                if (modalElement) {
+                    modalElement.remove();
+                }
+            }
+        }, { once: true });
+        
+        // Add click event listener to close when clicking outside
+        modalBackdrop.addEventListener('click', function(e) {
+            if (e.target === modalBackdrop) {
+                modalBackdrop.remove();
+            }
+        });
+    }
+    
+    function showToast(message, type = 'success') {
+        const toastContainer = document.getElementById('toast-container');
+        
+        // Create toast container if it doesn't exist
+        if (!toastContainer) {
+            const newContainer = document.createElement('div');
+            newContainer.id = 'toast-container';
+            newContainer.className = 'fixed bottom-0 end-0 z-50 p-4';
+            document.body.appendChild(newContainer);
         }
+        
+        // Define toast styles based on type
+        const styles = {
+            success: {
+                bg: 'bg-teal-50 dark:bg-teal-800',
+                border: 'border-teal-200 dark:border-teal-900',
+                text: 'text-teal-800 dark:text-teal-400',
+                icon: 'fa-circle-check'
+            },
+            error: {
+                bg: 'bg-red-50 dark:bg-red-800',
+                border: 'border-red-200 dark:border-red-900',
+                text: 'text-red-800 dark:text-red-400',
+                icon: 'fa-circle-xmark'
+            },
+            warning: {
+                bg: 'bg-yellow-50 dark:bg-yellow-800',
+                border: 'border-yellow-200 dark:border-yellow-900',
+                text: 'text-yellow-800 dark:text-yellow-400',
+                icon: 'fa-triangle-exclamation'
+            }
+        };
+        
+        const style = styles[type];
+        
+        const toast = document.createElement('div');
+        toast.className = `hs-removing:translate-x-5 hs-removing:opacity-0 transition duration-300 ${style.bg} border ${style.border} rounded-lg p-4 mb-3`;
+        toast.innerHTML = `
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fa-solid ${style.icon} ${style.text} mt-0.5"></i>
+                </div>
+                <div class="ms-3">
+                    <p class="text-sm ${style.text}">${message}</p>
+                </div>
+                <div class="ps-3 ms-auto">
+                    <button type="button" 
+                            class="inline-flex ${style.text} rounded-lg p-1.5 hover:${style.bg} focus:outline-none" 
+                            onclick="this.parentElement.parentElement.parentElement.remove()">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('toast-container').appendChild(toast);
+        
+        // Remove toast after 5 seconds
+        setTimeout(() => {
+            toast.classList.add('hs-removing');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 300);
+        }, 5000);
     }
     
     // Add this function to help reset filters
@@ -446,6 +629,13 @@
             // Refresh reports with reset filters
             fetchReportsData();
         });
+        
+        // Initialize Preline UI components
+        if (typeof HSOverlay !== 'undefined') {
+            HSOverlay.autoInit();
+        } else {
+            console.error('HSOverlay not found. Make sure Preline UI is properly included.');
+        }
     });
 </script>
 {% endblock %}

@@ -286,6 +286,35 @@ class DashboardServer:
                         self.send_header('Content-type', 'application/json')
                         self.end_headers()
                         self.wfile.write(json.dumps({'error': str(e)}).encode())
+                elif self.path.startswith('/delete-report/'):
+                    try:
+                        # Extract report directory name from URL
+                        report_dir = self.path.split('/delete-report/')[1]
+                        
+                        # Get the results directory path
+                        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                        public_dir = os.path.join(script_dir, 'public')
+                        results_dir = os.path.join(public_dir, 'results')
+                        report_path = os.path.join(results_dir, report_dir)
+                        
+                        # Verify the path is within results directory and exists
+                        if os.path.commonprefix([os.path.abspath(report_path), results_dir]) == results_dir and os.path.exists(report_path):
+                            # Delete the report directory
+                            shutil.rmtree(report_path)
+                            
+                            # Send success response
+                            self.send_response(200)
+                            self.send_header('Content-type', 'application/json')
+                            self.end_headers()
+                            self.wfile.write(json.dumps({'message': 'Report deleted successfully'}).encode())
+                        else:
+                            raise ValueError('Invalid report directory')
+                            
+                    except Exception as e:
+                        self.send_response(500)
+                        self.send_header('Content-type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({'error': str(e)}).encode())
                 else:
                     self.send_response(404)
                     self.end_headers()
