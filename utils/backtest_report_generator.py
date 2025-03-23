@@ -34,8 +34,19 @@ def get_value_class(metric, value):
     
     return "neutral"
 
-def create_backtest_report(results, args, output_dir, filename="index.html"):
-    """Create a detailed HTML report for the backtest results."""
+def create_backtest_report(results, args, output_dir, filename="index.html", chart_paths=None):
+    """Create a detailed HTML report for the backtest results.
+    
+    Args:
+        results: Dictionary of backtest results or DataFrame
+        args: Command line arguments
+        output_dir: Directory to save the report
+        filename: Name of the report file
+        chart_paths: Dictionary mapping strategy names to chart paths or single chart path for one strategy
+    """
+    
+    # Add debug logging for chart paths
+    print(f"Chart paths provided to report generator: {chart_paths}")
     
     # Convert dictionary of stats objects to DataFrame if needed
     if isinstance(results, dict) and not isinstance(results, pd.DataFrame):
@@ -100,6 +111,21 @@ def create_backtest_report(results, args, output_dir, filename="index.html"):
     # Load the template
     template = env.get_template('backtest_report.html')
     
+    # Handle chart paths based on whether it's a single strategy or comparison
+    if chart_paths is None:
+        chart_paths = {}
+    elif not isinstance(chart_paths, dict):
+        # Single chart path as string
+        if len(results_df.columns) == 1:
+            chart_paths = {results_df.columns[0]: chart_paths}
+            print(f"Single strategy chart path: {chart_paths}")
+        else:
+            chart_paths = {'comparison': chart_paths}
+            print(f"Comparison chart path: {chart_paths}")
+    
+    # Print out the final chart paths for debugging
+    print(f"Final chart paths for template: {chart_paths}")
+    
     # Render the template with our data
     report_html = template.render(
         symbol=args.ticker if hasattr(args, 'ticker') else args.symbol,
@@ -114,7 +140,9 @@ def create_backtest_report(results, args, output_dir, filename="index.html"):
         metric_descriptions=metric_descriptions,
         format_value=format_value,
         get_value_class=get_value_class,
-        generation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        generation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        chart_paths=chart_paths,
+        is_comparison=(len(results_df.columns) > 1)
     )
     
     # Ensure output directory exists

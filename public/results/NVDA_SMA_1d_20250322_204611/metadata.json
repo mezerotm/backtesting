@@ -6,8 +6,8 @@
     "initial_capital": 10000,
     "commission": 0.0,
     "type": "backtest",
-    "created": "2025-03-22 20:04:39",
+    "created": "2025-03-22 20:46:11",
     "strategy": "SMA",
-    "chart_path": "NVDA_SMA_1d_20250322_200439/chart.html",
-    "path": "NVDA_SMA_1d_20250322_200439/index.html"
+    "chart_path": "NVDA_SMA_1d_20250322_204611/chart.html",
+    "path": "NVDA_SMA_1d_20250322_204611/index.html"
 }

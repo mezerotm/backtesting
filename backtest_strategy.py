@@ -103,8 +103,9 @@ def run_backtest(args):
         timeframe=args.timeframe
     )
     
-    # Dictionary to store results
+    # Dictionary to store results and chart paths
     results = {}
+    chart_paths = {}
     
     # Strategy configurations
     strategy_configs = {
@@ -171,6 +172,11 @@ def run_backtest(args):
         bt.plot(filename=chart_path, open_browser=False)
         print(f"{config['name']} Plot saved to: {chart_path}")
         
+        # Create a web-accessible path for the chart
+        # Use a relative path that will work in the web context
+        chart_relative_path = f"../results/{strategy_dir_name}/chart.html"
+        chart_paths[config['name']] = chart_relative_path
+        
         # Create metadata.json
         metadata = generate_metadata(
             symbol=args.ticker,
@@ -214,8 +220,8 @@ def run_backtest(args):
         comparison_dir = os.path.join(results_base_dir, comparison_dir_name)
         os.makedirs(comparison_dir, exist_ok=True)
         
-        # Generate the comparison report
-        report_path = create_backtest_report(results, args, comparison_dir, filename="index.html")
+        # Generate the comparison report with chart paths
+        report_path = create_backtest_report(results, args, comparison_dir, filename="index.html", chart_paths=chart_paths)
         print(f"\nDetailed comparison report saved to: {report_path}")
         
         # Create metadata.json for comparison
@@ -235,7 +241,8 @@ def run_backtest(args):
     else:
         # For single strategy, create a backtest report as index.html
         strategy_name = list(results.keys())[0]
-        report_path = create_backtest_report(results, args, strategy_dir, filename="index.html")
+        strategy_chart_path = chart_paths[strategy_name]
+        report_path = create_backtest_report(results, args, strategy_dir, filename="index.html", chart_paths=strategy_chart_path)
         print(f"\nDetailed report saved to: {report_path}")
 
     # Generate the dashboard and print instructions for viewing it
