@@ -27,11 +27,11 @@ freeze:
 
 # Test run with NVDA and custom parameters
 backtest-nvda: results-dir
-	$(PYTHON) backtest_strategy.py --symbol NVDA
+	$(PYTHON) backtest_strategy.py --symbol NVDA --strategies sma ema
 
 # Compare strategies on NVDA
 compare-nvda: results-dir
-	$(PYTHON) run_comparisons.py --symbol NVDA
+	$(PYTHON) backtest_comparisons.py --symbol NVDA
 
 # Clean up results
 clean:

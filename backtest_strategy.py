@@ -30,6 +30,10 @@ def parse_args():
                       choices=['sma', 'ema', 'macd_rsi', 'bb_rsi', 'all'],
                       help='Strategies to run (sma, ema, macd_rsi, bb_rsi, or all)')
     
+    # Add flag for generating individual reports
+    parser.add_argument('--generate-individual-reports', action='store_true',
+                      help='Generate individual reports for each strategy in addition to comparison')
+    
     # Add parameters for advanced strategies
     parser.add_argument('--macd-fast', type=int, default=12,
                       help='MACD fast period')
@@ -192,10 +196,20 @@ def run_backtest(args):
         )
         
         save_metadata(metadata, strategy_dir)
+        
+        # Always generate individual report for each strategy
+        individual_report_path = create_backtest_report(
+            {config['name']: stats}, 
+            args, 
+            strategy_dir, 
+            filename="index.html", 
+            chart_paths={config['name']: chart_relative_path}
+        )
+        print(f"{config['name']} individual report saved to: {individual_report_path}")
     
-    # Print comparison if multiple strategies were run
+    # Only print comparison metrics if multiple strategies were run, but don't generate a comparison report
     if len(results) > 1:
-        print("\nStrategy Comparison:")
+        print("\nStrategy Comparison Metrics:")
         print("-" * 80)
         metrics = ['Return [%]', 'Buy & Hold Return [%]', 'Max. Drawdown [%]', 'Sharpe Ratio', '# Trades']
         
@@ -214,36 +228,7 @@ def run_backtest(args):
                 print(f"{value:>15.2f}", end='')
             print()
         
-        # Create a directory for the comparison report - Updated to use symbol
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        comparison_dir_name = f"{args.symbol}_Comparison_{args.timeframe}_{timestamp}"
-        comparison_dir = os.path.join(results_base_dir, comparison_dir_name)
-        os.makedirs(comparison_dir, exist_ok=True)
-        
-        # Generate the comparison report with chart paths
-        report_path = create_backtest_report(results, args, comparison_dir, filename="index.html", chart_paths=chart_paths)
-        print(f"\nDetailed comparison report saved to: {report_path}")
-        
-        # Create metadata.json for comparison - Updated to use symbol
-        comparison_metadata = generate_metadata(
-            symbol=args.symbol,
-            timeframe=args.timeframe,
-            start_date=args.start_date,
-            end_date=args.end_date,
-            initial_capital=args.initial_capital,
-            commission=args.commission,
-            report_type="comparison",
-            strategies_compared=list(results.keys()),
-            directory_name=comparison_dir_name
-        )
-        
-        save_metadata(comparison_metadata, comparison_dir)
-    else:
-        # For single strategy, create a backtest report as index.html
-        strategy_name = list(results.keys())[0]
-        strategy_chart_path = chart_paths[strategy_name]
-        report_path = create_backtest_report(results, args, strategy_dir, filename="index.html", chart_paths=strategy_chart_path)
-        print(f"\nDetailed report saved to: {report_path}")
+        print("\nNote: For a detailed comparison report, use run_comparisons.py instead.")
 
     # Generate the dashboard and print instructions for viewing it
     from utils.dashboard_generator import generate_dashboard_only
