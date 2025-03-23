@@ -29,6 +29,13 @@ freeze:
 backtest-nvda: results-dir
 	$(PYTHON) backtest_strategy.py --symbol NVDA --strategies sma
 
+backtest-smci: results-dir
+	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies sma
+
+# High-frequency trading with short moving averages (generates many trades)
+backtest-active: results-dir
+	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies ema --fast-ma 5 --slow-ma 20
+
 # Compare strategies on NVDA
 compare-nvda: results-dir
 	$(PYTHON) backtest_comparisons.py --symbol NVDA
@@ -46,4 +53,4 @@ server:
 	$(PYTHON) -m utils.dashboard_generator
 
 .PHONY: setup freeze backtest-nvda \
-	compare-nvda clean results-dir server ensure-venv activate-venv
+	compare-nvda clean results-dir server ensure-venv activate-venv backtest-active

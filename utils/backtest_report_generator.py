@@ -131,10 +131,22 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
     start_date = args.start_date if hasattr(args, 'start_date') else args.start if hasattr(args, 'start') else "Unknown"
     
     # Get end_date from args, handling both end_date and end naming
-    end_date = args.end_date if hasattr(args, 'end_date') else args.end if hasattr(args, 'end') else "Unknown"
+    end_date = args.end_date if hasattr(args, 'end_date') else args.end if hasattr(args, 'end') else datetime.now().strftime("%Y-%m-%d")
+    
+    # Ensure end_date is not "None" or None
+    if end_date is None or end_date == "None":
+        end_date = datetime.now().strftime("%Y-%m-%d")
     
     # Get initial_capital from args, handling both initial_capital and cash naming
     initial_capital = args.initial_capital if hasattr(args, 'initial_capital') else args.cash if hasattr(args, 'cash') else 10000
+    
+    # Add these debugging lines to help identify if trades exist
+    has_trades = False
+    if isinstance(results, dict) and not isinstance(results, pd.DataFrame):
+        for name, stats in results.items():
+            if stats.get('# Trades', 0) > 0:
+                has_trades = True
+                break
     
     # Render the template with our data
     report_html = template.render(
@@ -153,7 +165,10 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         generation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         chart_paths=chart_paths,
         has_charts=has_charts,
-        is_comparison=(len(results_df.columns) > 1)
+        is_comparison=(len(results_df.columns) > 1),
+        show_trades=True,
+        has_trades=has_trades,
+        chart_height=900  # Make chart taller
     )
     
     # Ensure output directory exists
