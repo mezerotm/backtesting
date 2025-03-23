@@ -126,12 +126,27 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
     # Print out the final chart paths for debugging
     print(f"Final chart paths for template: {chart_paths}")
     
+    # Check if we have any valid chart paths
+    has_charts = bool(chart_paths) and any(chart_paths.values())
+    
+    # Get symbol from args, handling both ticker and symbol naming
+    symbol = args.symbol if hasattr(args, 'symbol') else args.ticker if hasattr(args, 'ticker') else "Unknown"
+    
+    # Get start_date from args, handling both start_date and start naming
+    start_date = args.start_date if hasattr(args, 'start_date') else args.start if hasattr(args, 'start') else "Unknown"
+    
+    # Get end_date from args, handling both end_date and end naming
+    end_date = args.end_date if hasattr(args, 'end_date') else args.end if hasattr(args, 'end') else "Unknown"
+    
+    # Get initial_capital from args, handling both initial_capital and cash naming
+    initial_capital = args.initial_capital if hasattr(args, 'initial_capital') else args.cash if hasattr(args, 'cash') else 10000
+    
     # Render the template with our data
     report_html = template.render(
-        symbol=args.ticker if hasattr(args, 'ticker') else args.symbol,
-        start_date=args.start_date if hasattr(args, 'start_date') else args.start,
-        end_date=args.end_date if hasattr(args, 'end_date') else args.end,
-        initial_capital=args.initial_capital if hasattr(args, 'initial_capital') else args.cash,
+        symbol=symbol,
+        start_date=start_date,
+        end_date=end_date,
+        initial_capital=initial_capital,
         commission=args.commission,
         timeframe=args.timeframe,
         strategies=list(results_df.columns),
@@ -142,6 +157,7 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         get_value_class=get_value_class,
         generation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         chart_paths=chart_paths,
+        has_charts=has_charts,
         is_comparison=(len(results_df.columns) > 1)
     )
     

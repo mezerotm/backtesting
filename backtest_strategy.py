@@ -48,9 +48,9 @@ def parse_args():
     parser.add_argument('--bb-dev', type=float, default=2.0,
                       help='Bollinger Bands standard deviation')
     
-    # Required parameters
-    parser.add_argument('--ticker', type=str, required=True,
-                      help='Stock ticker symbol (e.g., AAPL)')
+    # Required parameters - Changed ticker to symbol
+    parser.add_argument('--symbol', type=str, required=True,
+                      help='Stock symbol (e.g., AAPL)')
     
     # Optional parameters with defaults
     parser.add_argument('--start-date', type=valid_date, default="2022-01-01",
@@ -94,10 +94,10 @@ def run_backtest(args):
     else:
         strategies_to_run = args.strategies
     
-    # Fetch data once for all strategies
-    print(f"Fetching data for {args.ticker} from {args.start_date} to {args.end_date}...")
+    # Fetch data once for all strategies - Updated to use symbol instead of ticker
+    print(f"Fetching data for {args.symbol} from {args.start_date} to {args.end_date}...")
     df = fetch_historical_data(
-        ticker=args.ticker,
+        ticker=args.symbol,  # Using symbol but keeping ticker parameter name for compatibility
         start_date=args.start_date,
         end_date=args.end_date,
         timeframe=args.timeframe
@@ -161,9 +161,9 @@ def run_backtest(args):
         stats = bt.run()
         results[config['name']] = stats
         
-        # Create a directory for this strategy's results
+        # Create a directory for this strategy's results - Updated to use symbol
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        strategy_dir_name = f"{args.ticker}_{config['name']}_{args.timeframe}_{timestamp}"
+        strategy_dir_name = f"{args.symbol}_{config['name']}_{args.timeframe}_{timestamp}"
         strategy_dir = os.path.join(results_base_dir, strategy_dir_name)
         os.makedirs(strategy_dir, exist_ok=True)
         
@@ -177,9 +177,9 @@ def run_backtest(args):
         chart_relative_path = f"../results/{strategy_dir_name}/chart.html"
         chart_paths[config['name']] = chart_relative_path
         
-        # Create metadata.json
+        # Create metadata.json - Updated to use symbol
         metadata = generate_metadata(
-            symbol=args.ticker,
+            symbol=args.symbol,
             timeframe=args.timeframe,
             start_date=args.start_date,
             end_date=args.end_date,
@@ -214,9 +214,9 @@ def run_backtest(args):
                 print(f"{value:>15.2f}", end='')
             print()
         
-        # Create a directory for the comparison report
+        # Create a directory for the comparison report - Updated to use symbol
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        comparison_dir_name = f"{args.ticker}_Comparison_{args.timeframe}_{timestamp}"
+        comparison_dir_name = f"{args.symbol}_Comparison_{args.timeframe}_{timestamp}"
         comparison_dir = os.path.join(results_base_dir, comparison_dir_name)
         os.makedirs(comparison_dir, exist_ok=True)
         
@@ -224,9 +224,9 @@ def run_backtest(args):
         report_path = create_backtest_report(results, args, comparison_dir, filename="index.html", chart_paths=chart_paths)
         print(f"\nDetailed comparison report saved to: {report_path}")
         
-        # Create metadata.json for comparison
+        # Create metadata.json for comparison - Updated to use symbol
         comparison_metadata = generate_metadata(
-            symbol=args.ticker,
+            symbol=args.symbol,
             timeframe=args.timeframe,
             start_date=args.start_date,
             end_date=args.end_date,
