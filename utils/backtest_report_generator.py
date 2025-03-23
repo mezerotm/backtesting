@@ -45,8 +45,8 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         chart_paths: Dictionary mapping strategy names to chart paths or single chart path for one strategy
     """
     
-    # Add debug logging for chart paths
-    print(f"Chart paths provided to report generator: {chart_paths}")
+    # Remove debug logging for production
+    # print(f"Chart paths provided to report generator: {chart_paths}")
     
     # Convert dictionary of stats objects to DataFrame if needed
     if isinstance(results, dict) and not isinstance(results, pd.DataFrame):
@@ -60,9 +60,9 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
                 'Sharpe Ratio': stats['Sharpe Ratio'],
                 'Sortino Ratio': stats['Sortino Ratio'],
                 'Calmar Ratio': stats['Calmar Ratio'],
-                'Trades': stats['# Trades'],
-                'Win Rate [%]': stats['Win Rate [%]'],
-                'Avg. Trade [%]': stats['Avg. Trade [%]'],
+                'Trades': stats.get('# Trades', 0),  # Use get with default for safety
+                'Win Rate [%]': stats.get('Win Rate [%]', 0.0),
+                'Avg. Trade [%]': stats.get('Avg. Trade [%]', 0.0),
                 'SQN': stats.get('SQN', float('nan'))  # Some versions might not have SQN
             }
         
@@ -118,13 +118,8 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         # Single chart path as string
         if len(results_df.columns) == 1:
             chart_paths = {results_df.columns[0]: chart_paths}
-            print(f"Single strategy chart path: {chart_paths}")
         else:
             chart_paths = {'comparison': chart_paths}
-            print(f"Comparison chart path: {chart_paths}")
-    
-    # Print out the final chart paths for debugging
-    print(f"Final chart paths for template: {chart_paths}")
     
     # Check if we have any valid chart paths
     has_charts = bool(chart_paths) and any(chart_paths.values())

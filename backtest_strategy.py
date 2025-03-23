@@ -203,7 +203,7 @@ def run_backtest(args):
             args, 
             strategy_dir, 
             filename="index.html", 
-            chart_paths={config['name']: chart_relative_path}
+            chart_paths={config['name']: "chart.html"}  # Use local path for individual reports
         )
         print(f"{config['name']} individual report saved to: {individual_report_path}")
     

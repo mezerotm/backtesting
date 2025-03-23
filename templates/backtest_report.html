@@ -123,21 +123,21 @@ td {
             <thead>
                 <tr>
                     <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Parameter</th>
-                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Value</th>
+                    <th class="px-6 py-3 text-right text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Value</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-700">
                 <tr class="bg-slate-800 hover:bg-slate-700">
                     <td class="px-6 py-4 text-sm text-slate-300">Initial Capital</td>
-                    <td class="px-6 py-4 text-sm text-slate-300">${{ initial_capital|format_number }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-slate-300">${{ initial_capital|format_number }}</td>
                 </tr>
                 <tr class="bg-slate-800 hover:bg-slate-700">
                     <td class="px-6 py-4 text-sm text-slate-300">Commission</td>
-                    <td class="px-6 py-4 text-sm text-slate-300">{{ commission }}%</td>
+                    <td class="px-6 py-4 text-sm text-right text-slate-300">{{ commission }}%</td>
                 </tr>
                 <tr class="bg-slate-800 hover:bg-slate-700">
                     <td class="px-6 py-4 text-sm text-slate-300">Timeframe</td>
-                    <td class="px-6 py-4 text-sm text-slate-300">{{ timeframe }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-slate-300">{{ timeframe }}</td>
                 </tr>
             </tbody>
         </table>
@@ -156,9 +156,9 @@ td {
         <table class="min-w-full divide-y divide-slate-700">
             <thead>
                 <tr>
-                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/4">Metric</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: 30%">Metric</th>
                     {% for strategy in strategies %}
-                    <th class="px-6 py-3 text-center text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: {{ 75 / strategies|length }}%">{{ strategy }}</th>
+                    <th class="px-6 py-3 text-right text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: {{ 70 / strategies|length }}%">{{ strategy }}</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -175,7 +175,7 @@ td {
                         </div>
                     </td>
                     {% for strategy in strategies %}
-                    <td class="px-6 py-4 text-sm text-center {{ get_value_class(metric, results[strategy][metric]) }}">
+                    <td class="px-6 py-4 text-sm text-right {{ get_value_class(metric, results[strategy][metric]) }}">
                         {{ results[strategy][metric]|format_value }}
                     </td>
                     {% endfor %}
