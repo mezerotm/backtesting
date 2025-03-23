@@ -12,7 +12,7 @@ from utils.data_fetcher import fetch_historical_data
 from strategies.moving_average import SimpleMovingAverageCrossover, ExponentialMovingAverageCrossover
 from strategies.advanced_strategy import MACDRSIStrategy, BollingerRSIStrategy
 from utils import config
-from utils.backtest_report_generator import create_backtest_report
+from utils.metadata_generator import generate_metadata, save_metadata
 
 def valid_date(s):
     """Convert string to date for argparse"""
@@ -78,9 +78,14 @@ def parse_args():
     return parser.parse_args()
 
 def run_backtest(args):
-    # Create results directory if it doesn't exist
-    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
-    os.makedirs(results_dir, exist_ok=True)
+    # Create public/results directory if it doesn't exist
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    public_dir = os.path.join(script_dir, 'public')
+    results_base_dir = os.path.join(public_dir, 'results')
+    os.makedirs(results_base_dir, exist_ok=True)
+    
+    # Import the backtest report generator at the beginning of the function
+    from utils.backtest_report_generator import create_backtest_report
     
     # Determine which strategies to run
     strategies_to_run = []
@@ -146,8 +151,8 @@ def run_backtest(args):
         
         # Run backtest
         bt = Backtest(
-            df,
-            config['class'],
+            data=df,
+            strategy=config['class'],
             cash=args.initial_capital,
             commission=args.commission
         )
@@ -155,11 +160,32 @@ def run_backtest(args):
         stats = bt.run()
         results[config['name']] = stats
         
-        # Generate plot
-        output = os.path.join(results_dir, 
-                            f"{args.ticker}_{config['name']}_{args.timeframe}_{args.start_date}_{args.end_date}.html")
-        bt.plot(filename=output, open_browser=False)
-        print(f"{config['name']} Plot saved to: {output}")
+        # Create a directory for this strategy's results
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        strategy_dir_name = f"{args.ticker}_{config['name']}_{args.timeframe}_{timestamp}"
+        strategy_dir = os.path.join(results_base_dir, strategy_dir_name)
+        os.makedirs(strategy_dir, exist_ok=True)
+        
+        # Generate Bokeh plot and save it as chart.html
+        chart_path = os.path.join(strategy_dir, "chart.html")
+        bt.plot(filename=chart_path, open_browser=False)
+        print(f"{config['name']} Plot saved to: {chart_path}")
+        
+        # Create metadata.json
+        metadata = generate_metadata(
+            symbol=args.ticker,
+            timeframe=args.timeframe,
+            start_date=args.start_date,
+            end_date=args.end_date,
+            initial_capital=args.initial_capital,
+            commission=args.commission,
+            report_type="backtest",
+            strategy_name=config['name'],
+            directory_name=strategy_dir_name,
+            chart_path=f"{strategy_dir_name}/chart.html"
+        )
+        
+        save_metadata(metadata, strategy_dir)
     
     # Print comparison if multiple strategies were run
     if len(results) > 1:
@@ -181,17 +207,43 @@ def run_backtest(args):
                 value = results[strategy][metric]
                 print(f"{value:>15.2f}", end='')
             print()
-    
-    # After the results comparison, replace the create_html_report call with:
-    report_path = create_backtest_report(results, args, results_dir)
-    print(f"\nDetailed HTML report saved to: {report_path}")
+        
+        # Create a directory for the comparison report
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        comparison_dir_name = f"{args.ticker}_Comparison_{args.timeframe}_{timestamp}"
+        comparison_dir = os.path.join(results_base_dir, comparison_dir_name)
+        os.makedirs(comparison_dir, exist_ok=True)
+        
+        # Generate the comparison report
+        report_path = create_backtest_report(results, args, comparison_dir, filename="index.html")
+        print(f"\nDetailed comparison report saved to: {report_path}")
+        
+        # Create metadata.json for comparison
+        comparison_metadata = generate_metadata(
+            symbol=args.ticker,
+            timeframe=args.timeframe,
+            start_date=args.start_date,
+            end_date=args.end_date,
+            initial_capital=args.initial_capital,
+            commission=args.commission,
+            report_type="comparison",
+            strategies_compared=list(results.keys()),
+            directory_name=comparison_dir_name
+        )
+        
+        save_metadata(comparison_metadata, comparison_dir)
+    else:
+        # For single strategy, create a backtest report as index.html
+        strategy_name = list(results.keys())[0]
+        report_path = create_backtest_report(results, args, strategy_dir, filename="index.html")
+        print(f"\nDetailed report saved to: {report_path}")
 
     # Generate the dashboard and print instructions for viewing it
     from utils.dashboard_generator import generate_dashboard_only
     dashboard_path = generate_dashboard_only()
     print(f"\nDashboard updated at: {dashboard_path}")
     print("To view the dashboard, run: python -m utils.dashboard_generator")
-    print("Or access it via: http://localhost:8000/dashboard.html (if server is already running)")
+    print("Or access it via: http://localhost:8000/ (if server is already running)")
 
     return results
 

@@ -13,135 +13,57 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import shutil
 
-def get_report_metadata(html_path):
-    """Extract metadata from report filename and content."""
-    filename = os.path.basename(html_path)
+def get_report_metadata(report_dir):
+    """Extract metadata from report directory's metadata.json file."""
+    metadata_path = os.path.join(report_dir, "metadata.json")
     
-    # Extract information from filename
-    # Pattern: SYMBOL_STRATEGY_TIMEFRAME_START_END.html or similar patterns
-    parts = filename.replace('.html', '').split('_')
+    if os.path.exists(metadata_path):
+        try:
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                metadata = json.load(f)
+                
+                # Add additional info that might not be in metadata
+                metadata['dir'] = os.path.basename(report_dir)
+                
+                # Ensure we have a path property
+                if 'path' not in metadata:
+                    metadata['path'] = f"results/{metadata['dir']}/index.html"
+                    
+                return metadata
+        except Exception as e:
+            print(f"Error reading metadata from {metadata_path}: {e}")
+            
+    # If we couldn't read the metadata, create a basic one from the directory name
+    dir_name = os.path.basename(report_dir)
+    parts = dir_name.split('_')
     
     metadata = {
-        'path': filename,  # Store just the filename, not the full path
-        'filename': filename,
-        'type': 'unknown'
+        'dir': dir_name,
+        'path': f"results/{dir_name}/index.html",
+        'type': 'unknown',
+        'created': datetime.fromtimestamp(
+            os.path.getctime(report_dir)
+        ).strftime('%Y-%m-%d %H:%M:%S')
     }
     
-    # Try to determine report type
-    if 'comparison' in filename.lower():
+    # Try to determine report type from directory name
+    if 'comparison' in dir_name.lower():
         metadata['type'] = 'comparison'
-        # Create more specific titles for comparison reports
-        if parts[0].isalpha() and len(parts[0]) <= 5:  # Likely a symbol
-            metadata['symbol'] = parts[0]
-            metadata['title'] = f"{parts[0]} Strategy Comparison"
-        else:
-            metadata['symbol'] = 'Various'
-            metadata['title'] = 'Multi-Strategy Comparison'
-    elif 'report' in filename.lower() and 'backtest' not in filename.lower():
-        metadata['type'] = 'comparison'
-        metadata['title'] = 'Strategy Comparison Report'
-        
-        # Extract symbol if it's in the filename (first part is usually the symbol)
-        if len(parts) >= 1 and parts[0].isalpha() and len(parts[0]) <= 5:
-            metadata['symbol'] = parts[0]
-            metadata['title'] = f"{parts[0]} {metadata['title']}"
-        else:
-            metadata['symbol'] = 'Various'
-    # Check for chart-only reports (no backtest results)
-    elif 'chart' in filename.lower() or all(indicator in filename.lower() for indicator in ['sma', '1d']):
-        metadata['type'] = 'chart'
-        
-        if len(parts) >= 1 and parts[0].isalpha() and len(parts[0]) <= 5:
-            metadata['symbol'] = parts[0]
-            metadata['title'] = f"{parts[0]} Chart"
-        else:
-            metadata['symbol'] = 'Unknown'
-            metadata['title'] = "Price Chart"
-            
-        if len(parts) >= 2:
-            indicator = parts[1]
-            metadata['strategy'] = indicator
-            metadata['title'] += f" with {indicator}"
-            
-        # The timeframe might be part of the remaining elements
-        timeframe_patterns = ['1m', '5m', '15m', '30m', '1h', '1d', '1w']
-        for pattern in timeframe_patterns:
-            if pattern in parts[2:]:
-                metadata['timeframe'] = pattern
-                metadata['title'] += f" ({pattern})"
-                break
-    else:
-        # It's likely a single strategy backtest
+    elif any(strategy in dir_name.lower() for strategy in ['sma', 'ema', 'macd', 'bb']):
         metadata['type'] = 'backtest'
-        
-        # Extract symbol, strategy, timeframe if possible
-        if len(parts) >= 1 and parts[0].isalpha() and len(parts[0]) <= 5:
-            metadata['symbol'] = parts[0]
-            # Update title with symbol
-            metadata['title'] = f"{parts[0]}"
-        else:
-            metadata['symbol'] = 'Unknown'
-            metadata['title'] = "Backtest"
-            
-        if len(parts) >= 2:
-            metadata['strategy'] = parts[1]
-            # Add strategy to title
-            metadata['title'] += f" {parts[1]} Strategy"
-            
-        # The timeframe might be part of the remaining elements
-        timeframe_patterns = ['1m', '5m', '15m', '30m', '1h', '1d', '1w']
-        for pattern in timeframe_patterns:
-            if pattern in parts[2:]:
-                metadata['timeframe'] = pattern
-                metadata['title'] += f" ({pattern})"
+    else:
+        metadata['type'] = 'chart'
+    
+    # Try to extract symbol
+    if parts and parts[0].isalpha() and len(parts[0]) <= 5:
+        metadata['symbol'] = parts[0]
+    
+    # Try to extract strategy
+    if len(parts) >= 2:
+        for strategy in ['SMA', 'EMA', 'MACD', 'BB', 'RSI', 'Bollinger']:
+            if any(strategy.lower() in part.lower() for part in parts):
+                metadata['strategy'] = strategy
                 break
-    
-    # Try to extract dates
-    date_pattern = r'(\d{4}-\d{2}-\d{2})'
-    dates = re.findall(date_pattern, filename)
-    if len(dates) >= 1:
-        metadata['start_date'] = dates[0]
-    if len(dates) >= 2:
-        metadata['end_date'] = dates[1]
-        
-        # Add date range to title if we have both dates
-        if 'start_date' in metadata and 'end_date' in metadata and 'title' in metadata:
-            metadata['title'] += f" {metadata['start_date']} to {metadata['end_date']}"
-    
-    # Read the HTML file to extract more accurate information if possible
-    try:
-        with open(html_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-            
-            # Try to extract title from HTML
-            title_match = re.search(r'<title>(.*?)</title>', content)
-            if title_match and 'title' not in metadata:
-                metadata['title'] = title_match.group(1)
-                
-            # For backtest reports, try to identify strategy from content
-            if metadata['type'] == 'unknown' or metadata['type'] == 'backtest':
-                strategy_patterns = ['SMA', 'EMA', 'MACD', 'RSI', 'Bollinger']
-                for pattern in strategy_patterns:
-                    if pattern in content:
-                        metadata['strategy'] = pattern
-                        if 'title' in metadata:
-                            if "Strategy" not in metadata['title'] and "Chart" not in metadata['title']:
-                                metadata['title'] += f" {pattern} Strategy"
-                        break
-                
-                # Try to determine if it's a chart-only report
-                if 'Backtest Results' not in content and any(indicator in content for indicator in 
-                                                          ['SMA', 'EMA', 'MACD', 'RSI', 'Bollinger']):
-                    metadata['type'] = 'chart'
-                    if 'title' in metadata and 'Chart' not in metadata['title']:
-                        metadata['title'] = metadata['title'].replace('Strategy', 'Chart')
-    except Exception as e:
-        print(f"Warning: Could not extract additional metadata from {html_path}: {e}")
-    
-    # Get file creation/modification time
-    metadata['created'] = datetime.fromtimestamp(
-        os.path.getctime(html_path)
-    ).strftime('%Y-%m-%d %H:%M:%S')
     
     return metadata
 
@@ -149,27 +71,31 @@ def generate_dashboard(refresh_interval=1000):
     """Generate a dashboard HTML file with links to all reports."""
     # Get the path to the results directory
     script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    results_dir = os.path.join(script_dir, 'results')
+    public_dir = os.path.join(script_dir, 'public')
+    results_dir = os.path.join(public_dir, 'results')
     
     # Ensure results directory exists
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
     
     # Ensure public directory exists
-    public_dir = os.path.join(script_dir, 'public')
     if not os.path.exists(public_dir):
         os.makedirs(public_dir)
     
-    # Find all HTML files in the results directory
-    html_files = glob.glob(os.path.join(results_dir, '*.html'))
+    # Find all report directories in the results directory
+    report_dirs = []
+    for item in os.listdir(results_dir):
+        item_path = os.path.join(results_dir, item)
+        if os.path.isdir(item_path):
+            report_dirs.append(item_path)
     
-    # Extract metadata from each report
-    reports = [get_report_metadata(file) for file in html_files]
+    # Extract metadata from each report directory
+    reports = [get_report_metadata(dir) for dir in report_dirs]
     
     # Sort reports: comparison reports first, then by date (newest first)
     reports.sort(key=lambda x: (0 if x['type'] == 'comparison' else 1, 
-                               x.get('created', ''), 
-                               x.get('symbol', '')))
+                              x.get('created', ''), 
+                              x.get('symbol', '')))
     
     # Get unique symbols and strategies for filtering
     symbols = sorted(list(set(report.get('symbol', '') for report in reports if 'symbol' in report)))
@@ -288,18 +214,23 @@ class DashboardServer:
                     try:
                         # Get the results directory path
                         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                        results_dir = os.path.join(script_dir, 'results')
+                        public_dir = os.path.join(script_dir, 'public')
+                        results_dir = os.path.join(public_dir, 'results')
                         
-                        # Find all HTML files in the results directory
-                        html_files = glob.glob(os.path.join(results_dir, '*.html'))
+                        # Find all report directories
+                        report_dirs = []
+                        for item in os.listdir(results_dir):
+                            item_path = os.path.join(results_dir, item)
+                            if os.path.isdir(item_path):
+                                report_dirs.append(item_path)
                         
-                        # Extract metadata from each report
-                        reports = [get_report_metadata(file) for file in html_files]
+                        # Extract metadata from each report directory
+                        reports = [get_report_metadata(dir) for dir in report_dirs]
                         
                         # Sort reports: comparison reports first, then by date (newest first)
                         reports.sort(key=lambda x: (0 if x['type'] == 'comparison' else 1, 
-                                                  x.get('created', ''), 
-                                                  x.get('symbol', '')))
+                                                    x.get('created', ''), 
+                                                    x.get('symbol', '')))
                         
                         # Prepare the response data
                         response_data = {
@@ -325,7 +256,8 @@ class DashboardServer:
                     try:
                         # Get the results directory path
                         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                        results_dir = os.path.join(script_dir, 'results')
+                        public_dir = os.path.join(script_dir, 'public')
+                        results_dir = os.path.join(public_dir, 'results')
                         
                         # Check if directory exists before cleaning
                         if os.path.exists(results_dir):
@@ -412,7 +344,8 @@ def start_dashboard_server(open_browser=True):
     """Start a server to host the dashboard with live updates."""
     # Get the results directory path
     script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    results_dir = os.path.join(script_dir, 'results')
+    public_dir = os.path.join(script_dir, 'public')
+    results_dir = os.path.join(public_dir, 'results')
     
     # Set refresh interval to 1 second (1000 ms)
     refresh_interval = 1000

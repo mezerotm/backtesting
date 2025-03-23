@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtest Results for NVDA</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    
+    <!-- Dark mode initialization script - must be in head before any content loads -->
+    <script>
+        // Force dark mode by default - no toggling
+        document.querySelector('html').classList.add('dark');
+    </script>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Preline UI CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/preline/dist/preline.min.css" />
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    
+    
+    <style>
+        /* Dark mode enhancements */
+        .dark {
+            color-scheme: dark;
+        }
+        
+        /* Force dark backgrounds for main containers - these are critical */
+        .dark body {
+            background-color: #0f172a !important; /* slate-900 */
+        }
+        
+        /* Light mode specific styles */
+        body {
+            background-color: #f8fafc !important; /* slate-50 */
+            color: #f1f5f9 !important; /* slate-100 - much brighter base text */
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Fix background colors for light/dark modes */
+        .bg-white {
+            background-color: #ffffff !important;
+        }
+        
+        .dark .bg-white {
+            background-color: #1e293b !important; /* slate-800 */
+        }
+        
+        .bg-gray-50 {
+            background-color: #f8fafc !important; /* slate-50 */
+        }
+        
+        .dark .bg-gray-50 {
+            background-color: #0f172a !important; /* slate-900 */
+        }
+        
+        /* Improved text contrast for better readability */
+        h1, h2, h3, h4, h5, h6 {
+            color: #f8fafc !important; /* slate-50 - almost white for headings */
+        }
+        
+        /* Header styles */
+        .site-header {
+            background-color: #1e293b; /* slate-800 */
+            border-bottom: 1px solid #334155; /* slate-700 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        /* Footer styles */
+        .site-footer {
+            background-color: #1e293b; /* slate-800 */
+            border-top: 1px solid #334155; /* slate-700 */
+        }
+        
+        /* Custom styling for buttons */
+        .primary-btn {
+            background-color: #2563eb !important; /* blue-600 */
+            border-color: #3b82f6 !important; /* blue-500 */
+            color: #f8fafc !important; /* slate-50 */
+            transition: all 0.2s ease-in-out !important;
+        }
+        
+        .primary-btn:hover {
+            background-color: #3b82f6 !important; /* blue-500 - lighter on hover */
+            transform: translateY(-1px) !important;
+        }
+        
+        
+/* Tooltip styling - improved positioning */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 250px;
+    background-color: #1e293b;
+    color: #f8fafc;
+    text-align: left;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    position: absolute;
+    z-index: 100;
+    bottom: 150%; /* Increased distance from icon */
+    left: 0; /* Align with left edge of icon */
+    transform: translateX(-50%); /* Center the tooltip */
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-weight: normal;
+    font-size: 0.85rem;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    pointer-events: none; /* Prevents tooltip from blocking mouse events */
+}
+
+.tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1e293b transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Value colors */
+.positive {
+    color: #4ade80 !important; /* green-400 */
+}
+
+.negative {
+    color: #f87171 !important; /* red-400 */
+}
+
+.neutral {
+    color: #60a5fa !important; /* blue-400 */
+}
+
+/* Glossary item icons */
+.glossary-item i {
+    color: #4ade80 !important; /* green-400 */
+    width: 20px;
+    text-align: center;
+}
+
+/* Metric row styling with info icon */
+.metric-row {
+    display: flex;
+    align-items: center;
+    position: relative; /* Ensure proper positioning context */
+}
+
+.info-icon {
+    margin-right: 8px;
+    position: relative; /* For tooltip positioning */
+}
+
+.metric-name {
+    flex: 1;
+}
+
+/* Ensure tooltips are visible and not clipped */
+.overflow-x-auto {
+    overflow: visible !important; /* Override to prevent tooltip clipping */
+}
+
+table {
+    position: relative;
+    z-index: 1;
+}
+
+td {
+    position: relative;
+}
+
+    </style>
+</head>
+<body class="bg-slate-900 min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="site-header py-4 px-6">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <a href="/" class="flex items-center gap-2.5 text-xl font-bold text-white">
+                        <i class="fa-solid fa-chart-line text-green-400"></i>
+                        Trading Strategy Suite
+                    </a>
+                </div>
+                <div class="flex items-center gap-4">
+                    
+<a href="/" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border shadow-sm disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600 bg-slate-800 text-white hover:bg-slate-700">
+    <i class="fa-solid fa-arrow-left"></i>
+    Back to Dashboard
+</a>
+
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="flex-grow py-6">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            
+<!-- Header -->
+<div class="bg-green-500 text-slate-900 p-6 rounded-xl mb-6 shadow-md">
+    <h1 class="text-2xl font-bold mb-1">Backtest Results for NVDA</h1>
+    <p class="text-lg opacity-90">Period: 2022-01-01 to 2025-03-22</p>
+</div>
+
+<!-- Test Parameters Card -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm">
+    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-gear text-green-400"></i>
+        Test Parameters
+    </h2>
+    <div class="overflow-visible">
+        <table class="min-w-full divide-y divide-slate-700">
+            <thead>
+                <tr>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Parameter</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Value</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700">
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">Initial Capital</td>
+                    <td class="px-6 py-4 text-sm text-slate-300">$10,000.00</td>
+                </tr>
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">Commission</td>
+                    <td class="px-6 py-4 text-sm text-slate-300">0.0%</td>
+                </tr>
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">Timeframe</td>
+                    <td class="px-6 py-4 text-sm text-slate-300">1d</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Strategy Results Card -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm">
+    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-chart-line text-green-400"></i>
+        Strategy Results
+    </h2>
+    
+    <!-- Results Table -->
+    <div class="overflow-visible mb-6">
+        <table class="min-w-full divide-y divide-slate-700">
+            <thead>
+                <tr>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Metric</th>
+                    
+                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">SMA</th>
+                    
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700">
+                
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">The total percentage return of the strategy over the backtest period.</span>
+                            </div>
+                            <span class="metric-name">Return [%]</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-sm negative">
+                        0.00
+                    </td>
+                    
+                </tr>
+                
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">The percentage return from buying and holding the asset for the entire backtest period.</span>
+                            </div>
+                            <span class="metric-name">Buy & Hold Return [%]</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-sm positive">
+                        125.25
+                    </td>
+                    
+                </tr>
+                
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">The maximum observed loss from a peak to a trough during the backtest period.</span>
+                            </div>
+                            <span class="metric-name">Max. Drawdown [%]</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-sm negative">
+                        -0.00
+                    </td>
+                    
+                </tr>
+                
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">A measure of risk-adjusted return. Higher values indicate better risk-adjusted performance.</span>
+                            </div>
+                            <span class="metric-name">Sharpe Ratio</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-sm neutral">
+                        N/A
+                    </td>
+                    
+                </tr>
+                
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">Similar to Sharpe but only considers downside volatility. Higher values are better.</span>
+                            </div>
+                            <span class="metric-name">Sortino Ratio</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-sm neutral">
+                        N/A
+                    </td>
+                    
+                </tr>
+                
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">A measure of return relative to drawdown risk. Higher values are better.</span>
+                            </div>
+                            <span class="metric-name">Calmar Ratio</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-sm neutral">
+                        N/A
+                    </td>
+                    
+                </tr>
+                
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">The total number of completed trades executed during the backtest period.</span>
+                            </div>
+                            <span class="metric-name">Trades</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-sm neutral">
+                        0.00
+                    </td>
+                    
+                </tr>
+                
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">The percentage of trades that resulted in a profit.</span>
+                            </div>
+                            <span class="metric-name">Win Rate [%]</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-sm neutral">
+                        N/A
+                    </td>
+                    
+                </tr>
+                
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">The average percentage profit or loss per trade.</span>
+                            </div>
+                            <span class="metric-name">Avg. Trade [%]</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-sm neutral">
+                        N/A
+                    </td>
+                    
+                </tr>
+                
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">System Quality Number - rates trading systems based on consistency and size of profits relative to risk.</span>
+                            </div>
+                            <span class="metric-name">SQN</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-sm neutral">
+                        N/A
+                    </td>
+                    
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Key Metrics Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        <!-- Return Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">Return (%)</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-chart-line text-green-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 negative">
+                0.00%
+            </div>
+            <div class="text-sm text-slate-400">
+                The total percentage return of the strategy over the backtest period.
+            </div>
+        </div>
+        
+        <!-- Buy & Hold Return Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">Buy & Hold Return (%)</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-hand-holding-dollar text-blue-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 positive">
+                125.25%
+            </div>
+            <div class="text-sm text-slate-400">
+                The percentage return from buying and holding the asset for the entire backtest period.
+            </div>
+        </div>
+        
+        <!-- Max Drawdown Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">Max. Drawdown (%)</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-arrow-trend-down text-red-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 negative">
+                -0.00%
+            </div>
+            <div class="text-sm text-slate-400">
+                The maximum observed loss from a peak to a trough during the backtest period.
+            </div>
+        </div>
+        
+        <!-- Sharpe Ratio Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">Sharpe Ratio</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-scale-balanced text-purple-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 neutral">
+                N/A
+            </div>
+            <div class="text-sm text-slate-400">
+                A measure of risk-adjusted return. Higher values indicate better risk-adjusted performance.
+            </div>
+        </div>
+        
+        <!-- Win Rate Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">Win Rate (%)</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-check text-emerald-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 neutral">
+                N/A%
+            </div>
+            <div class="text-sm text-slate-400">
+                The percentage of trades that were profitable.
+            </div>
+        </div>
+        
+        <!-- SQN Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">SQN</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-star text-yellow-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 neutral">
+                N/A
+            </div>
+            <div class="text-sm text-slate-400">
+                A metric that rates trading systems based on the consistency and size of profits relative to risk.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Glossary Section -->
+<div class="bg-slate-800 rounded-xl p-6 mt-8 border border-slate-700 shadow-sm">
+    <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-slate-700 flex items-center gap-2">
+        <i class="fa-solid fa-book text-green-400"></i>
+        Glossary of Terms
+    </h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Only including terms not already in the metrics table -->
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                <i class="fa-solid fa-chart-pie mr-2"></i>
+                Profit Factor
+            </h3>
+            <p class="text-sm text-slate-400">
+                The ratio of gross profits to gross losses. Calculated as (Sum of Profitable Trades / Sum of Losing Trades). Values greater than 1 indicate a profitable system.
+            </p>
+        </div>
+        
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                <i class="fa-solid fa-chart-area mr-2"></i>
+                Expectancy
+            </h3>
+            <p class="text-sm text-slate-400">
+                The average amount you can expect to win (or lose) per dollar at risk. Calculated as (Win Rate × Average Win) - ((1 - Win Rate) × Average Loss).
+            </p>
+        </div>
+        
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                <i class="fa-solid fa-arrows-up-down mr-2"></i>
+                Volatility
+            </h3>
+            <p class="text-sm text-slate-400">
+                A measure of the price fluctuations of an asset. Higher volatility indicates larger price swings and potentially higher risk.
+            </p>
+        </div>
+        
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                <i class="fa-solid fa-calendar-days mr-2"></i>
+                Holding Period
+            </h3>
+            <p class="text-sm text-slate-400">
+                The average duration of trades from entry to exit, measured in days or bars.
+            </p>
+        </div>
+    </div>
+</div>
+
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="site-footer py-4 px-6">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="text-slate-400 text-sm">
+                    &copy;  Trading Strategy Suite. All rights reserved.
+                </div>
+                <div class="text-slate-400 text-sm">
+                    Generated on: 2025-03-22 20:04:39
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Preline UI JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.js"></script>
+    
+    
+    <!-- Additional scripts can be added by child templates -->
+    
+</body>
+</html> 

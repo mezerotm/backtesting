@@ -8,15 +8,15 @@ from utils.data_fetcher import fetch_historical_data
 import os
 from utils.strategy_comparison_report import read_all_results, create_comparison_table, create_strategy_ranking, plot_strategy_performance, create_html_report
 from utils.dashboard_generator import generate_dashboard_only
+from utils.metadata_generator import generate_metadata, save_metadata
 
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Run strategy comparisons.')
     
     # Data options
-    parser.add_argument('--symbol', type=str, default='SPY',
-                        help='Stock symbol to use (default: SPY)')
-    parser.add_argument('--start', type=str, default='2018-01-01',
+    parser.add_argument('--symbol', type=str, required=True, help='Symbol to backtest')
+    parser.add_argument('--start', type=str, default='2022-01-01',
                         help='Start date for data (YYYY-MM-DD)')
     parser.add_argument('--end', type=str, default=None,
                         help='End date for data (YYYY-MM-DD, default: today)')
@@ -36,8 +36,6 @@ def parse_args():
                         help='Strategies to compare (default: ALL)')
     
     # Output options
-    parser.add_argument('--csv', type=str, default=None,
-                        help='Export results to CSV file')
     parser.add_argument('--no-plots', action='store_true',
                         help='Disable generation of plots')
     
@@ -174,43 +172,38 @@ def main():
     print("\nStrategy Comparison Results:")
     print(results)
     
-    # Create results directory if it doesn't exist
-    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+    # Create public/results directory if it doesn't exist
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    public_dir = os.path.join(script_dir, 'public')
+    results_dir = os.path.join(public_dir, 'results')
     os.makedirs(results_dir, exist_ok=True)
     
+    # Create a dedicated directory for this comparison
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    comparison_dir_name = f"{args.symbol}_strategy_comparison_{args.timeframe}_{timestamp}"
+    comparison_dir = os.path.join(results_dir, comparison_dir_name)
+    os.makedirs(comparison_dir, exist_ok=True)
+
     # Generate and open HTML report for this specific backtest
     from utils.backtest_report_generator import create_backtest_report
-    report_filename = f"{args.symbol}_strategy_comparison_{args.timeframe}_{args.start}_to_{end_date.replace('-', '')}.html"
-    report_path = create_backtest_report(results, args, results_dir)
+    report_path = create_backtest_report(results, args, comparison_dir, filename="index.html")
     print(f"\nDetailed HTML report saved to: {report_path}")
-    
-    # Export to CSV if requested
-    if args.csv:
-        csv_path = args.csv
-    else:
-        # Create a default CSV filename if not specified
-        csv_filename = f"{args.symbol}_{args.timeframe}_{args.start}_to_{end_date.replace('-', '')}.csv"
-        csv_path = os.path.join(results_dir, csv_filename)
-    
-    # Prepare results for CSV export
-    # Make sure we have a proper DataFrame with Strategy as a column
-    if isinstance(results, pd.DataFrame):
-        # If results is already a DataFrame with metrics as index and strategies as columns
-        # We need to transpose and add a Strategy column
-        if 'Strategy' not in results.columns:
-            results_for_csv = results.transpose().reset_index()
-            results_for_csv.rename(columns={'index': 'Strategy'}, inplace=True)
-        else:
-            results_for_csv = results
-    else:
-        # Convert to DataFrame if it's not already
-        results_for_csv = pd.DataFrame(results).transpose().reset_index()
-        results_for_csv.rename(columns={'index': 'Strategy'}, inplace=True)
-    
-    # Save results to CSV for the strategy comparison report
-    results_for_csv.to_csv(csv_path, index=False)
-    print(f"Results exported to {csv_path}")
-    
+
+    # Create metadata.json
+    metadata = generate_metadata(
+        symbol=args.symbol,
+        timeframe=args.timeframe,
+        start_date=args.start,
+        end_date=end_date,
+        initial_capital=args.cash,
+        commission=args.commission,
+        report_type="comparison",
+        strategies_compared=list(strategies.keys()),
+        directory_name=comparison_dir_name
+    )
+
+    save_metadata(metadata, comparison_dir)
+
     # Generate consolidated strategy comparison report
     all_results = read_all_results(results_dir)
     

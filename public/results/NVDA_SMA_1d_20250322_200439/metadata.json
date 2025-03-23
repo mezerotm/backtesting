@@ -1,0 +1,13 @@
+{
+    "symbol": "NVDA",
+    "timeframe": "1d",
+    "start_date": "2022-01-01",
+    "end_date": "2025-03-22",
+    "initial_capital": 10000,
+    "commission": 0.0,
+    "type": "backtest",
+    "created": "2025-03-22 20:04:39",
+    "strategy": "SMA",
+    "chart_path": "NVDA_SMA_1d_20250322_200439/chart.html",
+    "path": "NVDA_SMA_1d_20250322_200439/index.html"
+}
