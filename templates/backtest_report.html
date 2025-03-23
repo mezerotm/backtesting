@@ -144,6 +144,52 @@ td {
     </div>
 </div>
 
+<!-- Add this section to embed the chart -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm">
+    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-chart-line text-green-400"></i>
+        Trading Chart
+    </h2>
+    
+    {% if is_comparison %}
+        <div class="tabs bg-slate-900 p-2 rounded-lg mb-4">
+            {% for strategy_name, chart_path in chart_paths.items() %}
+            <button class="tablinks py-2 px-4 rounded-lg mr-2 {% if loop.first %}bg-green-500 text-slate-900 active{% else %}text-slate-300 hover:bg-slate-700{% endif %}" 
+                    onclick="openChart(event, '{{ strategy_name }}')">
+                {{ strategy_name }}
+            </button>
+            {% endfor %}
+        </div>
+        
+        {% for strategy_name, chart_path in chart_paths.items() %}
+        <div id="{{ strategy_name }}" class="tabcontent" {% if loop.first %}style="display:block;"{% else %}style="display:none;"{% endif %}>
+            <iframe src="{{ chart_path if '/' in chart_path else './chart.html' }}" width="100%" height="600" frameborder="0" class="rounded-lg border border-slate-700"></iframe>
+        </div>
+        {% endfor %}
+        
+        <script>
+        function openChart(evt, strategyName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+                tablinks[i].className = tablinks[i].className.replace(" bg-green-500 text-slate-900", "");
+                tablinks[i].className += " text-slate-300 hover:bg-slate-700";
+            }
+            document.getElementById(strategyName).style.display = "block";
+            evt.currentTarget.className = evt.currentTarget.className.replace(" text-slate-300 hover:bg-slate-700", "");
+            evt.currentTarget.className += " bg-green-500 text-slate-900 active";
+        }
+        </script>
+    {% else %}
+        <iframe src="./chart.html" width="100%" height="600" frameborder="0" class="rounded-lg border border-slate-700"></iframe>
+    {% endif %}
+</div>
+
 <!-- Strategy Results Card -->
 <div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm">
     <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
