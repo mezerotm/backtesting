@@ -102,9 +102,9 @@ def run_backtest(args):
     
     # Set end date to today if not specified
     if args.end_date is None:
-        end_date = datetime.today().strftime('%Y-%m-%d')
-    else:
-        end_date = args.end_date
+        args.end_date = datetime.today().strftime('%Y-%m-%d')  # Update args.end_date directly
+    
+    end_date = args.end_date  # Now end_date will always have a value
     
     # Check if start date is more than 2 years ago and warn the user
     start_date_obj = datetime.strptime(args.start_date, "%Y-%m-%d")
@@ -181,7 +181,7 @@ def run_backtest(args):
             commission=args.commission
         )
         
-        stats = bt.run()
+        stats = bt.run()  # Run once and store stats
         results[config['name']] = stats
         
         # Create a directory for this strategy's results - Updated to use symbol
@@ -190,9 +190,25 @@ def run_backtest(args):
         strategy_dir = os.path.join(results_base_dir, strategy_dir_name)
         os.makedirs(strategy_dir, exist_ok=True)
         
-        # Generate Bokeh plot and save it as chart.html
+        # Generate plot with explicitly enabled trade markers
         chart_path = os.path.join(strategy_dir, "chart.html")
-        bt.plot(filename=chart_path, open_browser=False)
+        bt.plot(
+            filename=chart_path,
+            open_browser=False,
+            plot_width=1200,
+            plot_equity=True,        # Show equity curve
+            plot_return=True,        # Show return curve
+            plot_pl=True,            # Show profit/loss for trades
+            plot_volume=True,        # Show volume
+            plot_drawdown=True,      # Show drawdown
+            plot_trades=True,        # Ensure trades are plotted
+            smooth_equity=False,     # Don't smooth equity curve
+            relative_equity=False,   # Show absolute equity, not relative
+            superimpose=False,       # Don't superimpose equity on price
+            resample=False,          # Don't resample data
+            reverse_indicators=False,# Don't reverse indicator order
+            show_legend=True         # Show chart legend
+        )
         print(f"{config['name']} Plot saved to: {chart_path}")
         
         # Create a web-accessible path for the chart

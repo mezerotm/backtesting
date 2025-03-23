@@ -158,7 +158,7 @@ td {
                 <tr>
                     <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: 30%">Metric</th>
                     {% for strategy in strategies %}
-                    <th class="px-6 py-3 text-right text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: {{ 70 / strategies|length }}%">{{ strategy }}</th>
+                    <th class="px-6 py-3 text-right text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: {{ (70 / strategies|length)|round }}%">{{ strategy }}</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -285,53 +285,156 @@ td {
     </div>
 </div>
 
-<!-- Add this section to embed the chart - Only if charts are available -->
-{% if has_charts %}
+<!-- Trading Charts Section -->
 <div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm">
     <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
         <i class="fa-solid fa-chart-line text-green-400"></i>
         Trading Chart
     </h2>
-    
-    {% if is_comparison %}
-        <div class="tabs bg-slate-900 p-2 rounded-lg mb-4">
+
+    {% if has_charts %}
+        {% if is_comparison %}
+            <div class="tabs bg-slate-900 p-2 rounded-lg mb-4">
+                {% for strategy_name, chart_path in chart_paths.items() %}
+                <button class="tablinks py-2 px-4 rounded-lg mr-2 {% if loop.first %}bg-green-500 text-slate-900 active{% else %}text-slate-300 hover:bg-slate-700{% endif %}" 
+                        onclick="openChart(event, '{{ strategy_name }}')">
+                    {{ strategy_name }}
+                </button>
+                {% endfor %}
+            </div>
+            
             {% for strategy_name, chart_path in chart_paths.items() %}
-            <button class="tablinks py-2 px-4 rounded-lg mr-2 {% if loop.first %}bg-green-500 text-slate-900 active{% else %}text-slate-300 hover:bg-slate-700{% endif %}" 
-                    onclick="openChart(event, '{{ strategy_name }}')">
-                {{ strategy_name }}
-            </button>
+            <div id="{{ strategy_name }}" class="tabcontent" {% if loop.first %}style="display:block;"{% else %}style="display:none;"{% endif %}>
+                <iframe src="{{ chart_path if '/' in chart_path else './chart.html' }}" 
+                        width="100%" 
+                        height="{{ chart_height|default(900) }}" 
+                        frameborder="0" 
+                        class="rounded-lg border border-slate-700"
+                        data-has-trades="{{ has_trades|default(true) }}"></iframe>
+            </div>
             {% endfor %}
-        </div>
-        
-        {% for strategy_name, chart_path in chart_paths.items() %}
-        <div id="{{ strategy_name }}" class="tabcontent" {% if loop.first %}style="display:block;"{% else %}style="display:none;"{% endif %}>
-            <iframe src="{{ chart_path if '/' in chart_path else './chart.html' }}" width="100%" height="600" frameborder="0" class="rounded-lg border border-slate-700"></iframe>
-        </div>
-        {% endfor %}
-        
-        <script>
-        function openChart(evt, strategyName) {
-            var i, tabcontent, tablinks;
-            tabcontent = document.getElementsByClassName("tabcontent");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].style.display = "none";
+            
+            <script>
+            function openChart(evt, chartName) {
+                var i, tabcontent, tablinks;
+                tabcontent = document.getElementsByClassName("tabcontent");
+                for (i = 0; i < tabcontent.length; i++) {
+                    tabcontent[i].style.display = "none";
+                }
+                tablinks = document.getElementsByClassName("tablinks");
+                for (i = 0; i < tablinks.length; i++) {
+                    tablinks[i].className = tablinks[i].className.replace(" bg-green-500 text-slate-900 active", " text-slate-300 hover:bg-slate-700");
+                }
+                document.getElementById(chartName).style.display = "block";
+                evt.currentTarget.className = evt.currentTarget.className.replace(" text-slate-300 hover:bg-slate-700", " bg-green-500 text-slate-900 active");
             }
-            tablinks = document.getElementsByClassName("tablinks");
-            for (i = 0; i < tablinks.length; i++) {
-                tablinks[i].className = tablinks[i].className.replace(" active", "");
-                tablinks[i].className = tablinks[i].className.replace(" bg-green-500 text-slate-900", "");
-                tablinks[i].className += " text-slate-300 hover:bg-slate-700";
-            }
-            document.getElementById(strategyName).style.display = "block";
-            evt.currentTarget.className = evt.currentTarget.className.replace(" text-slate-300 hover:bg-slate-700", "");
-            evt.currentTarget.className += " bg-green-500 text-slate-900 active";
-        }
-        </script>
+            </script>
+        {% else %}
+            <iframe src="./chart.html" 
+                    width="100%" 
+                    height="{{ chart_height|default(900) }}" 
+                    frameborder="0" 
+                    class="rounded-lg border border-slate-700"
+                    data-has-trades="{{ has_trades|default(true) }}"></iframe>
+        {% endif %}
+
+        <!-- Chart Legend Explanation -->
+        <div class="bg-slate-900 rounded-lg p-5 mt-4 border border-slate-700">
+            <h3 class="text-lg font-medium mb-3 text-slate-100">Chart Legend Explanation</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Price Chart Elements -->
+                <div>
+                    <h4 class="font-medium text-green-400 mb-2">Price Chart</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 bg-red-500 mr-2 mt-1"></div>
+                            <span><strong>Red Candles</strong>: Price closed lower than it opened (bearish)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 bg-green-500 mr-2 mt-1"></div>
+                            <span><strong>Green Candles</strong>: Price closed higher than it opened (bullish)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-blue-400"></div>
+                            </div>
+                            <span><strong>Indicator Lines</strong>: Technical indicators displayed as colored lines</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="w-6 h-6 flex items-center justify-center mr-2">
+                                <i class="fa-solid fa-arrow-up text-green-400 text-lg"></i>
+                            </div>
+                            <span><strong>Buy Markers</strong>: Points where the strategy entered positions</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="w-6 h-6 flex items-center justify-center mr-2">
+                                <i class="fa-solid fa-arrow-down text-red-400 text-lg"></i>
+                            </div>
+                            <span><strong>Sell Markers</strong>: Points where the strategy exited positions</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="w-6 h-6 flex items-center justify-center mr-2">
+                                <i class="fa-solid fa-rectangle-list text-slate-300 text-sm"></i>
+                            </div>
+                            <span><strong>OHLC</strong>: Open-High-Low-Close price data</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Performance Indicators -->
+                <div>
+                    <h4 class="font-medium text-green-400 mb-2">Performance Indicators</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-blue-500"></div>
+                            </div>
+                            <span><strong>Equity Curve</strong>: Shows portfolio value over time</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-red-500"></div>
+                            </div>
+                            <span><strong>Drawdown</strong>: Percentage decline from previous peak</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-gray-400"></div>
+                            </div>
+                            <span><strong>Profit/Loss</strong>: Cumulative profit or loss from trades</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 bg-green-500 opacity-50 mr-2 mt-1"></div>
+                            <span><strong>Volume</strong>: Trading volume for each period</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="w-6 h-6 flex items-center justify-center mr-2">
+                                <span class="text-green-400 font-bold">P</span>
+                            </div>
+                            <span><strong>Peak</strong>: Highest point in equity or maximum drawdown</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="w-6 h-6 flex items-center justify-center mr-2">
+                                <span class="text-blue-400 font-bold">F</span>
+                            </div>
+                            <span><strong>Final</strong>: Final value at the end of the backtest</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="mt-4 text-sm text-slate-400">
+                <p><strong>Note:</strong> Chart components may vary depending on the strategy being tested. The legend above is for general reference.</p>
+            </div>
+        </div>
+        <!-- End Chart Legend Explanation -->
     {% else %}
-        <iframe src="./chart.html" width="100%" height="600" frameborder="0" class="rounded-lg border border-slate-700"></iframe>
+        <div class="bg-slate-900 p-6 rounded-lg text-center">
+            <p class="text-slate-400">No charts available for this backtest.</p>
+        </div>
     {% endif %}
 </div>
-{% endif %}
 
 <!-- Glossary Section -->
 <div class="bg-slate-800 rounded-xl p-6 mt-8 border border-slate-700 shadow-sm">
