@@ -10,139 +10,139 @@
 {% endblock %}
 
 {% block content %}
-<!-- Filter Panel -->
-<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-    <div class="lg:col-span-1">
-        <div class="bg-slate-800 shadow-sm rounded-xl p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-bold text-white">Filters</h2>
-                <button class="hs-collapse-toggle lg:hidden py-2 px-3 inline-flex justify-center items-center gap-x-2 rounded-lg border border-gray-200 bg-slate-800 text-white shadow-sm hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none" id="filter-collapse-toggle" data-hs-collapse="#filter-collapse">
-                    <span class="hs-collapse-open:hidden">Show Filters</span>
-                    <span class="hs-collapse-open:block hidden">Hide Filters</span>
-                    <i class="fa-solid fa-chevron-down hs-collapse-open:rotate-180"></i>
-                </button>
-            </div>
-            
-            <div id="filter-collapse" class="hs-collapse lg:block w-full overflow-hidden transition-[height] duration-300">
-                <div class="mb-4">
-                    <label for="report-type" class="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
-                    <div class="relative">
-                        <select id="report-type" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-                            <option value="all">All Reports</option>
-                            <option value="comparison">Comparison Reports</option>
-                            <option value="backtest">Backtest Reports</option>
-                            <option value="chart">Chart Reports</option>
-                        </select>
-                        <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
-                            <i class="fa-solid fa-angle-down text-white"></i>
-                        </div>
-                    </div>
+<!-- Main container that respects the layout height -->
+<div class="h-full">
+    <!-- Filter Panel and Reports Panel Container -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+        <!-- Filters Panel -->
+        <div class="lg:col-span-1">
+            <div class="bg-slate-800 shadow-sm rounded-xl p-6 h-full overflow-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-white">Filters</h2>
+                    <button class="hs-collapse-toggle lg:hidden py-2 px-3 inline-flex justify-center items-center gap-x-2 rounded-lg border border-gray-200 bg-slate-800 text-white shadow-sm hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none" id="filter-collapse-toggle" data-hs-collapse="#filter-collapse">
+                        <span class="hs-collapse-open:hidden">Show Filters</span>
+                        <span class="hs-collapse-open:block hidden">Hide Filters</span>
+                        <i class="fa-solid fa-chevron-down hs-collapse-open:rotate-180"></i>
+                    </button>
                 </div>
                 
-                <div class="mb-4">
-                    <label for="symbol" class="block text-sm font-medium mb-2 text-gray-300">Symbol</label>
-                    <div class="relative">
-                        <select id="symbol" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-                            <option value="all">All Symbols</option>
-                            {% for symbol in symbols %}
-                            <option value="{{ symbol }}">{{ symbol }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
-                            <i class="fa-solid fa-angle-down text-white"></i>
+                <div id="filter-collapse" class="hs-collapse lg:block w-full overflow-hidden transition-[height] duration-300">
+                    <div class="mb-4">
+                        <label for="report-type" class="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
+                        <div class="relative">
+                            <select id="report-type" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                <option value="all">All Reports</option>
+                                <option value="comparison">Comparison Reports</option>
+                                <option value="backtest">Backtest Reports</option>
+                                <option value="chart">Chart Reports</option>
+                            </select>
+                            <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+                                <i class="fa-solid fa-angle-down text-white"></i>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="mb-4">
-                    <label for="strategy" class="block text-sm font-medium mb-2 text-gray-300">Strategy</label>
-                    <div class="relative">
-                        <select id="strategy" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-                            <option value="all">All Strategies</option>
-                            {% for strategy in strategies %}
-                            <option value="{{ strategy }}">{{ strategy }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
-                            <i class="fa-solid fa-angle-down text-white"></i>
+                    
+                    <div class="mb-4">
+                        <label for="symbol" class="block text-sm font-medium mb-2 text-gray-300">Symbol</label>
+                        <div class="relative">
+                            <select id="symbol" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                <option value="all">All Symbols</option>
+                                {% for symbol in symbols %}
+                                <option value="{{ symbol }}">{{ symbol }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+                                <i class="fa-solid fa-angle-down text-white"></i>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="mb-6">
-                    <label for="date-range" class="block text-sm font-medium mb-2 text-gray-300">Date Range</label>
-                    <div class="grid grid-cols-1 gap-3">
-                        <div>
-                            <label for="start-date" class="block text-xs text-gray-300 mb-1">Start Date</label>
-                            <input type="date" id="start-date" class="py-2 px-3 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
-                        </div>
-                        <div>
-                            <label for="end-date" class="block text-xs text-gray-300 mb-1">End Date</label>
-                            <input type="date" id="end-date" class="py-2 px-3 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                    
+                    <div class="mb-4">
+                        <label for="strategy" class="block text-sm font-medium mb-2 text-gray-300">Strategy</label>
+                        <div class="relative">
+                            <select id="strategy" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+                                <option value="all">All Strategies</option>
+                                {% for strategy in strategies %}
+                                <option value="{{ strategy }}">{{ strategy }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+                                <i class="fa-solid fa-angle-down text-white"></i>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <button id="reset-filters" class="reset-btn w-full mb-2 py-2 px-3 inline-flex justify-between items-center gap-x-2 text-sm font-semibold rounded-lg border border-gray-600 bg-slate-700 text-white hover:bg-slate-600 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap">
-                    Reset
-                    <i class="fa-solid fa-rotate"></i>
-                </button>
+                    
+                    <div class="mb-6">
+                        <label for="date-range" class="block text-sm font-medium mb-2 text-gray-300">Date Range</label>
+                        <div class="grid grid-cols-1 gap-3">
+                            <div>
+                                <label for="start-date" class="block text-xs text-gray-300 mb-1">Start Date</label>
+                                <input type="date" id="start-date" class="py-2 px-3 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                            </div>
+                            <div>
+                                <label for="end-date" class="block text-xs text-gray-300 mb-1">End Date</label>
+                                <input type="date" id="end-date" class="py-2 px-3 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="reset-filters" class="reset-btn w-full mb-2 py-2 px-3 inline-flex justify-between items-center gap-x-2 text-sm font-semibold rounded-lg border border-gray-600 bg-slate-700 text-white hover:bg-slate-600 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap">
+                        Reset
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
 
-                <button id="apply-filters" class="primary-btn w-full py-2 px-3 inline-flex justify-between items-center gap-x-2 text-sm font-semibold rounded-lg disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600 whitespace-nowrap">
-                    Apply Filters
-                    <i class="fa-solid fa-filter"></i>
-                </button>
+                    <button id="apply-filters" class="primary-btn w-full py-2 px-3 inline-flex justify-between items-center gap-x-2 text-sm font-semibold rounded-lg disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600 whitespace-nowrap">
+                        Apply Filters
+                        <i class="fa-solid fa-filter"></i>
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Reports Panel -->
-    <div class="lg:col-span-3">
-        <div class="bg-slate-800 shadow-sm rounded-xl p-6">
-            <div class="flex justify-between items-center mb-5 sticky top-0 z-10 py-0">
-                <h2 class="text-lg font-bold text-white">Available Reports</h2>
-                
-                <!-- Last Updated Indicator -->
-                <div class="text-sm text-gray-500">
-                    Last updated: <span id="last-updated">{{ now }}</span>
+        
+        <!-- Reports Panel -->
+        <div class="lg:col-span-3">
+            <div class="bg-slate-800 shadow-sm rounded-xl p-6 h-full flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-white">Available Reports</h2>
+                    
+                    <!-- Last Updated Indicator -->
+                    <div class="text-sm text-gray-500">
+                        Last updated: <span id="last-updated">{{ now }}</span>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Reports Table -->
-            <div class="flex flex-col">
-                <div class="-m-1.5 overflow-x-auto">
-                    <div class="p-1.5 min-w-full inline-block align-middle">
-                        <div class="overflow-hidden bg-slate-900 border border-slate-700 shadow-sm rounded-lg">
-                            <table id="reports-table" class="min-w-full divide-y divide-slate-700">
-                                <thead class="bg-slate-800">
-                                    <tr>
-                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Actions</th>
-                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Symbol</th>
-                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Report Type</th>
-                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Strategy</th>
-                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Timeframe</th>
-                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Date Range</th>
-                                        <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">
-                                            Created
-                                            <i class="fa-solid fa-arrow-up-short-wide ml-1 text-blue-400" title="Sorted by newest first"></i>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-700">
-                                    <!-- Dynamic content will be inserted here -->
-                                    <tr>
-                                        <td colspan="7" class="px-3 py-3 text-center text-gray-400">
-                                            <div class="flex justify-center items-center space-x-2">
-                                                <div class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-blue-600 rounded-full" role="status" aria-label="loading">
-                                                    <span class="sr-only">Loading...</span>
-                                                </div>
-                                                <span>Loading reports...</span>
+                
+                <!-- Reports Table with fixed height -->
+                <div class="overflow-hidden flex-grow">
+                    <div class="h-full overflow-auto">
+                        <table id="reports-table" class="min-w-full divide-y divide-slate-700">
+                            <thead class="bg-slate-800 sticky top-0 z-10">
+                                <tr>
+                                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Actions</th>
+                                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Report Type</th>
+                                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Strategy</th>
+                                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Timeframe</th>
+                                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Date Range</th>
+                                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">
+                                        Created
+                                        <i class="fa-solid fa-arrow-up-short-wide ml-1 text-blue-400" title="Sorted by newest first"></i>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700">
+                                <!-- Dynamic content will be inserted here -->
+                                <tr>
+                                    <td colspan="7" class="px-3 py-3 text-center text-gray-400">
+                                        <div class="flex justify-center items-center space-x-2">
+                                            <div class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-blue-600 rounded-full" role="status" aria-label="loading">
+                                                <span class="sr-only">Loading...</span>
                                             </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                            <span>Loading reports...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
