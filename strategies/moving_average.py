@@ -34,12 +34,28 @@ class SimpleMovingAverageCrossover(Strategy):
         self.slow = self.I(talib.SMA, self.data.Close, self.slow_ma,
                           overlay=True, name=f'Slow SMA ({self.slow_ma})', color='orange')
         
-        # Initialize signals array: 0=no signal, 1=buy, -1=sell
-        self.signals = np.zeros(len(self.data.Close))
+        # Initialize buy/sell signal arrays
+        self.buy_signal_array = np.full(len(self.data.Close), np.nan)
+        self.sell_signal_array = np.full(len(self.data.Close), np.nan)
         
-        # Create a separate signals indicator - ultra simple version
-        # No parameters passed to the lambda
-        self.signal_indicator = self.I(lambda: self.signals, name='Signal', overlay=False)
+        # Create a separate panel for signals
+        self.signal_panel = self.I(lambda: np.zeros(len(self.data.Close)), 
+                                 name='Buy/Sell Signals', 
+                                 overlay=False)
+        
+        # Create separate buy signal indicators (green dots)
+        self.buy_signals = self.I(lambda: self.buy_signal_array, 
+                                name='Buy', 
+                                overlay=True,  # Overlay on signal panel
+                                color='green', 
+                                scatter=True)
+        
+        # Create separate sell signal indicators (red dots)
+        self.sell_signals = self.I(lambda: self.sell_signal_array, 
+                                 name='Sell', 
+                                 overlay=True,  # Overlay on signal panel
+                                 color='red', 
+                                 scatter=True)
         
         # Initialize trade tracking
         self.trade_count = 0
@@ -53,17 +69,16 @@ class SimpleMovingAverageCrossover(Strategy):
         """
         Execute the strategy logic for each candle.
         """
-        # Reset signal for current bar
-        self.signals[-1] = 0
-        
         # If we don't have any open position
         if not self.position:
             # Buy when fast MA crosses above slow MA
             if crossover(self.fast, self.slow):
                 print(f"BUY SIGNAL detected at index {len(self.data)-1}, price: {self.data.Close[-1]}")
                 self.buy()
-                # Set buy signal (1) for signal panel
-                self.signals[-1] = 1
+                
+                # Mark buy signal at a higher value to make it more visible
+                self.buy_signal_array[-1] = 1.0
+                
                 # Track entry for reference
                 self.entry_price = self.data.Close[-1]
                 self.entry_time = self.data.index[-1]
@@ -71,8 +86,9 @@ class SimpleMovingAverageCrossover(Strategy):
             # Sell when fast MA crosses below slow MA
             if crossover(self.slow, self.fast):
                 print(f"SELL SIGNAL detected at index {len(self.data)-1}, price: {self.data.Close[-1]}")
-                # Set sell signal (-1) for signal panel
-                self.signals[-1] = -1
+                
+                # Mark sell signal at a lower value to make it more visible
+                self.sell_signal_array[-1] = -1.0
                 
                 # Calculate P/L before closing
                 exit_price = self.data.Close[-1]
@@ -148,12 +164,28 @@ class ExponentialMovingAverageCrossover(Strategy):
         self.slow = self.I(talib.EMA, self.data.Close, self.slow_ema, 
                           overlay=True, name=f'Slow EMA ({self.slow_ema})', color='orange')
         
-        # Initialize signals array: 0=no signal, 1=buy, -1=sell
-        self.signals = np.zeros(len(self.data.Close))
+        # Initialize buy/sell signal arrays
+        self.buy_signal_array = np.full(len(self.data.Close), np.nan)
+        self.sell_signal_array = np.full(len(self.data.Close), np.nan)
         
-        # Create a separate signals indicator - ultra simple version
-        # No parameters passed to the lambda
-        self.signal_indicator = self.I(lambda: self.signals, name='Signal', overlay=False)
+        # Create a separate panel for signals
+        self.signal_panel = self.I(lambda: np.zeros(len(self.data.Close)), 
+                                 name='Buy/Sell Signals', 
+                                 overlay=False)
+        
+        # Create separate buy signal indicators (green dots)
+        self.buy_signals = self.I(lambda: self.buy_signal_array, 
+                                name='Buy', 
+                                overlay=True,  # Overlay on signal panel
+                                color='green', 
+                                scatter=True)
+        
+        # Create separate sell signal indicators (red dots)
+        self.sell_signals = self.I(lambda: self.sell_signal_array, 
+                                 name='Sell', 
+                                 overlay=True,  # Overlay on signal panel
+                                 color='red', 
+                                 scatter=True)
         
         # Initialize trade tracking
         self.trade_count = 0
@@ -167,9 +199,6 @@ class ExponentialMovingAverageCrossover(Strategy):
         """
         Execute the strategy logic for each candle.
         """
-        # Reset signal for current bar
-        self.signals[-1] = 0
-        
         # If we don't have any open position
         if not self.position:
             # Buy when fast EMA crosses above slow EMA
@@ -177,8 +206,8 @@ class ExponentialMovingAverageCrossover(Strategy):
                 print(f"EMA BUY SIGNAL at index {len(self.data)-1}, price: {self.data.Close[-1]}")
                 self.buy()
                 
-                # Set buy signal (1) for signal panel
-                self.signals[-1] = 1
+                # Mark buy signal at a higher value to make it more visible
+                self.buy_signal_array[-1] = 1.0
                 
                 # Track entry for reference
                 self.entry_price = self.data.Close[-1]
@@ -190,8 +219,8 @@ class ExponentialMovingAverageCrossover(Strategy):
             if crossover(self.slow, self.fast):
                 print(f"EMA SELL SIGNAL at index {len(self.data)-1}, price: {self.data.Close[-1]}")
                 
-                # Set sell signal (-1) for signal panel
-                self.signals[-1] = -1
+                # Mark sell signal at a lower value to make it more visible
+                self.sell_signal_array[-1] = -1.0
                 
                 # Calculate P/L before closing
                 exit_price = self.data.Close[-1]
