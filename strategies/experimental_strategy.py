@@ -3,6 +3,7 @@ from backtesting.lib import crossover
 import talib
 import pandas as pd
 import numpy as np
+from utils.strategy_utils import StrategyUtils
 
 class CombinedStrategy(Strategy):
     """
@@ -69,99 +70,87 @@ class CombinedStrategy(Strategy):
         """
         Initialize the strategy by calculating all indicators.
         """
-        # Calculate Simple Moving Averages
-        self.sma_fast = self.I(
+        # Calculate Simple Moving Averages using StrategyUtils
+        self.sma_fast = StrategyUtils.add_indicator(
+            self, 
             talib.SMA, 
             self.data.Close, 
             self.fast_ma,
-            overlay=True, 
             name=f'Fast SMA ({self.fast_ma})', 
+            overlay=True, 
             color='blue'
         )
         
-        self.sma_slow = self.I(
+        self.sma_slow = StrategyUtils.add_indicator(
+            self, 
             talib.SMA, 
             self.data.Close, 
             self.slow_ma,
-            overlay=True, 
             name=f'Slow SMA ({self.slow_ma})', 
+            overlay=True, 
             color='orange'
         )
         
-        # Calculate Exponential Moving Averages
-        self.ema_fast = self.I(
+        # Calculate Exponential Moving Averages using StrategyUtils
+        self.ema_fast = StrategyUtils.add_indicator(
+            self, 
             talib.EMA, 
             self.data.Close, 
             self.ema_fast,
-            overlay=True, 
             name=f'Fast EMA ({self.ema_fast})', 
+            overlay=True, 
             color='green'
         )
         
-        self.ema_slow = self.I(
+        self.ema_slow = StrategyUtils.add_indicator(
+            self, 
             talib.EMA, 
             self.data.Close, 
             self.ema_slow,
-            overlay=True, 
             name=f'Slow EMA ({self.ema_slow})', 
+            overlay=True, 
             color='red'
         )
         
-        # Calculate MACD
-        self.macd, self.signal, self.hist = self.I(
-            talib.MACD, 
+        # Calculate MACD using StrategyUtils
+        self.macd, self.signal, self.hist = StrategyUtils.add_complete_macd(
+            self, 
             self.data.Close, 
-            fastperiod=self.macd_fast,
-            slowperiod=self.macd_slow,
-            signalperiod=self.macd_signal,
-            name=f'MACD ({self.macd_fast},{self.macd_slow},{self.macd_signal})',
-            overlay=False
+            fast_period=self.macd_fast,
+            slow_period=self.macd_slow,
+            signal_period=self.macd_signal
         )
         
-        # Calculate RSI
-        self.rsi = self.I(
-            talib.RSI, 
-            self.data.Close, 
-            timeperiod=self.rsi_period,
-            name=f'RSI ({self.rsi_period})',
-            overlay=False
-        )
-        
-        # Add RSI threshold lines
-        self.rsi_oversold_line = self.I(
-            lambda: np.repeat(self.rsi_oversold, len(self.data)),
-            name='RSI Oversold',
-            overlay=False,
-            color='green'
-        )
-        
-        self.rsi_overbought_line = self.I(
-            lambda: np.repeat(self.rsi_overbought, len(self.data)),
-            name='RSI Overbought',
-            overlay=False,
-            color='red'
-        )
-        
-        # Calculate Bollinger Bands
-        self.bb_upper, self.bb_middle, self.bb_lower = self.I(
-            talib.BBANDS,
+        # Calculate RSI using StrategyUtils
+        self.rsi, self.rsi_oversold_line, self.rsi_overbought_line = StrategyUtils.add_complete_rsi(
+            self,
             self.data.Close,
-            timeperiod=self.bb_period,
-            nbdevup=self.bb_dev,
-            nbdevdn=self.bb_dev,
-            matype=0,  # Simple Moving Average
-            name=f'BB ({self.bb_period}, {self.bb_dev})',
-            overlay=True,
-            color=['red', 'blue', 'green']
+            period=self.rsi_period,
+            oversold=self.rsi_oversold,
+            overbought=self.rsi_overbought
+        )
+        
+        # Calculate Bollinger Bands using StrategyUtils
+        self.bb_upper, self.bb_middle, self.bb_lower = StrategyUtils.add_complete_bollinger_bands(
+            self,
+            self.data.Close,
+            period=self.bb_period,
+            num_std_dev=self.bb_dev
         )
         
         # Create a signal score indicator
-        self.signal_score = self.I(
+        self.signal_score = StrategyUtils.add_indicator(
+            self,
             lambda: np.zeros(len(self.data)),
             name='Signal Score',
             overlay=False,
             color='purple'
         )
+        
+        # Add tracking for equity and drawdown
+        self.equity_curve = []
+        self.peak_equity = 0
+        self.drawdown = []
         
         # Initialize trade tracking
         self.trade_count = 0
@@ -179,6 +168,17 @@ class CombinedStrategy(Strategy):
         """
         Execute the strategy logic for each candle.
         """
+        # Track equity and drawdown for each bar
+        current_equity = self.equity
+        self.equity_curve.append(current_equity)
+        
+        # Update peak equity and calculate drawdown
+        if current_equity > self.peak_equity:
+            self.peak_equity = current_equity
+        
+        current_drawdown = (self.peak_equity - current_equity) / self.peak_equity * 100 if self.peak_equity > 0 else 0
+        self.drawdown.append(current_drawdown)
+        
         # Calculate the buy & hold return at the end of the backtest
         # This should only be calculated once at the end of the backtest
         if len(self.data) - 1 == self.data.index[-1]:  # Check if we're at the last bar
@@ -277,7 +277,8 @@ class CombinedStrategy(Strategy):
                     'exit_price': exit_price,
                     'profit_loss': profit_loss,
                     'profit_pct': profit_pct,
-                    'exit_score': score
+                    'exit_score': score,
+                    'trade_duration': (self.data.index[-1] - self.entry_time).days
                 })
                 
                 print(f"Trade #{self.trade_count}: P/L = {profit_loss:.2f} ({profit_pct:.2f}%)")
@@ -290,13 +291,21 @@ class CombinedStrategy(Strategy):
         Perform post-backtest analysis.
         This method is called after the backtest is complete.
         """
+        # Analyze equity curve and drawdown
+        if self.equity_curve:
+            equity_df = pd.DataFrame({
+                'Equity': self.equity_curve,
+                'Drawdown': self.drawdown
+            }, index=self.data.index[:len(self.equity_curve)])
+            
+            print("\n=== Equity and Drawdown Statistics ===")
+            print(f"Final Equity: {self.equity_curve[-1]:.2f}")
+            print(f"Peak Equity: {self.peak_equity:.2f}")
+            print(f"Maximum Drawdown: {max(self.drawdown):.2f}%")
+        
         # Convert trade data to DataFrame for analysis
         if self.trade_data:
             trades_df = pd.DataFrame(self.trade_data)
-            
-            # Calculate trade duration
-            if 'entry_time' in trades_df.columns and 'exit_time' in trades_df.columns:
-                trades_df['trade_duration'] = (trades_df['exit_time'] - trades_df['entry_time']).dt.days
             
             # Print trade statistics
             print("\n=== Trade Statistics ===")
@@ -322,5 +331,11 @@ class CombinedStrategy(Strategy):
                     if loss_sum > 0:
                         print(f"Profit Factor: {profit_sum / loss_sum:.2f}")
                 
-                if 'trade_duration' in trades_df.columns:
-                    print(f"Average Trade Duration: {trades_df['trade_duration'].mean():.2f} days")
+                print(f"Average Trade Duration: {trades_df['trade_duration'].mean():.2f} days")
+                
+                # Compare to buy & hold
+                if self.buy_hold_return is not None:
+                    print(f"\nBuy & Hold Return: {self.buy_hold_return:.2f}%")
+                    strategy_return = trades_df['profit_pct'].sum()
+                    print(f"Strategy Return: {strategy_return:.2f}%")
+                    print(f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%")

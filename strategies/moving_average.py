@@ -3,6 +3,7 @@ from backtesting.lib import crossover
 import talib
 import pandas as pd
 import numpy as np
+from utils.strategy_utils import StrategyUtils
 
 class SimpleMovingAverageCrossover(Strategy):
     """
@@ -27,12 +28,26 @@ class SimpleMovingAverageCrossover(Strategy):
         """
         Initialize the strategy by calculating the indicators.
         """
-        # Calculate moving averages using TA-Lib with plot settings
-        self.fast = self.I(talib.SMA, self.data.Close, self.fast_ma,
-                          overlay=True, name=f'Fast SMA ({self.fast_ma})', color='blue')
+        # Calculate moving averages using StrategyUtils
+        self.fast = StrategyUtils.add_indicator(
+            self, 
+            talib.SMA, 
+            self.data.Close, 
+            self.fast_ma,
+            name=f'Fast SMA ({self.fast_ma})', 
+            overlay=True, 
+            color='blue'
+        )
         
-        self.slow = self.I(talib.SMA, self.data.Close, self.slow_ma,
-                          overlay=True, name=f'Slow SMA ({self.slow_ma})', color='orange')
+        self.slow = StrategyUtils.add_indicator(
+            self, 
+            talib.SMA, 
+            self.data.Close, 
+            self.slow_ma,
+            name=f'Slow SMA ({self.slow_ma})', 
+            overlay=True, 
+            color='orange'
+        )
         
         # Initialize trade tracking
         self.trade_count = 0
@@ -41,11 +56,36 @@ class SimpleMovingAverageCrossover(Strategy):
         # Track entry information
         self.entry_price = 0
         self.entry_time = None
+        
+        # Add tracking for equity and drawdown
+        self.equity_curve = []
+        self.peak_equity = 0
+        self.drawdown = []
+        
+        # Track buy & hold return
+        self.buy_hold_return = None
     
     def next(self):
         """
         Execute the strategy logic for each candle.
         """
+        # Track equity and drawdown
+        current_equity = self.equity
+        self.equity_curve.append(current_equity)
+        
+        # Update peak equity and calculate drawdown
+        if current_equity > self.peak_equity:
+            self.peak_equity = current_equity
+        
+        current_drawdown = (self.peak_equity - current_equity) / self.peak_equity * 100 if self.peak_equity > 0 else 0
+        self.drawdown.append(current_drawdown)
+        
+        # Calculate the buy & hold return at the end of the backtest
+        if len(self.data) - 1 == self.data.index[-1]:  # Check if we're at the last bar
+            start_price = self.data.Close[0]
+            end_price = self.data.Close[-1]
+            self.buy_hold_return = (end_price - start_price) / start_price * 100
+        
         # If we don't have any open position
         if not self.position:
             # Buy when fast MA crosses above slow MA
@@ -73,7 +113,8 @@ class SimpleMovingAverageCrossover(Strategy):
                     'entry_price': self.entry_price,
                     'exit_price': exit_price,
                     'profit_loss': profit_loss,
-                    'profit_pct': profit_pct
+                    'profit_pct': profit_pct,
+                    'trade_duration': (self.data.index[-1] - self.entry_time).days
                 })
                 
                 print(f"Trade #{self.trade_count}: P/L = {profit_loss:.2f} ({profit_pct:.2f}%)")
@@ -81,12 +122,24 @@ class SimpleMovingAverageCrossover(Strategy):
                 # Close position
                 self.position.close()
                 self.trade_count += 1
-
+    
     def analyze(self):
         """
         Perform post-backtest analysis.
         This method is called after the backtest is complete.
         """
+        # Analyze equity curve and drawdown
+        if self.equity_curve:
+            equity_df = pd.DataFrame({
+                'Equity': self.equity_curve,
+                'Drawdown': self.drawdown
+            }, index=self.data.index[:len(self.equity_curve)])
+            
+            print("\n=== Equity and Drawdown Statistics ===")
+            print(f"Final Equity: {self.equity_curve[-1]:.2f}")
+            print(f"Peak Equity: {self.peak_equity:.2f}")
+            print(f"Maximum Drawdown: {max(self.drawdown):.2f}%")
+        
         # Convert trade data to DataFrame for analysis
         if self.trade_data:
             trades_df = pd.DataFrame(self.trade_data)
@@ -101,10 +154,28 @@ class SimpleMovingAverageCrossover(Strategy):
                 win_rate = len(trades_df[trades_df['profit_pct'] > 0]) / len(trades_df) * 100
                 print(f"Win Rate: {win_rate:.2f}%")
                 print(f"Average Profit: {trades_df['profit_pct'].mean():.2f}%")
-                print(f"Average Winner: {trades_df[trades_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
-                print(f"Average Loser: {trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
-                print(f"Profit Factor: {abs(trades_df[trades_df['profit_pct'] > 0]['profit_pct'].sum() / trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].sum()):.2f}")
-                print(f"Average Trade Duration: {trades_df['trade_duration'].mean():.2f} bars")
+                
+                if len(trades_df[trades_df['profit_pct'] > 0]) > 0:
+                    print(f"Average Winner: {trades_df[trades_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
+                
+                if len(trades_df[trades_df['profit_pct'] <= 0]) > 0:
+                    print(f"Average Loser: {trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
+                    
+                    # Calculate profit factor if there are losing trades
+                    profit_sum = trades_df[trades_df['profit_pct'] > 0]['profit_pct'].sum()
+                    loss_sum = abs(trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].sum())
+                    
+                    if loss_sum > 0:
+                        print(f"Profit Factor: {profit_sum / loss_sum:.2f}")
+                
+                print(f"Average Trade Duration: {trades_df['trade_duration'].mean():.2f} days")
+                
+                # Compare to buy & hold
+                if self.buy_hold_return is not None:
+                    print(f"\nBuy & Hold Return: {self.buy_hold_return:.2f}%")
+                    strategy_return = trades_df['profit_pct'].sum()
+                    print(f"Strategy Return: {strategy_return:.2f}%")
+                    print(f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%")
 
 class ExponentialMovingAverageCrossover(Strategy):
     """
@@ -129,11 +200,26 @@ class ExponentialMovingAverageCrossover(Strategy):
         """
         Initialize the strategy by calculating indicators.
         """
-        # Calculate moving averages
-        self.fast = self.I(talib.EMA, self.data.Close, self.fast_ema, 
-                          overlay=True, name=f'Fast EMA ({self.fast_ema})', color='blue')
-        self.slow = self.I(talib.EMA, self.data.Close, self.slow_ema, 
-                          overlay=True, name=f'Slow EMA ({self.slow_ema})', color='orange')
+        # Calculate moving averages using StrategyUtils
+        self.fast = StrategyUtils.add_indicator(
+            self, 
+            talib.EMA, 
+            self.data.Close, 
+            self.fast_ema,
+            name=f'Fast EMA ({self.fast_ema})', 
+            overlay=True, 
+            color='blue'
+        )
+        
+        self.slow = StrategyUtils.add_indicator(
+            self, 
+            talib.EMA, 
+            self.data.Close, 
+            self.slow_ema,
+            name=f'Slow EMA ({self.slow_ema})', 
+            overlay=True, 
+            color='orange'
+        )
         
         # Initialize trade tracking
         self.trade_count = 0
@@ -142,11 +228,36 @@ class ExponentialMovingAverageCrossover(Strategy):
         # Track entry information
         self.entry_price = 0
         self.entry_time = None
+        
+        # Add tracking for equity and drawdown
+        self.equity_curve = []
+        self.peak_equity = 0
+        self.drawdown = []
+        
+        # Track buy & hold return
+        self.buy_hold_return = None
     
     def next(self):
         """
         Execute the strategy logic for each candle.
         """
+        # Track equity and drawdown
+        current_equity = self.equity
+        self.equity_curve.append(current_equity)
+        
+        # Update peak equity and calculate drawdown
+        if current_equity > self.peak_equity:
+            self.peak_equity = current_equity
+        
+        current_drawdown = (self.peak_equity - current_equity) / self.peak_equity * 100 if self.peak_equity > 0 else 0
+        self.drawdown.append(current_drawdown)
+        
+        # Calculate the buy & hold return at the end of the backtest
+        if len(self.data) - 1 == self.data.index[-1]:  # Check if we're at the last bar
+            start_price = self.data.Close[0]
+            end_price = self.data.Close[-1]
+            self.buy_hold_return = (end_price - start_price) / start_price * 100
+        
         # If we don't have any open position
         if not self.position:
             # Buy when fast EMA crosses above slow EMA
@@ -176,8 +287,65 @@ class ExponentialMovingAverageCrossover(Strategy):
                     'entry_price': self.entry_price,
                     'exit_price': exit_price,
                     'profit_loss': profit_loss,
-                    'profit_pct': profit_pct
+                    'profit_pct': profit_pct,
+                    'trade_duration': (self.data.index[-1] - self.entry_time).days
                 })
+                
+                print(f"Trade #{self.trade_count}: P/L = {profit_loss:.2f} ({profit_pct:.2f}%)")
                 
                 self.position.close()
                 self.trade_count += 1
+    
+    def analyze(self):
+        """
+        Perform post-backtest analysis.
+        This method is called after the backtest is complete.
+        """
+        # Analyze equity curve and drawdown
+        if self.equity_curve:
+            equity_df = pd.DataFrame({
+                'Equity': self.equity_curve,
+                'Drawdown': self.drawdown
+            }, index=self.data.index[:len(self.equity_curve)])
+            
+            print("\n=== Equity and Drawdown Statistics ===")
+            print(f"Final Equity: {self.equity_curve[-1]:.2f}")
+            print(f"Peak Equity: {self.peak_equity:.2f}")
+            print(f"Maximum Drawdown: {max(self.drawdown):.2f}%")
+        
+        # Convert trade data to DataFrame for analysis
+        if self.trade_data:
+            trades_df = pd.DataFrame(self.trade_data)
+            
+            # Print trade statistics
+            print("\n=== Trade Statistics ===")
+            print(f"Total Trades: {len(trades_df)}")
+            print(f"Winning Trades: {len(trades_df[trades_df['profit_pct'] > 0])}")
+            print(f"Losing Trades: {len(trades_df[trades_df['profit_pct'] <= 0])}")
+            
+            if len(trades_df) > 0:
+                win_rate = len(trades_df[trades_df['profit_pct'] > 0]) / len(trades_df) * 100
+                print(f"Win Rate: {win_rate:.2f}%")
+                print(f"Average Profit: {trades_df['profit_pct'].mean():.2f}%")
+                
+                if len(trades_df[trades_df['profit_pct'] > 0]) > 0:
+                    print(f"Average Winner: {trades_df[trades_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
+                
+                if len(trades_df[trades_df['profit_pct'] <= 0]) > 0:
+                    print(f"Average Loser: {trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
+                    
+                    # Calculate profit factor if there are losing trades
+                    profit_sum = trades_df[trades_df['profit_pct'] > 0]['profit_pct'].sum()
+                    loss_sum = abs(trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].sum())
+                    
+                    if loss_sum > 0:
+                        print(f"Profit Factor: {profit_sum / loss_sum:.2f}")
+                
+                print(f"Average Trade Duration: {trades_df['trade_duration'].mean():.2f} days")
+                
+                # Compare to buy & hold
+                if self.buy_hold_return is not None:
+                    print(f"\nBuy & Hold Return: {self.buy_hold_return:.2f}%")
+                    strategy_return = trades_df['profit_pct'].sum()
+                    print(f"Strategy Return: {strategy_return:.2f}%")
+                    print(f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%")
