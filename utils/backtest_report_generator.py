@@ -3,6 +3,9 @@ from datetime import datetime
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 import math
+from utils.ai_explanations import AIExplainer
+import json
+from utils.metadata_generator import generate_metadata, save_metadata
 
 def format_number(value):
     """Format a number with commas as thousands separators"""
@@ -34,7 +37,7 @@ def get_value_class(metric, value):
     
     return "neutral"
 
-def create_backtest_report(results, args, output_dir, filename="index.html", chart_paths=None):
+def create_backtest_report(results, args, output_dir, filename="index.html", chart_paths=None, debug=False):
     """Create a detailed HTML report for the backtest results.
     
     Args:
@@ -43,7 +46,18 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         output_dir: Directory to save the report
         filename: Name of the report file
         chart_paths: Dictionary mapping strategy names to chart paths or single chart path for one strategy
+        debug: Enable debug output for troubleshooting
     """
+    
+    if debug:
+        print("Debug mode enabled for backtest report generation")
+    
+    # Initialize AI explainer (now gets API key from config)
+    ai_explainer = AIExplainer()
+    has_ai_explanations = ai_explainer.can_generate_explanations()
+    
+    if debug:
+        print(f"AI explanations available: {has_ai_explanations}")
     
     # Remove debug logging for production
     # print(f"Chart paths provided to report generator: {chart_paths}")
@@ -86,6 +100,39 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         'SQN'
     ]
     
+    # Generate AI explanations if API key is available
+    ai_explanations = {}
+    if has_ai_explanations:
+        if debug:
+            print("Starting AI explanation generation...")
+        
+        for strategy in results_df.columns:
+            strategy_metrics = results_df[strategy].to_dict()
+            
+            if debug:
+                print(f"Generating explanations for strategy: {strategy}")
+            
+            # Generate explanations for each metric
+            ai_explanations[strategy] = {}
+            for metric in metrics:
+                if metric in strategy_metrics:
+                    metric_value = strategy_metrics[metric]
+                    
+                    if debug:
+                        print(f"  - Explaining {metric}: {metric_value}")
+                    
+                    ai_explanations[strategy][metric] = ai_explainer.explain_metric(
+                        metric, metric_value, strategy, strategy_metrics
+                    )
+            
+            # Also generate an overall strategy explanation
+            if debug:
+                print(f"Generating overview for strategy: {strategy}")
+            
+            ai_explanations[strategy]['overview'] = ai_explainer.explain_strategy_overview(
+                strategy, strategy_metrics
+            )
+    
     # Define metric descriptions for tooltips
     metric_descriptions = {
         'Return [%]': 'The total percentage return of the strategy over the backtest period.',
@@ -127,6 +174,9 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
     # Get symbol from args, handling both ticker and symbol naming
     symbol = args.symbol if hasattr(args, 'symbol') else args.ticker if hasattr(args, 'ticker') else "Unknown"
     
+    # Get timeframe
+    timeframe = args.timeframe if hasattr(args, 'timeframe') else "Unknown"
+    
     # Get start_date from args, handling both start_date and start naming
     start_date = args.start_date if hasattr(args, 'start_date') else args.start if hasattr(args, 'start') else "Unknown"
     
@@ -139,6 +189,36 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
     
     # Get initial_capital from args, handling both initial_capital and cash naming
     initial_capital = args.initial_capital if hasattr(args, 'initial_capital') else args.cash if hasattr(args, 'cash') else 10000
+    
+    # Get commission
+    commission = args.commission if hasattr(args, 'commission') else 0.0
+    
+    # Determine if this is a comparison report
+    is_comparison = len(results_df.columns) > 1
+    report_type = "comparison" if is_comparison else "backtest"
+    
+    # Get strategy name or list of strategies
+    strategies = list(results_df.columns)
+    strategy_name = strategies[0] if len(strategies) == 1 else None
+    
+    # Generate metadata with status "unfinished"
+    metadata = generate_metadata(
+        symbol=symbol,
+        timeframe=timeframe,
+        start_date=start_date,
+        end_date=end_date,
+        initial_capital=initial_capital,
+        commission=commission,
+        report_type=report_type,
+        strategy_name=strategy_name,
+        strategies_compared=strategies if is_comparison else None,
+        directory_name=os.path.basename(output_dir),
+        chart_path=chart_paths.get(strategy_name) if chart_paths and strategy_name in chart_paths else None,
+        additional_data={"status": "unfinished"}
+    )
+    
+    # Save metadata
+    save_metadata(metadata, output_dir)
     
     # Add these debugging lines to help identify if trades exist
     has_trades = False
@@ -154,9 +234,9 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         start_date=start_date,
         end_date=end_date,
         initial_capital=initial_capital,
-        commission=args.commission,
-        timeframe=args.timeframe,
-        strategies=list(results_df.columns),
+        commission=commission,
+        timeframe=timeframe,
+        strategies=strategies,
         metrics=metrics,
         results={strategy: results_df[strategy].to_dict() for strategy in results_df.columns},
         metric_descriptions=metric_descriptions,
@@ -165,10 +245,12 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         generation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         chart_paths=chart_paths,
         has_charts=has_charts,
-        is_comparison=(len(results_df.columns) > 1),
+        is_comparison=is_comparison,
         show_trades=True,
         has_trades=has_trades,
-        chart_height=900  # Make chart taller
+        chart_height=900,  # Make chart taller
+        has_ai_explanations=has_ai_explanations,
+        ai_explanations=ai_explanations
     )
     
     # Ensure output directory exists
@@ -178,5 +260,9 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
     report_path = os.path.join(output_dir, filename)
     with open(report_path, 'w') as f:
         f.write(report_html)
-    
+
+    # Update metadata status to "finished" after report generation
+    metadata["status"] = "finished"
+    save_metadata(metadata, output_dir)
+
     return report_path 

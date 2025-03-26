@@ -93,7 +93,7 @@ def generate_dashboard(refresh_interval=1000):
     reports = [get_report_metadata(dir) for dir in report_dirs]
     
     # Sort reports: comparison reports first, then by date (newest first)
-    reports.sort(key=lambda x: (0 if x['type'] == 'comparison' else 1, 
+    reports.sort(key=lambda x: (0 if x.get('type', '') == 'comparison' else 1, 
                               x.get('created', ''), 
                               x.get('symbol', '')))
     
