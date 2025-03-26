@@ -229,6 +229,51 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
                 has_trades = True
                 break
     
+    # Ensure all strategies exist in results
+    valid_strategies = [s for s in strategies if s in results]
+    
+    # Make sure we have at least one valid strategy
+    if not valid_strategies:
+        print("Warning: No valid strategies found in results. Using fallback.")
+        # Create a fallback strategy if none are valid
+        if strategies and len(strategies) > 0:
+            # Use the first requested strategy as a fallback with default values
+            fallback_strategy = strategies[0]
+            results[fallback_strategy] = {
+                'Return [%]': 0.0,
+                'Buy & Hold Return [%]': 0.0,
+                'Max. Drawdown [%]': 0.0,
+                'Sharpe Ratio': 0.0,
+                'Sortino Ratio': 0.0,
+                'Calmar Ratio': 0.0,
+                'Trades': 0,
+                'Win Rate [%]': 0.0,
+                'Avg. Trade [%]': 0.0,
+                'SQN': 0.0
+            }
+            valid_strategies = [fallback_strategy]
+        else:
+            # If no strategies were requested, create a dummy one
+            fallback_strategy = "STRATEGY"
+            results[fallback_strategy] = {
+                'Return [%]': 0.0,
+                'Buy & Hold Return [%]': 0.0,
+                'Max. Drawdown [%]': 0.0,
+                'Sharpe Ratio': 0.0,
+                'Sortino Ratio': 0.0,
+                'Calmar Ratio': 0.0,
+                'Trades': 0,
+                'Win Rate [%]': 0.0,
+                'Avg. Trade [%]': 0.0,
+                'SQN': 0.0
+            }
+            valid_strategies = [fallback_strategy]
+    
+    # Add safety check for the template
+    for strategy in valid_strategies:
+        if 'Return [%]' not in results[strategy]:
+            results[strategy]['Return [%]'] = 0.0  # Default value
+    
     # Render the template with our data
     report_html = template.render(
         symbol=symbol,
@@ -237,9 +282,9 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         initial_capital=initial_capital,
         commission=commission,
         timeframe=timeframe,
-        strategies=strategies,
+        strategies=valid_strategies,
         metrics=metrics,
-        results={strategy: results_df[strategy].to_dict() for strategy in results_df.columns},
+        results=results,
         metric_descriptions=metric_descriptions,
         format_value=format_value,
         get_value_class=get_value_class,

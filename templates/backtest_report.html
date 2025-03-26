@@ -209,8 +209,12 @@ td {
                     <i class="fa-solid fa-chart-line text-green-400 text-lg"></i>
                 </div>
             </div>
-            <div class="text-2xl font-bold mb-2 {{ 'positive' if results[strategies[0]]['Return [%]'] > 0 else 'negative' }}">
-                {{ results[strategies[0]]['Return [%]']|format_value }}%
+            <div class="text-2xl font-bold mb-2 {{ 'positive' if strategies and strategies|length > 0 and strategies[0] in results and 'Return [%]' in results[strategies[0]] and results[strategies[0]]['Return [%]'] > 0 else 'negative' }}">
+                {% if strategies and strategies|length > 0 and strategies[0] in results and 'Return [%]' in results[strategies[0]] %}
+                    {{ results[strategies[0]]['Return [%]']|format_value }}%
+                {% else %}
+                    0.00%
+                {% endif %}
             </div>
             <div class="text-sm text-slate-400">
                 The total percentage return of the strategy over the backtest period.

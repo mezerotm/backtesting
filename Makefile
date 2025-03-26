@@ -40,6 +40,14 @@ backtest-active: results-dir
 compare-active: results-dir
 	$(PYTHON) backtest_comparisons.py --symbol SMCI
 
+# Run experimental combined strategy
+backtest-experimental: results-dir
+	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies experimental
+
+# Compare only buy and hold with experimental
+compare-experimental: results-dir
+	$(PYTHON) backtest_comparisons.py --symbol SMCI --strategies buy_hold experimental
+
 # Clean up results
 clean:
 	rm -rf public/results/*
@@ -53,4 +61,5 @@ server:
 	$(PYTHON) -m utils.dashboard_generator
 
 .PHONY: setup freeze backtest-nvda \
-	compare-nvda clean results-dir server ensure-venv activate-venv backtest-active
+	compare-nvda clean results-dir server ensure-venv activate-venv backtest-active \
+	backtest-experimental compare-experimental compare-all compare-buyhold-experimental
