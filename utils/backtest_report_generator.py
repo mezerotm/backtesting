@@ -37,7 +37,7 @@ def get_value_class(metric, value):
     
     return "neutral"
 
-def create_backtest_report(results, args, output_dir, filename="index.html", chart_paths=None, debug=False):
+def create_backtest_report(results, args, output_dir, filename="index.html", chart_paths=None, debug=False, disable_ai_explanations=False):
     """Create a detailed HTML report for the backtest results.
     
     Args:
@@ -47,6 +47,7 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         filename: Name of the report file
         chart_paths: Dictionary mapping strategy names to chart paths or single chart path for one strategy
         debug: Enable debug output for troubleshooting
+        disable_ai_explanations: If True, AI explanations will be disabled regardless of API key availability
     """
     
     if debug:
@@ -54,7 +55,7 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
     
     # Initialize AI explainer (now gets API key from config)
     ai_explainer = AIExplainer()
-    has_ai_explanations = ai_explainer.can_generate_explanations()
+    has_ai_explanations = ai_explainer.can_generate_explanations() and not disable_ai_explanations
     
     if debug:
         print(f"AI explanations available: {has_ai_explanations}")

@@ -187,12 +187,7 @@ def main():
     comparison_dir = os.path.join(results_dir, comparison_dir_name)
     os.makedirs(comparison_dir, exist_ok=True)
 
-    # Generate and open HTML report for this specific backtest
-    from utils.backtest_report_generator import create_backtest_report
-    report_path = create_backtest_report(results, args, comparison_dir, filename="index.html")
-    print(f"\nDetailed HTML report saved to: {report_path}")
-
-    # Create metadata.json
+    # Create initial metadata.json with status "unfinished"
     metadata = generate_metadata(
         symbol=args.symbol,
         timeframe=args.timeframe,
@@ -202,9 +197,26 @@ def main():
         commission=args.commission,
         report_type="comparison",
         strategies_compared=list(strategies.keys()),
-        directory_name=comparison_dir_name
+        directory_name=comparison_dir_name,
+        additional_data={"status": "unfinished"}  # Set initial status to unfinished
     )
 
+    save_metadata(metadata, comparison_dir)
+
+    # Generate and open HTML report for this specific backtest
+    from utils.backtest_report_generator import create_backtest_report
+    # Disable AI explanations for comparison reports
+    report_path = create_backtest_report(
+        results, 
+        args, 
+        comparison_dir, 
+        filename="index.html",
+        disable_ai_explanations=True  # Add this parameter to disable AI explanations
+    )
+    print(f"\nDetailed HTML report saved to: {report_path}")
+
+    # Update metadata status to "finished" after report generation is complete
+    metadata["status"] = "finished"
     save_metadata(metadata, comparison_dir)
 
     # Generate consolidated strategy comparison report

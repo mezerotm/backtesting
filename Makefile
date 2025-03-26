@@ -37,8 +37,8 @@ backtest-active: results-dir
 	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies ema --fast-ma 5 --slow-ma 20
 
 # Compare strategies on NVDA
-compare-nvda: results-dir
-	$(PYTHON) backtest_comparisons.py --symbol NVDA
+compare-active: results-dir
+	$(PYTHON) backtest_comparisons.py --symbol SMCI
 
 # Clean up results
 clean:
