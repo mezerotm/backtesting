@@ -11,15 +11,6 @@ def validate_api_key(api_key):
         print("API key is empty")
         return False
     
-    if not api_key.startswith('sk-'):
-        print(f"Warning: API key has unusual format. Keys should start with 'sk-'")
-        return False
-    
-    if api_key.startswith('sk-proj-'):
-        print("Error: Keys starting with 'sk-proj-' are project-specific and may not work with the standard OpenAI API")
-        print("Please get a standard API key from https://platform.openai.com/account/api-keys")
-        return False
-    
     return True
 
 class AIExplainer:

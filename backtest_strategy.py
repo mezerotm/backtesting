@@ -167,26 +167,26 @@ def run_backtest(args):
     
     # Run selected strategies
     for strategy_id in strategies_to_run:
-        config = strategy_configs[strategy_id]
-        print(f"\nRunning {config['name']} Strategy...")
+        strategy_config = strategy_configs[strategy_id]  # Rename to avoid confusion with the config module
+        print(f"\nRunning {strategy_config['name']} Strategy...")
         
         # Setup strategy parameters
-        config['setup']()
+        strategy_config['setup']()
         
         # Run backtest
         bt = Backtest(
             data=df,
-            strategy=config['class'],
+            strategy=strategy_config['class'],
             cash=args.initial_capital,
             commission=args.commission
         )
         
         stats = bt.run()  # Run once and store stats
-        results[config['name']] = stats
+        results[strategy_config['name']] = stats
         
         # Create a directory for this strategy's results - Updated to use symbol
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        strategy_dir_name = f"{args.symbol}_{config['name']}_{args.timeframe}_{timestamp}"
+        strategy_dir_name = f"{args.symbol}_{strategy_config['name']}_{args.timeframe}_{timestamp}"
         strategy_dir = os.path.join(results_base_dir, strategy_dir_name)
         os.makedirs(strategy_dir, exist_ok=True)
         
@@ -209,12 +209,12 @@ def run_backtest(args):
             reverse_indicators=False,# Don't reverse indicator order
             show_legend=True         # Show chart legend
         )
-        print(f"{config['name']} Plot saved to: {chart_path}")
+        print(f"{strategy_config['name']} Plot saved to: {chart_path}")
         
         # Create a web-accessible path for the chart
         # Use a relative path that will work in the web context
         chart_relative_path = f"../results/{strategy_dir_name}/chart.html"
-        chart_paths[config['name']] = chart_relative_path
+        chart_paths[strategy_config['name']] = chart_relative_path
         
         # Create metadata.json - Updated to use symbol and end_date
         metadata = generate_metadata(
@@ -225,22 +225,26 @@ def run_backtest(args):
             initial_capital=args.initial_capital,
             commission=args.commission,
             report_type="backtest",
-            strategy_name=config['name'],
+            strategy_name=strategy_config['name'],
             directory_name=strategy_dir_name,
             chart_path=f"{strategy_dir_name}/chart.html"
         )
         
         save_metadata(metadata, strategy_dir)
         
+        # Check environment directly instead of using ENABLE_AI_EXPLANATIONS
+        disable_ai = config.ENV != 'production'
+        
         # Always generate individual report for each strategy
         individual_report_path = create_backtest_report(
-            {config['name']: stats}, 
+            {strategy_config['name']: stats}, 
             args, 
             strategy_dir, 
             filename="index.html", 
-            chart_paths={config['name']: "chart.html"}  # Use local path for individual reports
+            chart_paths={strategy_config['name']: "chart.html"},
+            disable_ai_explanations=disable_ai  # Disable AI explanations when not in production
         )
-        print(f"{config['name']} individual report saved to: {individual_report_path}")
+        print(f"{strategy_config['name']} individual report saved to: {individual_report_path}")
     
     # Only print comparison metrics if multiple strategies were run, but don't generate a comparison report
     if len(results) > 1:
