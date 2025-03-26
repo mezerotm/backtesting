@@ -34,44 +34,59 @@ def parse_args():
     
     # Strategy selection
     parser.add_argument('--strategies', type=str, nargs='+', 
-                        choices=['SMA', 'EMA', 'MACD', 'BB', 'ALL'],
-                        default=['ALL'],
-                        help='Strategies to compare (default: ALL)')
+                        choices=['sma', 'ema', 'macd', 'bb', 'buy_hold', 'experimental', 'all'],
+                        default=['all'],
+                        help='Strategies to compare (default: all)')
     
     # Output options
     parser.add_argument('--no-plots', action='store_true',
                         help='Disable generation of plots')
     
+    # Debug option
+    parser.add_argument('--debug', action='store_true', help='Enable debug output')
+    
     return parser.parse_args()
 
 def get_strategies(strategy_names):
     """Get the strategy classes based on names."""
+    from strategies.buy_hold import BuyAndHoldStrategy
+    from strategies.experimental_strategy import CombinedStrategy
+    
     all_strategies = {
-        'SMA': SimpleMovingAverageCrossover,
-        'EMA': ExponentialMovingAverageCrossover,
-        'MACD': MACDRSIStrategy,
-        'BB': BollingerRSIStrategy
+        'sma': SimpleMovingAverageCrossover,
+        'ema': ExponentialMovingAverageCrossover,
+        'macd': MACDRSIStrategy,
+        'bb': BollingerRSIStrategy,
+        'buy_hold': BuyAndHoldStrategy,
+        'experimental': CombinedStrategy
     }
     
-    if 'ALL' in strategy_names:
+    if 'all' in [s.lower() for s in strategy_names]:
         return {
-            'SMA Crossover': SimpleMovingAverageCrossover,
-            'EMA Crossover': ExponentialMovingAverageCrossover,
-            'MACD-RSI-EMA': MACDRSIStrategy,
-            'Bollinger-RSI': BollingerRSIStrategy
+            'sma crossover': SimpleMovingAverageCrossover,
+            'ema crossover': ExponentialMovingAverageCrossover,
+            'macd-rsi-ema': MACDRSIStrategy,
+            'bollinger-rsi': BollingerRSIStrategy,
+            'buy & hold': BuyAndHoldStrategy,
+            'experimental': CombinedStrategy
         }
     
     # Only include selected strategies
     selected = {}
     for name in strategy_names:
-        if name == 'SMA':
-            selected['SMA Crossover'] = all_strategies['SMA']
-        elif name == 'EMA':
-            selected['EMA Crossover'] = all_strategies['EMA']
-        elif name == 'MACD':
-            selected['MACD-RSI-EMA'] = all_strategies['MACD']
-        elif name == 'BB':
-            selected['Bollinger-RSI'] = all_strategies['BB']
+        name_lower = name.lower()
+        if name_lower == 'sma':
+            selected['sma crossover'] = all_strategies['sma']
+        elif name_lower == 'ema':
+            selected['ema crossover'] = all_strategies['ema']
+        elif name_lower == 'macd':
+            selected['macd-rsi-ema'] = all_strategies['macd']
+        elif name_lower == 'bb':
+            selected['bollinger-rsi'] = all_strategies['bb']
+        elif name_lower == 'buy_hold':
+            selected['buy & hold'] = all_strategies['buy_hold']
+        elif name_lower == 'experimental':
+            selected['experimental'] = all_strategies['experimental']
     
     return selected
 
@@ -202,6 +217,16 @@ def main():
     )
 
     save_metadata(metadata, comparison_dir)
+
+    # Add debug output
+    if args.debug:
+        print(f"Strategies to compare: {strategies}")
+        print(f"Results keys: {list(results.keys())}")
+        for strategy in strategies:
+            if strategy in results:
+                print(f"Keys in results[{strategy}]: {list(results[strategy].keys())}")
+            else:
+                print(f"Warning: Strategy '{strategy}' not found in results")
 
     # Generate and open HTML report for this specific backtest
     from utils.backtest_report_generator import create_backtest_report

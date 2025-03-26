@@ -3,23 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Trading Strategy Dashboard{% endblock %}</title>
+    <title>{% block title %}Trading Strategy Backtest{% endblock %}</title>
     
     <!-- Favicon -->
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
     
-    <!-- Dark mode initialization script - must be in head before any content loads -->
+    <!-- Dark mode initialization script -->
     <script>
-        // Force dark mode by default - no toggling
+        // Force dark mode by default
         document.querySelector('html').classList.add('dark');
     </script>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Preline UI CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/preline/dist/preline.min.css" />
     
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -29,74 +26,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    {% block additional_head %}{% endblock %}
-    
     <style>
-        /* Dark mode enhancements */
-        .dark {
-            color-scheme: dark;
-        }
-        
-        /* Force dark backgrounds for main containers - these are critical */
-        .dark body {
-            background-color: #0f172a !important; /* slate-900 */
-        }
-        
-        /* Light mode specific styles */
+        /* Base styling */
         body {
-            background-color: #f8fafc !important; /* slate-50 */
-            color: #f1f5f9 !important; /* slate-100 - much brighter base text */
             font-family: 'Inter', sans-serif;
+            background-color: #0f172a;  /* slate-900 */
+            color: #f8fafc;  /* slate-50 */
         }
         
-        /* Fix background colors for light/dark modes */
-        .bg-white {
-            background-color: #ffffff !important;
-        }
-        
-        .dark .bg-white {
-            background-color: #1e293b !important; /* slate-800 */
-        }
-        
-        .bg-gray-50 {
-            background-color: #f8fafc !important; /* slate-50 */
-        }
-        
-        .dark .bg-gray-50 {
-            background-color: #0f172a !important; /* slate-900 */
-        }
-        
-        /* Improved text contrast for better readability */
-        h1, h2, h3, h4, h5, h6 {
-            color: #f8fafc !important; /* slate-50 - almost white for headings */
-        }
-        
-        /* Header styles */
-        .site-header {
-            background-color: #1e293b; /* slate-800 */
-            border-bottom: 1px solid #334155; /* slate-700 */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        
-        /* Footer styles */
-        .site-footer {
-            background-color: #1e293b; /* slate-800 */
-            border-top: 1px solid #334155; /* slate-700 */
-        }
-        
-        /* Custom styling for buttons */
-        .primary-btn {
-            background-color: #2563eb !important; /* blue-600 */
-            border-color: #3b82f6 !important; /* blue-500 */
-            color: #f8fafc !important; /* slate-50 */
-            transition: all 0.2s ease-in-out !important;
-        }
-        
-        .primary-btn:hover {
-            background-color: #3b82f6 !important; /* blue-500 - lighter on hover */
-            transform: translateY(-1px) !important;
-        }
-        
+        /* Add any additional styles here */
         {% block additional_styles %}{% endblock %}
     </style>
 </head>

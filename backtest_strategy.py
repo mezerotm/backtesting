@@ -13,6 +13,7 @@ from strategies.moving_average import SimpleMovingAverageCrossover, ExponentialM
 from strategies.advanced_strategy import MACDRSIStrategy, BollingerRSIStrategy
 from utils import config
 from utils.metadata_generator import generate_metadata, save_metadata
+from strategies.experimental_strategy import CombinedStrategy
 
 def valid_date(s):
     """Convert string to date for argparse"""
@@ -27,30 +28,12 @@ def parse_args():
     
     # Update strategy choices
     parser.add_argument('--strategies', type=str, nargs='+', default=['sma'],
-                      choices=['sma', 'ema', 'macd_rsi', 'bb_rsi', 'all'],
-                      help='Strategies to run (sma, ema, macd_rsi, bb_rsi, or all)')
+                      choices=['sma', 'ema', 'macd_rsi', 'bb_rsi', 'experimental', 'all'],
+                      help='Strategies to run (sma, ema, macd_rsi, bb_rsi, experimental, or all)')
     
     # Add flag for generating individual reports
     parser.add_argument('--generate-individual-reports', action='store_true',
                       help='Generate individual reports for each strategy in addition to comparison')
-    
-    # Add parameters for advanced strategies
-    parser.add_argument('--macd-fast', type=int, default=12,
-                      help='MACD fast period')
-    parser.add_argument('--macd-slow', type=int, default=26,
-                      help='MACD slow period')
-    parser.add_argument('--macd-signal', type=int, default=9,
-                      help='MACD signal period')
-    parser.add_argument('--rsi-period', type=int, default=14,
-                      help='RSI period')
-    parser.add_argument('--rsi-overbought', type=int, default=70,
-                      help='RSI overbought threshold')
-    parser.add_argument('--rsi-oversold', type=int, default=30,
-                      help='RSI oversold threshold')
-    parser.add_argument('--bb-period', type=int, default=20,
-                      help='Bollinger Bands period')
-    parser.add_argument('--bb-dev', type=float, default=2.0,
-                      help='Bollinger Bands standard deviation')
     
     # Required parameters - Changed ticker to symbol
     parser.add_argument('--symbol', type=str, required=True,
@@ -71,12 +54,6 @@ def parse_args():
     parser.add_argument('--commission', type=float, default=0.001,
                       help='Commission rate (e.g., 0.001 for 0.1%)')
     
-    # Strategy parameters
-    parser.add_argument('--fast-ma', type=int, default=50,
-                      help='Fast moving average period')
-    parser.add_argument('--slow-ma', type=int, default=200,
-                      help='Slow moving average period')
-    
     # Optimization flag
     parser.add_argument('--optimize', action='store_true',
                       help='Run parameter optimization')
@@ -96,7 +73,7 @@ def run_backtest(args):
     # Determine which strategies to run
     strategies_to_run = []
     if 'all' in args.strategies:
-        strategies_to_run = ['sma', 'ema', 'macd_rsi', 'bb_rsi']
+        strategies_to_run = ['sma', 'ema', 'macd_rsi', 'bb_rsi', 'experimental']
     else:
         strategies_to_run = args.strategies
     
@@ -135,33 +112,27 @@ def run_backtest(args):
         'sma': {
             'name': 'SMA',
             'class': SimpleMovingAverageCrossover,
-            'setup': lambda: setattr(SimpleMovingAverageCrossover, 'fast_ma', args.fast_ma) or 
-                           setattr(SimpleMovingAverageCrossover, 'slow_ma', args.slow_ma)
+            'setup': lambda: None  # No setup needed, using default parameters
         },
         'ema': {
             'name': 'EMA',
             'class': ExponentialMovingAverageCrossover,
-            'setup': lambda: setattr(ExponentialMovingAverageCrossover, 'fast_ema', args.fast_ma) or 
-                           setattr(ExponentialMovingAverageCrossover, 'slow_ema', args.slow_ma)
+            'setup': lambda: None  # No setup needed, using default parameters
         },
         'macd_rsi': {
             'name': 'MACD+RSI',
             'class': MACDRSIStrategy,
-            'setup': lambda: setattr(MACDRSIStrategy, 'macd_fast', args.macd_fast) or 
-                           setattr(MACDRSIStrategy, 'macd_slow', args.macd_slow) or
-                           setattr(MACDRSIStrategy, 'macd_signal', args.macd_signal) or
-                           setattr(MACDRSIStrategy, 'rsi_period', args.rsi_period) or
-                           setattr(MACDRSIStrategy, 'rsi_oversold', args.rsi_oversold) or
-                           setattr(MACDRSIStrategy, 'rsi_overbought', args.rsi_overbought)
+            'setup': lambda: None  # No setup needed, using default parameters
         },
         'bb_rsi': {
             'name': 'BB+RSI',
             'class': BollingerRSIStrategy,
-            'setup': lambda: setattr(BollingerRSIStrategy, 'bb_period', args.bb_period) or
-                           setattr(BollingerRSIStrategy, 'bb_dev', args.bb_dev) or
-                           setattr(BollingerRSIStrategy, 'rsi_period', args.rsi_period) or
-                           setattr(BollingerRSIStrategy, 'rsi_oversold', args.rsi_oversold) or
-                           setattr(BollingerRSIStrategy, 'rsi_overbought', args.rsi_overbought)
+            'setup': lambda: None  # No setup needed, using default parameters
+        },
+        'experimental': {
+            'name': 'Experimental',
+            'class': CombinedStrategy,
+            'setup': lambda: None  # No setup needed, using default parameters
         }
     }
     
@@ -169,9 +140,6 @@ def run_backtest(args):
     for strategy_id in strategies_to_run:
         strategy_config = strategy_configs[strategy_id]  # Rename to avoid confusion with the config module
         print(f"\nRunning {strategy_config['name']} Strategy...")
-        
-        # Setup strategy parameters
-        strategy_config['setup']()
         
         # Run backtest
         bt = Backtest(
