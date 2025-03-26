@@ -3,6 +3,7 @@
 {% block title %}Backtest Results for {{ symbol }}{% endblock %}
 
 {% block additional_styles %}
+<style>
 /* Tooltip styling - improved positioning */
 .tooltip {
     position: relative;
@@ -96,6 +97,7 @@ table {
 td {
     position: relative;
 }
+</style>
 {% endblock %}
 
 {% block header_actions %}
@@ -107,11 +109,11 @@ td {
 
 {% block content %}
 <!-- Header -->
-<div class="bg-green-500 text-slate-900 p-6 rounded-xl mb-6 shadow-md">
-    <h1 class="text-2xl font-bold mb-1">Backtest Results for {{ symbol }}</h1>
-    <p class="text-lg opacity-90">Period: {{ start_date }} to {{ end_date }}</p>
+<div class="bg-slate-800 rounded-xl p-6 mb-6 shadow-md">
+    <h1 class="text-2xl font-bold mb-1 text-white">Backtest Results for {{ symbol }}</h1>
+    <p class="text-lg text-slate-300">Period: {{ start_date }} to {{ end_date }}</p>
     {% if has_ai_explanations %}
-    <div class="mt-4 text-slate-800">
+    <div class="mt-4 text-slate-300">
         <h3 class="text-lg font-medium mb-2">AI Strategy Analysis</h3>
         <p>{{ ai_explanations[strategies[0]]['overview'] }}</p>
     </div>
@@ -272,16 +274,16 @@ td {
         <!-- Win Rate Metric -->
         <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
             <div class="flex justify-between items-start mb-4">
-                <div class="font-semibold text-lg text-slate-200">Win Rate (%)</div>
+                <div class="font-semibold text-lg text-slate-200">Trades</div>
                 <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
                     <i class="fa-solid fa-check text-emerald-400 text-lg"></i>
                 </div>
             </div>
             <div class="text-2xl font-bold mb-2 neutral">
-                {{ results[strategies[0]]['Win Rate [%]']|format_value }}%
+                {{ results[strategies[0]]['# Trades']|format_value }}
             </div>
             <div class="text-sm text-slate-400">
-                The percentage of trades that were profitable.
+                The total number of trades executed during the backtest period.
             </div>
         </div>
         
