@@ -110,6 +110,12 @@ td {
 <div class="bg-green-500 text-slate-900 p-6 rounded-xl mb-6 shadow-md">
     <h1 class="text-2xl font-bold mb-1">Backtest Results for {{ symbol }}</h1>
     <p class="text-lg opacity-90">Period: {{ start_date }} to {{ end_date }}</p>
+    {% if has_ai_explanations %}
+    <div class="mt-4 text-slate-800">
+        <h3 class="text-lg font-medium mb-2">AI Strategy Analysis</h3>
+        <p>{{ ai_explanations[strategies[0]]['overview'] }}</p>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Test Parameters Card -->
@@ -156,9 +162,12 @@ td {
         <table class="min-w-full divide-y divide-slate-700">
             <thead>
                 <tr>
-                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: 30%">Metric</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: 20%">Metric</th>
+                    {% if has_ai_explanations %}
+                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: auto;">AI Explanation</th>
+                    {% endif %}
                     {% for strategy in strategies %}
-                    <th class="px-6 py-3 text-right text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: {{ (70 / strategies|length)|round }}%">{{ strategy }}</th>
+                    <th class="px-6 py-3 text-right text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: {{ ((40 / strategies|length)|round)|string + '%' }}">{{ strategy }}</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -174,6 +183,11 @@ td {
                             <span class="metric-name">{{ metric }}</span>
                         </div>
                     </td>
+                    {% if has_ai_explanations %}
+                    <td class="px-6 py-4 text-sm text-left text-slate-300">
+                        {{ ai_explanations[strategies[0]][metric] }}
+                    </td>
+                    {% endif %}
                     {% for strategy in strategies %}
                     <td class="px-6 py-4 text-sm text-right {{ get_value_class(metric, results[strategy][metric]) }}">
                         {{ results[strategy][metric]|format_value }}
@@ -359,19 +373,25 @@ td {
                             <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
                                 <div class="absolute inset-0 border-t-2 border-blue-400"></div>
                             </div>
-                            <span><strong>Indicator Lines</strong>: Technical indicators displayed as colored lines</span>
+                            <span><strong>Blue Lines</strong>: Fast moving average (typically shorter period)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-orange-400"></div>
+                            </div>
+                            <span><strong>Orange Lines</strong>: Slow moving average (typically longer period)</span>
                         </li>
                         <li class="flex items-start">
                             <div class="w-6 h-6 flex items-center justify-center mr-2">
-                                <i class="fa-solid fa-arrow-up text-green-400 text-lg"></i>
+                                <i class="fa-solid fa-circle text-green-400 text-xs"></i>
                             </div>
-                            <span><strong>Buy Markers</strong>: Points where the strategy entered positions</span>
+                            <span><strong>Green Markers</strong>: Entry points for trades</span>
                         </li>
                         <li class="flex items-start">
                             <div class="w-6 h-6 flex items-center justify-center mr-2">
-                                <i class="fa-solid fa-arrow-down text-red-400 text-lg"></i>
+                                <i class="fa-solid fa-circle text-red-400 text-xs"></i>
                             </div>
-                            <span><strong>Sell Markers</strong>: Points where the strategy exited positions</span>
+                            <span><strong>Red Markers</strong>: Exit points for trades</span>
                         </li>
                         <li class="flex items-start">
                             <div class="w-6 h-6 flex items-center justify-center mr-2">
@@ -394,6 +414,12 @@ td {
                         </li>
                         <li class="flex items-start">
                             <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-blue-500"></div>
+                            </div>
+                            <span><strong>Return</strong>: Percentage return over time</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
                                 <div class="absolute inset-0 border-t-2 border-red-500"></div>
                             </div>
                             <span><strong>Drawdown</strong>: Percentage decline from previous peak</span>
@@ -405,18 +431,21 @@ td {
                             <span><strong>Profit/Loss</strong>: Cumulative profit or loss from trades</span>
                         </li>
                         <li class="flex items-start">
-                            <div class="flex-shrink-0 w-8 h-4 bg-green-500 opacity-50 mr-2 mt-1"></div>
-                            <span><strong>Volume</strong>: Trading volume for each period</span>
+                            <div class="flex-shrink-0 w-8 h-4 mr-2 mt-1">
+                                <div class="h-full w-2 bg-green-500 inline-block"></div>
+                                <div class="h-full w-2 bg-red-500 inline-block"></div>
+                            </div>
+                            <span><strong>Volume</strong>: Trading volume (green for up, red for down)</span>
                         </li>
                         <li class="flex items-start">
                             <div class="w-6 h-6 flex items-center justify-center mr-2">
-                                <span class="text-green-400 font-bold">P</span>
+                                <span class="text-cyan-400 font-bold">P</span>
                             </div>
                             <span><strong>Peak</strong>: Highest point in equity or maximum drawdown</span>
                         </li>
                         <li class="flex items-start">
                             <div class="w-6 h-6 flex items-center justify-center mr-2">
-                                <span class="text-blue-400 font-bold">F</span>
+                                <span class="text-blue-600 font-bold">F</span>
                             </div>
                             <span><strong>Final</strong>: Final value at the end of the backtest</span>
                         </li>

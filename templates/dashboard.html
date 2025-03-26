@@ -182,7 +182,14 @@
                     return;
                 }
                 
-                displayReports(data.reports);
+                console.log('All reports:', data.reports); // Debug log
+                
+                // Filter out reports that are not finished
+                const finishedReports = data.reports.filter(report => report.status === 'finished');
+                
+                console.log('Finished reports:', finishedReports); // Debug log
+                
+                displayReports(finishedReports);
                 document.getElementById('last-updated').textContent = data.timestamp;
             })
             .catch(error => {
