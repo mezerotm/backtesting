@@ -33,14 +33,15 @@
             background-color: #0f172a;  /* slate-900 */
             color: #f8fafc;  /* slate-50 */
         }
-        
-        /* Add any additional styles here */
-        {% block additional_styles %}{% endblock %}
     </style>
+    
+    {% block additional_styles %}
+    <!-- Additional styles will be added by child templates -->
+    {% endblock %}
 </head>
 <body class="bg-slate-900 min-h-screen flex flex-col">
-    <!-- Header -->
-    <header class="site-header py-4 px-6">
+    <!-- Header with bottom border and lighter background -->
+    <header class="site-header py-4 px-6 border-b border-slate-700 bg-slate-800">
         <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center">
                 <div class="flex items-center gap-4">
@@ -65,8 +66,8 @@
         </div>
     </main>
     
-    <!-- Footer -->
-    <footer class="site-footer py-4 px-6">
+    <!-- Footer with top border and lighter background -->
+    <footer class="site-footer py-4 px-6 border-t border-slate-700 bg-slate-800">
         <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div class="text-slate-400 text-sm">

@@ -75,7 +75,7 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
                 'Sharpe Ratio': stats['Sharpe Ratio'],
                 'Sortino Ratio': stats['Sortino Ratio'],
                 'Calmar Ratio': stats['Calmar Ratio'],
-                'Trades': stats.get('# Trades', 0),  # Use get with default for safety
+                '# Trades': stats.get('# Trades', 0),  # Changed key from 'Trades' to '# Trades'
                 'Win Rate [%]': stats.get('Win Rate [%]', 0.0),
                 'Avg. Trade [%]': stats.get('Avg. Trade [%]', 0.0),
                 'SQN': stats.get('SQN', float('nan'))  # Some versions might not have SQN
@@ -87,7 +87,7 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         # Results is already a DataFrame
         results_df = results
     
-    # Define the metrics we want to display
+    # Define the metrics we want to display - make sure they match the keys in the Stats object
     metrics = [
         'Return [%]',
         'Buy & Hold Return [%]',
@@ -95,7 +95,7 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         'Sharpe Ratio',
         'Sortino Ratio',
         'Calmar Ratio',
-        'Trades',
+        '# Trades',  # Changed from 'Trades' to '# Trades' to match the Stats object
         'Win Rate [%]',
         'Avg. Trade [%]',
         'SQN'
@@ -142,7 +142,7 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
         'Sharpe Ratio': 'A measure of risk-adjusted return. Higher values indicate better risk-adjusted performance.',
         'Sortino Ratio': 'Similar to Sharpe but only considers downside volatility. Higher values are better.',
         'Calmar Ratio': 'A measure of return relative to drawdown risk. Higher values are better.',
-        'Trades': 'The total number of completed trades executed during the backtest period.',
+        '# Trades': 'The total number of completed trades executed during the backtest period.',
         'Win Rate [%]': 'The percentage of trades that resulted in a profit.',
         'Avg. Trade [%]': 'The average percentage profit or loss per trade.',
         'SQN': 'System Quality Number - rates trading systems based on consistency and size of profits relative to risk.'
@@ -246,7 +246,7 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
                 'Sharpe Ratio': 0.0,
                 'Sortino Ratio': 0.0,
                 'Calmar Ratio': 0.0,
-                'Trades': 0,
+                '# Trades': 0,
                 'Win Rate [%]': 0.0,
                 'Avg. Trade [%]': 0.0,
                 'SQN': 0.0
@@ -262,7 +262,7 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
                 'Sharpe Ratio': 0.0,
                 'Sortino Ratio': 0.0,
                 'Calmar Ratio': 0.0,
-                'Trades': 0,
+                '# Trades': 0,
                 'Win Rate [%]': 0.0,
                 'Avg. Trade [%]': 0.0,
                 'SQN': 0.0

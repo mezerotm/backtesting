@@ -14,6 +14,7 @@ from strategies.advanced_strategy import MACDRSIStrategy, BollingerRSIStrategy
 from utils import config
 from utils.metadata_generator import generate_metadata, save_metadata
 from strategies.experimental_strategy import CombinedStrategy
+from strategies.buy_hold import BuyAndHoldStrategy
 
 def valid_date(s):
     """Convert string to date for argparse"""
@@ -28,8 +29,8 @@ def parse_args():
     
     # Update strategy choices
     parser.add_argument('--strategies', type=str, nargs='+', default=['sma'],
-                      choices=['sma', 'ema', 'macd_rsi', 'bb_rsi', 'experimental', 'all'],
-                      help='Strategies to run (sma, ema, macd_rsi, bb_rsi, experimental, or all)')
+                      choices=['sma', 'ema', 'macd_rsi', 'bb_rsi', 'experimental', 'buy_hold', 'all'],
+                      help='Strategies to run (sma, ema, macd_rsi, bb_rsi, experimental, buy_hold, or all)')
     
     # Add flag for generating individual reports
     parser.add_argument('--generate-individual-reports', action='store_true',
@@ -73,7 +74,7 @@ def run_backtest(args):
     # Determine which strategies to run
     strategies_to_run = []
     if 'all' in args.strategies:
-        strategies_to_run = ['sma', 'ema', 'macd_rsi', 'bb_rsi', 'experimental']
+        strategies_to_run = ['sma', 'ema', 'macd_rsi', 'bb_rsi', 'experimental', 'buy_hold']
     else:
         strategies_to_run = args.strategies
     
@@ -132,6 +133,11 @@ def run_backtest(args):
         'experimental': {
             'name': 'Experimental',
             'class': CombinedStrategy,
+            'setup': lambda: None  # No setup needed, using default parameters
+        },
+        'buy_hold': {
+            'name': 'Buy & Hold',
+            'class': BuyAndHoldStrategy,
             'setup': lambda: None  # No setup needed, using default parameters
         }
     }
