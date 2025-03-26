@@ -42,7 +42,7 @@ compare-active: results-dir
 
 # Run experimental combined strategy
 backtest-experimental: results-dir
-	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies buy_hold experimental
+	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies buy_hold experimental sma ema
 
 # Compare only buy and hold with experimental
 compare-experimental: results-dir
