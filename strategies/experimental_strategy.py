@@ -70,72 +70,33 @@ class CombinedStrategy(Strategy):
         """
         Initialize the strategy by calculating all indicators.
         """
-        # Calculate Simple Moving Averages using StrategyUtils
-        self.sma_fast = StrategyUtils.add_indicator(
-            self, 
-            talib.SMA, 
-            self.data.Close, 
-            self.fast_ma,
-            name=f'Fast SMA ({self.fast_ma})', 
-            overlay=True, 
-            color='blue'
-        )
+        # Set up all standard chart indicators using the utility
+        indicators = StrategyUtils.setup_complete_chart(self, self.data)
         
-        self.sma_slow = StrategyUtils.add_indicator(
-            self, 
-            talib.SMA, 
-            self.data.Close, 
-            self.slow_ma,
-            name=f'Slow SMA ({self.slow_ma})', 
-            overlay=True, 
-            color='orange'
-        )
+        # Extract indicators from the results for our strategy logic
+        # Moving Averages
+        self.sma_fast = indicators.get('fast_sma')
+        self.sma_slow = indicators.get('slow_sma')
+        self.ema_fast = indicators.get('fast_ema')
+        self.ema_slow = indicators.get('slow_ema')
         
-        # Calculate Exponential Moving Averages using StrategyUtils
-        self.ema_fast = StrategyUtils.add_indicator(
-            self, 
-            talib.EMA, 
-            self.data.Close, 
-            self.ema_fast,
-            name=f'Fast EMA ({self.ema_fast})', 
-            overlay=True, 
-            color='green'
-        )
+        # MACD
+        self.macd = indicators.get('macd')
+        self.signal = indicators.get('signal')
+        self.hist = indicators.get('hist')
         
-        self.ema_slow = StrategyUtils.add_indicator(
-            self, 
-            talib.EMA, 
-            self.data.Close, 
-            self.ema_slow,
-            name=f'Slow EMA ({self.ema_slow})', 
-            overlay=True, 
-            color='red'
-        )
+        # Bollinger Bands
+        self.bb_upper = indicators.get('bb_upper')
+        self.bb_middle = indicators.get('bb_middle')
+        self.bb_lower = indicators.get('bb_lower')
         
-        # Calculate MACD using StrategyUtils
-        self.macd, self.signal, self.hist = StrategyUtils.add_complete_macd(
-            self, 
-            self.data.Close, 
-            fast_period=self.macd_fast,
-            slow_period=self.macd_slow,
-            signal_period=self.macd_signal
-        )
-        
-        # Calculate RSI using StrategyUtils
+        # Add RSI with custom parameters (not included in setup_standard_chart)
         self.rsi, self.rsi_oversold_line, self.rsi_overbought_line = StrategyUtils.add_complete_rsi(
             self,
             self.data.Close,
             period=self.rsi_period,
             oversold=self.rsi_oversold,
             overbought=self.rsi_overbought
-        )
-        
-        # Calculate Bollinger Bands using StrategyUtils
-        self.bb_upper, self.bb_middle, self.bb_lower = StrategyUtils.add_complete_bollinger_bands(
-            self,
-            self.data.Close,
-            period=self.bb_period,
-            num_std_dev=self.bb_dev
         )
         
         # Create a signal score indicator
@@ -147,40 +108,39 @@ class CombinedStrategy(Strategy):
             color='purple'
         )
         
-        # Add tracking for equity and drawdown
-        self.equity_curve = []
-        self.peak_equity = 0
-        self.drawdown = []
-        
         # Initialize trade tracking
         self.trade_count = 0
         self.trade_data = []
+        self.trades = []  # For visualization
         
         # Track entry information
         self.entry_price = 0
         self.entry_time = None
+        self.entry_bar = 0
         
-        # One thing to add is to track the buy & hold performance
-        # This ensures we're calculating it consistently
+        # Track buy & hold performance
         self.buy_hold_return = None
+        
+        # Initialize equity and drawdown tracking variables
+        # (Though these are already tracked by the backtesting framework)
+        self.max_dd_duration = 0
+        self.dd_start_equity = 0
+        self.dd_days = 0
     
     def next(self):
         """
         Execute the strategy logic for each candle.
         """
-        # Track equity and drawdown for each bar
-        current_equity = self.equity
-        self.equity_curve.append(current_equity)
-        
-        # Update peak equity and calculate drawdown
-        if current_equity > self.peak_equity:
-            self.peak_equity = current_equity
-        
-        current_drawdown = (self.peak_equity - current_equity) / self.peak_equity * 100 if self.peak_equity > 0 else 0
-        self.drawdown.append(current_drawdown)
+        # Track drawdown duration
+        if self.equity < self.dd_start_equity:
+            self.dd_days += 1
+            if self.dd_days > self.max_dd_duration:
+                self.max_dd_duration = self.dd_days
+        else:
+            self.dd_start_equity = self.equity
+            self.dd_days = 0
         
         # Calculate the buy & hold return at the end of the backtest
-        # This should only be calculated once at the end of the backtest
         if len(self.data) - 1 == self.data.index[-1]:  # Check if we're at the last bar
             start_price = self.data.Close[0]
             end_price = self.data.Close[-1]
@@ -259,6 +219,19 @@ class CombinedStrategy(Strategy):
                 # Track entry for reference
                 self.entry_price = self.data.Close[-1]
                 self.entry_time = self.data.index[-1]
+                self.entry_bar = len(self.data) - 1
+                
+                # Create a new trade object for visualization
+                new_trade = {
+                    'entry_bar': self.entry_bar,
+                    'entry_price': self.entry_price,
+                    'entry_time': self.entry_time,
+                    'direction': 'long',
+                    'exit_bar': None,
+                    'exit_price': None,
+                    'pl_pct': None
+                }
+                self.trades.append(new_trade)
         else:
             # Sell when score is below threshold
             if score <= self.sell_threshold:
@@ -268,6 +241,7 @@ class CombinedStrategy(Strategy):
                 exit_price = self.data.Close[-1]
                 profit_loss = exit_price - self.entry_price
                 profit_pct = profit_loss/self.entry_price*100
+                exit_bar = len(self.data) - 1
                 
                 # Store trade data
                 self.trade_data.append({
@@ -281,6 +255,13 @@ class CombinedStrategy(Strategy):
                     'trade_duration': (self.data.index[-1] - self.entry_time).days
                 })
                 
+                # Update the current trade for visualization
+                if self.trades:
+                    current_trade = self.trades[-1]
+                    current_trade['exit_bar'] = exit_bar
+                    current_trade['exit_price'] = exit_price
+                    current_trade['pl_pct'] = profit_pct
+                
                 print(f"Trade #{self.trade_count}: P/L = {profit_loss:.2f} ({profit_pct:.2f}%)")
                 
                 self.position.close()
@@ -291,19 +272,31 @@ class CombinedStrategy(Strategy):
         Perform post-backtest analysis.
         This method is called after the backtest is complete.
         """
-        # Analyze equity curve and drawdown
-        if self.equity_curve:
-            equity_df = pd.DataFrame({
-                'Equity': self.equity_curve,
-                'Drawdown': self.drawdown
-            }, index=self.data.index[:len(self.equity_curve)])
-            
-            print("\n=== Equity and Drawdown Statistics ===")
-            print(f"Final Equity: {self.equity_curve[-1]:.2f}")
-            print(f"Peak Equity: {self.peak_equity:.2f}")
-            print(f"Maximum Drawdown: {max(self.drawdown):.2f}%")
+        # Add trade markers to the chart
+        StrategyUtils.add_trade_markers(self, self.trades)
         
-        # Convert trade data to DataFrame for analysis
+        # Add key metrics annotation
+        if self.trade_data:
+            trades_df = pd.DataFrame(self.trade_data)
+            win_rate = len(trades_df[trades_df['profit_pct'] > 0]) / len(trades_df) * 100 if len(trades_df) > 0 else 0
+            
+            metrics = {
+                'Win Rate': f"{win_rate:.1f}%",
+                'Trades': len(trades_df),
+                'Max DD': f"{self.max_dd_duration} days" 
+            }
+            
+            # Calculate profit factor if there are losing trades
+            if len(trades_df) > 0 and len(trades_df[trades_df['profit_pct'] <= 0]) > 0:
+                profit_sum = trades_df[trades_df['profit_pct'] > 0]['profit_pct'].sum()
+                loss_sum = abs(trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].sum())
+                
+                if loss_sum > 0:
+                    metrics['Profit Factor'] = f"{profit_sum / loss_sum:.2f}"
+            
+            StrategyUtils.annotate_key_metrics(self, metrics)
+        
+        # Print trade statistics
         if self.trade_data:
             trades_df = pd.DataFrame(self.trade_data)
             
@@ -339,3 +332,5 @@ class CombinedStrategy(Strategy):
                     strategy_return = trades_df['profit_pct'].sum()
                     print(f"Strategy Return: {strategy_return:.2f}%")
                     print(f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%")
+                
+                print(f"Max Drawdown Duration: {self.max_dd_duration} days")
