@@ -48,6 +48,14 @@ backtest-experimental: results-dir
 compare-experimental: results-dir
 	$(PYTHON) backtest_comparisons.py --symbol SMCI --strategies buy_hold experimental
 
+# Development target with error handling
+dev: results-dir
+	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies sma || echo "Backtest failed, check error message above"
+
+# Debug target for buy_hold strategy
+debug-buy-hold: results-dir
+	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies buy_hold || echo "Buy & Hold strategy failed, check error message above"
+
 # Clean up results
 clean:
 	rm -rf public/results/*
@@ -60,6 +68,6 @@ results-dir:
 server:
 	$(PYTHON) -m utils.dashboard_generator
 
-.PHONY: setup freeze backtest-nvda \
-	compare-nvda clean results-dir server ensure-venv activate-venv backtest-active \
-	backtest-experimental compare-experimental compare-all compare-buyhold-experimental
+.PHONY: setup freeze backtest-nvda backtest-smci \
+	compare-active clean results-dir server ensure-venv activate-venv backtest-active \
+	backtest-experimental compare-experimental dev debug-buy-hold

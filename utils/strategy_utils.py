@@ -298,4 +298,362 @@ class StrategyUtils:
             color='green'
         )
         
-        return upper_band, middle_band, lower_band 
+        return upper_band, middle_band, lower_band
+    
+    @staticmethod
+    def add_volume_indicator(strategy, volume, name="Volume", color=None):
+        """
+        Add volume indicator to the chart.
+        
+        Args:
+            strategy: The strategy instance
+            volume: Series of volume data
+            name: Name for the volume indicator
+            color: Color for the volume bars
+            
+        Returns:
+            The volume indicator
+        """
+        volume_args = {
+            'name': name,
+            'overlay': False,
+        }
+        
+        if color:
+            volume_args['color'] = color
+            
+        return strategy.I(lambda: volume, **volume_args)
+    
+    @staticmethod
+    def add_moving_averages(strategy, close_prices, periods=None, ema=False):
+        """
+        Add a set of moving averages to the chart.
+        
+        Args:
+            strategy: The strategy instance
+            close_prices: Series of closing prices
+            periods: List of periods for the moving averages (default: [20, 50])
+            ema: Whether to use EMA instead of SMA (default: False)
+            
+        Returns:
+            List of moving average indicators
+        """
+        if periods is None:
+            periods = [20, 50]
+            
+        results = []
+        func = talib.EMA if ema else talib.SMA
+        func_name = "EMA" if ema else "SMA"
+        
+        for period in periods:
+            ma = StrategyUtils.add_indicator(
+                strategy,
+                func,
+                close_prices,
+                timeperiod=period,
+                name=f"{func_name} ({period})",
+                overlay=True,
+                color=None  # Let the system assign colors
+            )
+            results.append(ma)
+            
+        return results
+    
+    @staticmethod
+    def setup_standard_chart(strategy, data):
+        """
+        Set up a standard trading chart with common indicators.
+        
+        Args:
+            strategy: The strategy instance
+            data: The price/OHLCV data
+            
+        Returns:
+            Dictionary of created indicators
+        """
+        results = {}
+        
+        # Add moving averages
+        results['fast_sma'] = StrategyUtils.add_indicator(
+            strategy, talib.SMA, data.Close, timeperiod=20,
+            name='Fast SMA (20)', overlay=True, color='blue'
+        )
+        
+        results['slow_sma'] = StrategyUtils.add_indicator(
+            strategy, talib.SMA, data.Close, timeperiod=50,
+            name='Slow SMA (50)', overlay=True, color='orange'
+        )
+        
+        results['fast_ema'] = StrategyUtils.add_indicator(
+            strategy, talib.EMA, data.Close, timeperiod=12,
+            name='Fast EMA (12)', overlay=True, color='purple'
+        )
+        
+        results['slow_ema'] = StrategyUtils.add_indicator(
+            strategy, talib.EMA, data.Close, timeperiod=26,
+            name='Slow EMA (26)', overlay=True, color='brown'
+        )
+        
+        # Add Bollinger Bands
+        bb_upper, bb_middle, bb_lower = StrategyUtils.add_complete_bollinger_bands(
+            strategy, data.Close, period=20, num_std_dev=2.0
+        )
+        results['bb_upper'] = bb_upper
+        results['bb_middle'] = bb_middle
+        results['bb_lower'] = bb_lower
+        
+        # Add MACD
+        macd, signal, hist = StrategyUtils.add_complete_macd(
+            strategy, data.Close, fast_period=12, slow_period=26, signal_period=9
+        )
+        results['macd'] = macd
+        results['signal'] = signal
+        results['hist'] = hist
+        
+        # Add volume indicator if available
+        if hasattr(data, 'Volume'):
+            results['volume'] = StrategyUtils.add_volume_indicator(
+                strategy, data.Volume, color='#00AA00'
+            )
+        
+        return results 
+    
+    @staticmethod
+    def add_performance_metrics(strategy, data, equity_curve=None):
+        """
+        Add comprehensive performance metrics panels to the chart.
+        
+        Args:
+            strategy: The strategy instance
+            data: The price/OHLCV data
+            equity_curve: Custom equity curve if available (otherwise uses strategy.equity_curve)
+            
+        Returns:
+            Dictionary of created indicators
+        """
+        results = {}
+        
+        # Use strategy's equity curve if none provided
+        if equity_curve is None and hasattr(strategy, 'equity_curve'):
+            equity_curve = strategy.equity_curve
+        
+        # Add equity panel
+        if equity_curve is not None:
+            # Main equity curve
+            results['equity'] = strategy.I(
+                lambda: equity_curve,
+                name='Equity',
+                overlay=False,
+                color='blue',
+                panel='Equity'
+            )
+            
+            # Add peak equity as annotation
+            peak_equity = np.max(equity_curve)
+            results['peak_equity_line'] = strategy.I(
+                lambda: np.full(len(data), peak_equity),
+                name=f'Peak (${peak_equity:.2f})',
+                overlay=False,
+                color='cyan',
+                linestyle='--',
+                panel='Equity'
+            )
+            
+            # Add max drawdown line
+            if hasattr(strategy, 'max_dd_duration'):
+                results['max_dd_line'] = strategy.I(
+                    lambda: np.full(len(data), 0),  # Placeholder value
+                    name=f'Max Dd Dur. ({strategy.max_dd_duration} days)',
+                    overlay=False,
+                    color='red',
+                    linestyle='-',
+                    panel='Equity'
+                )
+            
+            # Calculate and add return curve
+            initial_equity = equity_curve[0] if len(equity_curve) > 0 else 1
+            returns = equity_curve / initial_equity - 1  # Percentage returns
+            results['returns'] = strategy.I(
+                lambda: returns * 100,  # Convert to percentage
+                name='Return %',
+                overlay=False,
+                color='blue',
+                panel='Return'
+            )
+            
+            # Add peak return
+            peak_return = np.max(returns) * 100
+            results['peak_return_line'] = strategy.I(
+                lambda: np.full(len(data), peak_return),
+                name=f'Peak ({peak_return:.2f}%)',
+                overlay=False,
+                color='cyan',
+                linestyle='--',
+                panel='Return'
+            )
+            
+            # Calculate and add drawdown curve
+            if len(equity_curve) > 0:
+                running_max = np.maximum.accumulate(equity_curve)
+                drawdown = (equity_curve / running_max - 1) * 100  # Convert to percentage
+                results['drawdown'] = strategy.I(
+                    lambda: drawdown,
+                    name='Drawdown',
+                    overlay=False,
+                    color='blue',
+                    panel='Drawdown'
+                )
+                
+                # Add peak drawdown point
+                peak_dd = np.min(drawdown)
+                results['peak_dd_point'] = strategy.I(
+                    lambda: np.full(len(data), peak_dd if peak_dd < -10 else -50),  # Ensure visibility
+                    name=f'Peak ({abs(peak_dd):.2f}%)',
+                    overlay=False,
+                    color='red',
+                    linestyle='',
+                    panel='Drawdown'
+                )
+        
+        return results
+    
+    @staticmethod
+    def add_trade_markers(strategy, trades=None):
+        """
+        Add trade markers and profit/loss visualization.
+        
+        Args:
+            strategy: The strategy instance
+            trades: List of trade objects (if None, tries to get from strategy)
+            
+        Returns:
+            Dictionary of created indicators
+        """
+        results = {}
+        
+        # Get trades from strategy if not provided
+        if trades is None and hasattr(strategy, 'trades'):
+            trades = strategy.trades
+        
+        if trades:
+            # Create buy markers
+            buy_signals = np.zeros(len(strategy.data.Close))
+            # Create sell markers
+            sell_signals = np.zeros(len(strategy.data.Close))
+            # Create profit/loss markers
+            profit_markers = []
+            loss_markers = []
+            
+            # Process trades to create markers
+            for trade in trades:
+                # This is a simplified example - you would need to map trade entry/exit times
+                # to the corresponding indices in your price data
+                if hasattr(trade, 'entry_bar') and trade.entry_bar < len(buy_signals):
+                    buy_signals[trade.entry_bar] = strategy.data.Close[trade.entry_bar]
+                
+                if hasattr(trade, 'exit_bar') and trade.exit_bar < len(sell_signals):
+                    sell_signals[trade.exit_bar] = strategy.data.Close[trade.exit_bar]
+                    
+                    # Add to profit/loss visualization
+                    if hasattr(trade, 'pl_pct'):
+                        marker = {
+                            'index': trade.exit_bar,
+                            'value': 0,  # Baseline
+                            'size': abs(trade.pl_pct) * 0.5 + 5,  # Scale marker size with profit/loss
+                            'color': 'green' if trade.pl_pct > 0 else 'red'
+                        }
+                        if trade.pl_pct > 0:
+                            profit_markers.append(marker)
+                        else:
+                            loss_markers.append(marker)
+            
+            # Add buy signals to chart
+            if np.any(buy_signals):
+                results['buy_signals'] = strategy.I(
+                    lambda: buy_signals,
+                    name='Buy',
+                    overlay=True,
+                    color='green',
+                    scatter=True,
+                    scatter_size=100
+                )
+            
+            # Add sell signals to chart
+            if np.any(sell_signals):
+                results['sell_signals'] = strategy.I(
+                    lambda: sell_signals,
+                    name='Sell',
+                    overlay=True,
+                    color='red',
+                    scatter=True,
+                    scatter_size=100
+                )
+            
+            # Add profit/loss visualization
+            # Note: This implementation may need to be adjusted based on the specific
+            # APIs and capabilities of your backtesting library
+            results['trade_count'] = strategy.I(
+                lambda: np.zeros(len(strategy.data)) + 0.5,  # Fixed position for marker placement
+                name=f'Trades ({len(trades)})',
+                overlay=False,
+                color='black',
+                panel='Profit / Loss'
+            )
+        
+        return results
+    
+    @staticmethod
+    def setup_complete_chart(strategy, data):
+        """
+        Set up a complete trading chart with all standard indicators and performance metrics.
+        
+        Args:
+            strategy: The strategy instance
+            data: The price/OHLCV data
+            
+        Returns:
+            Dictionary of created indicators
+        """
+        results = {}
+        
+        # Add standard price indicators
+        indicator_results = StrategyUtils.setup_standard_chart(strategy, data)
+        results.update(indicator_results)
+        
+        # Add performance metrics
+        performance_results = StrategyUtils.add_performance_metrics(strategy, data)
+        results.update(performance_results)
+        
+        # Add trade markers and profit/loss visualization
+        trade_results = StrategyUtils.add_trade_markers(strategy)
+        results.update(trade_results)
+        
+        return results
+
+    @staticmethod 
+    def annotate_key_metrics(strategy, metrics):
+        """
+        Annotate the chart with key performance metrics.
+        
+        Args:
+            strategy: The strategy instance
+            metrics: Dictionary of metrics to display (e.g., {'CAGR': 15.2, 'Sharpe': 1.1})
+            
+        Returns:
+            Dictionary of created annotations
+        """
+        results = {}
+        
+        # Create a text annotation with key metrics
+        metrics_text = ', '.join([f"{k}: {v}" for k, v in metrics.items()])
+        
+        # This is a placeholder - implementation depends on the specific
+        # annotation capabilities of your backtesting library
+        results['metrics_annotation'] = strategy.I(
+            lambda: np.zeros(len(strategy.data)),
+            name=metrics_text,
+            overlay=True,
+            color='black'
+        )
+        
+        return results 
