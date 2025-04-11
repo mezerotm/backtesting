@@ -13,6 +13,11 @@ POLYGON_API_KEY = os.getenv('POLYGON_API_KEY')
 if not POLYGON_API_KEY:
     raise ValueError("POLYGON_API_KEY environment variable is not set")
 
+# FRED API configuration
+FRED_API_KEY = os.getenv('FRED_API_KEY')
+if not FRED_API_KEY:
+    print("Warning: FRED_API_KEY environment variable is not set. Interest rate data will use fallback values.")
+
 # OpenAI API configuration
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 if not OPENAI_API_KEY:
@@ -21,4 +26,7 @@ if not OPENAI_API_KEY:
 # AI explanations configuration
 ENABLE_AI_EXPLANATIONS = IS_PRODUCTION and OPENAI_API_KEY is not None
 if not ENABLE_AI_EXPLANATIONS and IS_PRODUCTION and OPENAI_API_KEY:
-    print("Note: AI explanations are disabled in non-production environments.") 
+    print("Note: AI explanations are disabled in non-production environments.")
+
+# Add this to your config.py file to debug the FRED API key
+print(f"DEBUG - FRED_API_KEY from environment: {os.getenv('FRED_API_KEY')}") 
