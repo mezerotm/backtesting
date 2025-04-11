@@ -50,11 +50,12 @@ compare-experimental: results-dir
 
 # Development target with error handling
 dev: results-dir
-	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies sma || echo "Backtest failed, check error message above"
+	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies sma
 
-# Debug target for buy_hold strategy
-debug-buy-hold: results-dir
-	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies buy_hold || echo "Buy & Hold strategy failed, check error message above"
+# Full market check with all indicators
+full-market-check: results-dir
+	rm -f public/data_cache.json
+	$(PYTHON) market_check.py --include-rates --include-indices --include-economic --force-refresh
 
 # Clean up results
 clean:
@@ -70,4 +71,4 @@ server:
 
 .PHONY: setup freeze backtest-nvda backtest-smci \
 	compare-active clean results-dir server ensure-venv activate-venv backtest-active \
-	backtest-experimental compare-experimental dev debug-buy-hold
+	backtest-experimental compare-experimental dev debug-buy-hold market-check morning-check full-market-check debug-market-check
