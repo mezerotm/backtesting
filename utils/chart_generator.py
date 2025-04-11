@@ -18,7 +18,7 @@ def generate_gdp_chart(data, output_dir):
                     chart_data.append({
                         'time': time_str,
                         'value': float(value),
-                        'color': 'rgba(100, 150, 220, 0.7)' if float(value) >= 0 else 'rgba(255, 220, 100, 0.7)'
+                        'color': 'rgba(34, 197, 94, 0.7)' if float(value) >= 0 else 'rgba(239, 68, 68, 0.7)'
                     })
             except Exception as e:
                 print(f"Error processing GDP data point {i}: {e}")
@@ -67,14 +67,42 @@ def generate_gdp_chart(data, output_dir):
                         borderColor: 'rgba(148, 163, 184, 0.2)',
                         borderVisible: true,
                         scaleMargins: {{
-                            top: 0.3,
-                            bottom: 0.2,
+                            top: 0.1,
+                            bottom: 0.1,
                         }},
+                        autoScale: false,
+                        minimum: -2,
+                        maximum: 4.5,
                     }},
                     timeScale: {{
                         borderColor: 'rgba(148, 163, 184, 0.2)',
                         borderVisible: true,
                         timeVisible: true,
+                    }},
+                    handleScroll: {{
+                        mouseWheel: true,
+                        pressedMouseMove: true,
+                    }},
+                    handleScale: {{
+                        mouseWheel: true,
+                        pinch: true,
+                    }},
+                    crosshair: {{
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                        vertLine: {{
+                            color: '#94A3B8',
+                            width: 0.5,
+                            style: 1,
+                            visible: true,
+                            labelVisible: true,
+                        }},
+                        horzLine: {{
+                            color: '#94A3B8',
+                            width: 0.5,
+                            style: 1,
+                            visible: true,
+                            labelVisible: true,
+                        }},
                     }},
                 }});
 
@@ -88,6 +116,12 @@ def generate_gdp_chart(data, output_dir):
 
                 const chartData = {json.dumps(chart_data)};
                 series.setData(chartData);
+
+                const baseline = chart.addBaselineSeries({{
+                    baseValue: {{ type: 'price', price: 0 }},
+                    topLineColor: 'rgba(148, 163, 184, 0.2)',
+                    bottomLineColor: 'rgba(148, 163, 184, 0.2)',
+                }});
 
                 // Add value labels above bars with delay to ensure rendering
                 setTimeout(() => {{
@@ -144,7 +178,8 @@ def generate_inflation_chart(data, output_dir):
                     chart_data.append({
                         'time': time_str,
                         'value': float(value),
-                        'color': 'rgba(74, 222, 128, 0.7)' if float(value) <= 2.5 else 'rgba(248, 113, 113, 0.7)'
+                        'color': ('rgba(34, 197, 94, 0.7)' if 2.0 <= float(value) <= 2.5  # Green when in target range
+                                 else 'rgba(239, 68, 68, 0.7)')  # Red when outside target range
                     })
             except Exception as e:
                 print(f"Error processing inflation data point {i}: {e}")
@@ -192,14 +227,42 @@ def generate_inflation_chart(data, output_dir):
                         borderColor: 'rgba(148, 163, 184, 0.2)',
                         borderVisible: true,
                         scaleMargins: {{
-                            top: 0.3,
-                            bottom: 0.2,
+                            top: 0.1,
+                            bottom: 0.1,
                         }},
+                        autoScale: false,
+                        minimum: 1.8,
+                        maximum: 3.5,
                     }},
                     timeScale: {{
                         borderColor: 'rgba(148, 163, 184, 0.2)',
                         borderVisible: true,
                         timeVisible: true,
+                    }},
+                    handleScroll: {{
+                        mouseWheel: true,
+                        pressedMouseMove: true,
+                    }},
+                    handleScale: {{
+                        mouseWheel: true,
+                        pinch: true,
+                    }},
+                    crosshair: {{
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                        vertLine: {{
+                            color: '#94A3B8',
+                            width: 0.5,
+                            style: 1,
+                            visible: true,
+                            labelVisible: true,
+                        }},
+                        horzLine: {{
+                            color: '#94A3B8',
+                            width: 0.5,
+                            style: 1,
+                            visible: true,
+                            labelVisible: true,
+                        }},
                     }},
                 }});
 
@@ -213,6 +276,12 @@ def generate_inflation_chart(data, output_dir):
 
                 const chartData = {json.dumps(chart_data)};
                 series.setData(chartData);
+
+                const baseline = chart.addBaselineSeries({{
+                    baseValue: {{ type: 'price', price: 2.5 }},
+                    topLineColor: 'rgba(148, 163, 184, 0.2)',
+                    bottomLineColor: 'rgba(148, 163, 184, 0.2)',
+                }});
 
                 // Add value labels above bars with delay to ensure rendering
                 setTimeout(() => {{
@@ -266,10 +335,18 @@ def generate_unemployment_chart(data, output_dir):
                     
                     # Color coding: purple for unemployment
                     # Darker purple for higher unemployment
+                    def get_unemployment_color(value):
+                        if value <= 4.0:
+                            return 'rgba(34, 197, 94, 0.7)'  # Green for low unemployment
+                        elif value <= 4.4:
+                            return 'rgba(234, 179, 8, 0.7)'  # Yellow for near target
+                        else:
+                            return 'rgba(239, 68, 68, 0.7)'  # Red for high unemployment
+
                     chart_data.append({
                         'time': time_str,
                         'value': float(value),
-                        'color': 'rgba(168, 85, 247, 0.7)' if float(value) <= 4.0 else 'rgba(126, 34, 206, 0.7)'
+                        'color': get_unemployment_color(float(value))
                     })
             except Exception as e:
                 print(f"Error processing unemployment data point {i}: {e}")
@@ -317,14 +394,42 @@ def generate_unemployment_chart(data, output_dir):
                         borderColor: 'rgba(148, 163, 184, 0.2)',
                         borderVisible: true,
                         scaleMargins: {{
-                            top: 0.3,
-                            bottom: 0.2,
+                            top: 0.1,
+                            bottom: 0.1,
                         }},
+                        autoScale: false,
+                        minimum: 3.2,
+                        maximum: 4.4,
                     }},
                     timeScale: {{
                         borderColor: 'rgba(148, 163, 184, 0.2)',
                         borderVisible: true,
                         timeVisible: true,
+                    }},
+                    handleScroll: {{
+                        mouseWheel: true,
+                        pressedMouseMove: true,
+                    }},
+                    handleScale: {{
+                        mouseWheel: true,
+                        pinch: true,
+                    }},
+                    crosshair: {{
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                        vertLine: {{
+                            color: '#94A3B8',
+                            width: 0.5,
+                            style: 1,
+                            visible: true,
+                            labelVisible: true,
+                        }},
+                        horzLine: {{
+                            color: '#94A3B8',
+                            width: 0.5,
+                            style: 1,
+                            visible: true,
+                            labelVisible: true,
+                        }},
                     }},
                 }});
 
@@ -338,6 +443,12 @@ def generate_unemployment_chart(data, output_dir):
 
                 const chartData = {json.dumps(chart_data)};
                 series.setData(chartData);
+
+                const baseline = chart.addBaselineSeries({{
+                    baseValue: {{ type: 'price', price: 4.4 }},
+                    topLineColor: 'rgba(148, 163, 184, 0.2)',
+                    bottomLineColor: 'rgba(148, 163, 184, 0.2)',
+                }});
 
                 // Add value labels above bars with delay to ensure rendering
                 setTimeout(() => {{
