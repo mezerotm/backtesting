@@ -735,30 +735,35 @@ def fetch_economic_indicators(force_refresh=False):
             'Last Updated': datetime.now().strftime('%Y-%m-%d')
         }
 
-def fetch_economic_history(indicator_id, limit=36, force_refresh=False):
+def fetch_economic_history(indicator_id, limit=12, force_refresh=False):
     """Fetch historical data for economic indicators."""
     try:
         api_key = config.FRED_API_KEY
         if not api_key:
             return {'labels': [], 'values': [], 'title': 'API Key Error'}
+
+        # For GDP, we want quarterly data
+        if indicator_id == 'A191RL1Q225SBEA':
+            # Get more data points since GDP is quarterly
+            params = {
+                'series_id': indicator_id,
+                'api_key': api_key,
+                'file_type': 'json',
+                'sort_order': 'desc',
+                'limit': limit * 2  # Get more points since we're filtering quarterly
+            }
+        else:
+            # For monthly data (inflation, unemployment, etc)
+            params = {
+                'series_id': indicator_id,
+                'api_key': api_key,
+                'file_type': 'json',
+                'sort_order': 'desc',
+                'limit': limit
+            }
         
-        # Calculate date range
-        end_date = datetime.now()
-        start_date = end_date - relativedelta(years=3)
-        
-        url = f"https://api.stlouisfed.org/fred/series/observations"
-        params = {
-            'series_id': indicator_id,
-            'api_key': api_key,
-            'file_type': 'json',
-            'sort_order': 'desc',  # Get most recent first
-            'observation_start': start_date.strftime('%Y-%m-%d'),
-            'observation_end': end_date.strftime('%Y-%m-%d')
-            # Removed frequency parameter as it's not needed/supported
-        }
-        
-        print(f"DEBUG - Fetching {indicator_id} data from {start_date} to {end_date}")
-        response = requests.get(url, params=params)
+        print(f"DEBUG - Fetching {indicator_id} data with params: {params}")
+        response = requests.get("https://api.stlouisfed.org/fred/series/observations", params=params)
         
         if response.status_code != 200:
             print(f"API Error {response.status_code}: {response.text}")
@@ -778,26 +783,50 @@ def fetch_economic_history(indicator_id, limit=36, force_refresh=False):
         if indicator_id == 'A191RL1Q225SBEA':  # GDP
             for obs in observations:
                 if obs['value'] != '.':
-                    # Convert YYYY-MM-DD to quarter format
                     date = datetime.strptime(obs['date'], '%Y-%m-%d')
                     quarter = (date.month - 1) // 3 + 1
                     label = f"Q{quarter} {date.year}"
+                    try:
+                        value = float(obs['value'])
+                        labels.append(label)
+                        values.append(value)
+                    except ValueError:
+                        print(f"Error converting GDP value: {obs['value']}")
+                        continue
+        elif indicator_id == 'CPIAUCSL':  # Inflation
+            # Calculate year-over-year inflation rate
+            for i in range(len(observations) - 12):  # Need 12 months for YoY calculation
+                try:
+                    current = float(observations[i]['value'])
+                    year_ago = float(observations[i + 12]['value'])
+                    # Calculate inflation rate as percentage with 2 decimal places
+                    inflation_rate = ((current - year_ago) / year_ago) * 100
+                    
+                    date = datetime.strptime(observations[i]['date'], '%Y-%m-%d')
+                    label = date.strftime('%Y-%m-%d')
                     labels.append(label)
-                    values.append(float(obs['value']))
+                    values.append(round(inflation_rate, 2))  # Round to 2 decimal places
+                except (ValueError, IndexError) as e:
+                    print(f"Error calculating inflation: {e}")
+                    continue
         else:
-            # For other indicators, use regular date format
+            # For other indicators, use monthly data
             for obs in observations:
                 if obs['value'] != '.':
-                    date = datetime.strptime(obs['date'], '%Y-%m-%d')
-                    label = date.strftime('%Y-%m-%d')
-                    values.append(float(obs['value']))
-                    labels.append(label)
+                    try:
+                        value = float(obs['value'])
+                        date = datetime.strptime(obs['date'], '%Y-%m-%d')
+                        label = date.strftime('%Y-%m-%d')
+                        labels.append(label)
+                        values.append(value)
+                    except ValueError:
+                        continue
 
         # Reverse to get chronological order
         labels.reverse()
         values.reverse()
         
-        # Limit the number of points
+        # Limit to requested number of points
         labels = labels[-limit:]
         values = values[-limit:]
 
