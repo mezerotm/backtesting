@@ -3,161 +3,105 @@ import os
 import json
 
 def generate_gdp_chart(data, output_dir):
-    """Generate GDP chart using Lightweight Charts."""
+    """Generate GDP chart using Plotly."""
     try:
-        # Convert data for lightweight-charts
+        # Convert data for plotly
         chart_data = []
+        labels = []
+        values = []
+        colors = []
+        
         for i, (label, value) in enumerate(zip(data['labels'], data['values'])):
             try:
                 if label and value is not None:
                     quarter = int(label[1])
                     year = int(label.split()[1])
-                    month = (quarter - 1) * 3 + 2
-                    time_str = f"{year}-{month:02d}-15"
-                    
-                    chart_data.append({
-                        'time': time_str,
-                        'value': float(value),
-                        'color': 'rgba(34, 197, 94, 0.7)' if float(value) >= 0 else 'rgba(239, 68, 68, 0.7)'
-                    })
+                    labels.append(f"Q{quarter} {year}")
+                    values.append(float(value))
+                    colors.append('rgb(34, 197, 94)' if float(value) >= 0 else 'rgb(239, 68, 68)')
             except Exception as e:
                 print(f"Error processing GDP data point {i}: {e}")
 
-        print(f"DEBUG - GDP Chart data: {chart_data}")
+        # Create the bar chart
+        fig = go.Figure(data=[
+            go.Bar(
+                x=labels,
+                y=values,
+                marker_color=colors,
+                text=[f"{v:+.1f}%" for v in values],  # Show values with + or - sign
+                textposition='outside',  # Place text above bars
+                textfont={'size': 14, 'color': '#94a3b8'},  # Larger, visible text
+                hovertemplate="<b>%{x}</b><br>" +
+                            "GDP Growth: %{text}<br>" +
+                            "<extra></extra>"  # Remove secondary box
+            )
+        ])
 
-        # Update the JavaScript to properly show labels
-        chart_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Real GDP Growth Rate</title>
-            <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-            <style>
-                body {{
-                    margin: 0;
-                    padding: 0;
-                    width: 100vw;
-                    height: 100vh;
-                    background-color: rgb(13, 18, 30);
-                }}
-                #container {{
-                    position: absolute;
-                    width: 100%;
-                    height: 100%;
-                }}
-            </style>
-        </head>
-        <body>
-            <div id="container"></div>
-            <script>
-                const container = document.getElementById('container');
-                const chart = LightweightCharts.createChart(container, {{
-                    width: container.clientWidth,
-                    height: container.clientHeight,
-                    layout: {{
-                        background: {{ type: 'solid', color: 'rgb(13, 18, 30)' }},
-                        textColor: '#94a3b8',
-                        fontFamily: 'system-ui',
-                    }},
-                    grid: {{
-                        vertLines: {{ color: 'rgba(148, 163, 184, 0.1)' }},
-                        horzLines: {{ color: 'rgba(148, 163, 184, 0.1)' }},
-                    }},
-                    rightPriceScale: {{
-                        borderColor: 'rgba(148, 163, 184, 0.2)',
-                        borderVisible: true,
-                        scaleMargins: {{
-                            top: 0.1,
-                            bottom: 0.1,
-                        }},
-                        autoScale: false,
-                        minimum: -2,
-                        maximum: 4.5,
-                    }},
-                    timeScale: {{
-                        borderColor: 'rgba(148, 163, 184, 0.2)',
-                        borderVisible: true,
-                        timeVisible: true,
-                    }},
-                    handleScroll: {{
-                        mouseWheel: true,
-                        pressedMouseMove: true,
-                    }},
-                    handleScale: {{
-                        mouseWheel: true,
-                        pinch: true,
-                    }},
-                    crosshair: {{
-                        mode: LightweightCharts.CrosshairMode.Normal,
-                        vertLine: {{
-                            color: '#94A3B8',
-                            width: 0.5,
-                            style: 1,
-                            visible: true,
-                            labelVisible: true,
-                        }},
-                        horzLine: {{
-                            color: '#94A3B8',
-                            width: 0.5,
-                            style: 1,
-                            visible: true,
-                            labelVisible: true,
-                        }},
-                    }},
-                }});
+        # Update layout
+        fig.update_layout(
+            title={
+                'text': 'Real GDP Growth',  # Simplified title
+                'y': 0.95,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {'color': 'rgb(148, 163, 184)', 'size': 28}  # Brighter, larger title
+            },
+            plot_bgcolor='rgb(13, 18, 30)',
+            paper_bgcolor='rgb(13, 18, 30)',
+            font={'color': 'rgb(148, 163, 184)', 'size': 14},  # Brighter text
+            showlegend=False,
+            margin=dict(t=60, l=50, r=30, b=80),  # Increased bottom margin for dates
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(148, 163, 184, 0.1)',
+                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},  # Adjusted text size
+                title=None,
+                tickangle=45,  # Angled labels for better readability
+                tickmode='array',
+                ticktext=labels,
+                tickvals=list(range(len(labels))),
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(148, 163, 184, 0.1)',
+                zeroline=True,
+                zerolinecolor='rgba(148, 163, 184, 0.5)',
+                zerolinewidth=1,
+                ticksuffix='%',
+                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
+                title={'text': 'Growth Rate', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}},
+                range=[min(values) - 1, max(values) + 1],
+                tickformat='.1f'
+            ),
+            height=400,  # Reduced height for better embedding
+            width=None,  # Remove fixed width to allow responsive scaling
+            autosize=True,  # Enable autosize
+        )
 
-                const series = chart.addHistogramSeries({{
-                    priceFormat: {{
-                        type: 'price',
-                        precision: 1,
-                        minMove: 0.1,
-                    }},
-                }});
-
-                const chartData = {json.dumps(chart_data)};
-                series.setData(chartData);
-
-                const baseline = chart.addBaselineSeries({{
-                    baseValue: {{ type: 'price', price: 0 }},
-                    topLineColor: 'rgba(148, 163, 184, 0.2)',
-                    bottomLineColor: 'rgba(148, 163, 184, 0.2)',
-                }});
-
-                // Add value labels above bars with delay to ensure rendering
-                setTimeout(() => {{
-                    chartData.forEach(bar => {{
-                        const sign = bar.value >= 0 ? '+' : '';
-                        chart.addCustomPriceLabel({{
-                            price: bar.value + (bar.value >= 0 ? 0.5 : -0.5),
-                            time: bar.time,
-                            color: '#94a3b8',
-                            text: `${{sign}}${{bar.value.toFixed(1)}}%`,
-                            fontSize: 11,
-                            borderColor: 'transparent',
-                        }});
-                    }});
-                }}, 100);
-
-                chart.timeScale().fitContent();
-
-                window.addEventListener('resize', () => {{
-                    chart.applyOptions({{
-                        width: container.clientWidth,
-                        height: container.clientHeight,
-                    }});
-                }});
-            </script>
-        </body>
-        </html>
-        """
+        # Add a horizontal line at y=0
+        fig.add_hline(
+            y=0,
+            line_color='rgba(148, 163, 184, 0.5)',
+            line_width=1
+        )
 
         # Save the chart
         charts_dir = os.path.join(output_dir, 'charts')
         os.makedirs(charts_dir, exist_ok=True)
         chart_path = os.path.join(charts_dir, 'gdp_chart.html')
         
-        with open(chart_path, 'w') as f:
-            f.write(chart_html)
+        fig.write_html(
+            chart_path,
+            include_plotlyjs=True,
+            full_html=True,
+            config={
+                'displayModeBar': False,
+                'responsive': True,
+                'autosizable': True,
+                'fillFrame': True
+            }
+        )
         
         return os.path.relpath(chart_path, output_dir)
         
@@ -231,8 +175,8 @@ def generate_inflation_chart(data, output_dir):
                             bottom: 0.1,
                         }},
                         autoScale: false,
-                        minimum: 1.8,
-                        maximum: 3.5,
+                        minimum: 2.2,
+                        maximum: 3.4,
                     }},
                     timeScale: {{
                         borderColor: 'rgba(148, 163, 184, 0.2)',
@@ -399,7 +343,7 @@ def generate_unemployment_chart(data, output_dir):
                         }},
                         autoScale: false,
                         minimum: 3.2,
-                        maximum: 4.4,
+                        maximum: 4.2,
                     }},
                     timeScale: {{
                         borderColor: 'rgba(148, 163, 184, 0.2)',

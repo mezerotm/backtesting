@@ -331,22 +331,46 @@ def fetch_market_indices():
         }
         
         # Fetch data using yfinance
-        data = yf.download(list(indices.values()), period='2d', progress=False)
+        # Add progress=False and interval='1d' for more reliable data
+        data = yf.download(list(indices.values()), period='2d', interval='1d', progress=False)
         
         results = {}
         
         for name, ticker in indices.items():
-            if 'Close' in data and ticker in data['Close'].columns:
-                current = data['Close'][ticker].iloc[-1]
-                previous = data['Close'][ticker].iloc[-2]
-                change = ((current - previous) / previous) * 100
-                
-                results[name] = {
-                    'value': f"{current:.2f}",
-                    'change': f"{change:.2f}%",
-                    'direction': 'up' if change >= 0 else 'down'
-                }
-            else:
+            try:
+                if 'Close' in data.columns:
+                    # Handle single ticker case
+                    if isinstance(data['Close'], pd.Series):
+                        current = data['Close'].iloc[-1]
+                        previous = data['Close'].iloc[-2]
+                    # Handle multiple tickers case
+                    else:
+                        current = data['Close'][ticker].iloc[-1]
+                        previous = data['Close'][ticker].iloc[-2]
+                    
+                    # Calculate change percentage
+                    if pd.notna(current) and pd.notna(previous) and previous != 0:
+                        change = ((current - previous) / previous) * 100
+                        
+                        results[name] = {
+                            'value': f"{current:.2f}",
+                            'change': f"{change:.2f}%",
+                            'direction': 'up' if change >= 0 else 'down'
+                        }
+                    else:
+                        results[name] = {
+                            'value': 'N/A',
+                            'change': 'N/A',
+                            'direction': 'neutral'
+                        }
+                else:
+                    results[name] = {
+                        'value': 'N/A',
+                        'change': 'N/A',
+                        'direction': 'neutral'
+                    }
+            except Exception as e:
+                logger.error(f"Error processing {name} ({ticker}): {e}")
                 results[name] = {
                     'value': 'N/A',
                     'change': 'N/A',
@@ -362,11 +386,11 @@ def fetch_market_indices():
         logger.error(f"Error fetching market indices: {e}")
         # Return fallback data on error
         return {
-            'S&P 500': {'value': '4,500.00', 'change': '0.00%', 'direction': 'neutral'},
-            'Dow Jones': {'value': '35,000.00', 'change': '0.00%', 'direction': 'neutral'},
-            'Nasdaq': {'value': '14,000.00', 'change': '0.00%', 'direction': 'neutral'},
-            'Russell 2000': {'value': '2,000.00', 'change': '0.00%', 'direction': 'neutral'},
-            'VIX': {'value': '20.00', 'change': '0.00%', 'direction': 'neutral'}
+            'S&P 500': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
+            'Dow Jones': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
+            'Nasdaq': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
+            'Russell 2000': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
+            'VIX': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
         }
 
 def fetch_economic_indicators(force_refresh=False):
@@ -735,25 +759,23 @@ def fetch_economic_indicators(force_refresh=False):
             'Last Updated': datetime.now().strftime('%Y-%m-%d')
         }
 
-def fetch_economic_history(indicator_id, limit=12, force_refresh=False):
+def fetch_economic_history(indicator_id, limit=20, force_refresh=False):
     """Fetch historical data for economic indicators."""
     try:
         api_key = config.FRED_API_KEY
         if not api_key:
             return {'labels': [], 'values': [], 'title': 'API Key Error'}
 
-        # For GDP, we want quarterly data
+        # For GDP, we want more historical data
         if indicator_id == 'A191RL1Q225SBEA':
-            # Get more data points since GDP is quarterly
             params = {
                 'series_id': indicator_id,
                 'api_key': api_key,
                 'file_type': 'json',
                 'sort_order': 'desc',
-                'limit': limit * 2  # Get more points since we're filtering quarterly
+                'limit': 40  # Get more historical quarters
             }
         else:
-            # For monthly data (inflation, unemployment, etc)
             params = {
                 'series_id': indicator_id,
                 'api_key': api_key,
