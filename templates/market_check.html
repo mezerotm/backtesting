@@ -132,8 +132,17 @@
     }
     
     .chart-container {
-        height: 300px;
-        margin-bottom: 20px;
+        position: relative;
+        width: 100%;
+        height: 450px; /* Fixed height container */
+        margin: 20px 0;
+    }
+    
+    .chart-container iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: transparent;
     }
 </style>
 {% endblock %}
@@ -201,12 +210,8 @@
         {% if gdp_history is defined %}
         <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
             <h3 class="text-lg font-medium mb-3 text-slate-100">Real Gross Domestic Product</h3>
-            <div class="chart-container" style="height: 300px;">
-                {% if gdp_chart_path %}
-                    <iframe src="{{ gdp_chart_path }}" frameborder="0" scrolling="no" width="100%" height="100%" style="background: transparent;"></iframe>
-                {% else %}
-                    <div class="text-center text-slate-400 py-10">Error loading chart</div>
-                {% endif %}
+            <div class="chart-container">
+                <iframe src="{{ gdp_chart_path }}" frameborder="0"></iframe>
             </div>
         </div>
         {% endif %}
@@ -215,12 +220,8 @@
         {% if inflation_history is defined %}
         <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
             <h3 class="text-lg font-medium mb-3 text-slate-100">Inflation Rate</h3>
-            <div class="chart-container" style="height: 300px;">
-                {% if inflation_chart_path %}
-                    <iframe src="{{ inflation_chart_path }}" frameborder="0" scrolling="no" width="100%" height="100%" style="background: transparent;"></iframe>
-                {% else %}
-                    <div class="text-center text-slate-400 py-10">Error loading chart</div>
-                {% endif %}
+            <div class="chart-container">
+                <iframe src="{{ inflation_chart_path }}" frameborder="0"></iframe>
             </div>
         </div>
         {% endif %}
@@ -229,12 +230,8 @@
         {% if unemployment_history is defined %}
         <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
             <h3 class="text-lg font-medium mb-3 text-slate-100">Unemployment Rate</h3>
-            <div class="chart-container" style="height: 300px;">
-                {% if unemployment_chart_path %}
-                    <iframe src="{{ unemployment_chart_path }}" frameborder="0" scrolling="no" width="100%" height="100%" style="background: transparent;"></iframe>
-                {% else %}
-                    <div class="text-center text-slate-400 py-10">Error loading chart</div>
-                {% endif %}
+            <div class="chart-container">
+                <iframe src="{{ unemployment_chart_path }}" frameborder="0"></iframe>
             </div>
         </div>
         {% endif %}
@@ -243,19 +240,8 @@
         {% if bond_history is defined %}
         <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
             <h3 class="text-lg font-medium mb-3 text-slate-100">US 10Y Bond Yield</h3>
-            <div class="chart-container" style="height: 300px;">
-                {% if bond_chart_path %}
-                    <iframe 
-                        src="{{ bond_chart_path }}" 
-                        frameborder="0" 
-                        scrolling="no" 
-                        width="100%" 
-                        height="100%" 
-                        style="background: transparent;"
-                    ></iframe>
-                {% else %}
-                    <div class="text-center text-slate-400 py-10">Error loading chart</div>
-                {% endif %}
+            <div class="chart-container">
+                <iframe src="{{ bond_chart_path }}" frameborder="0"></iframe>
             </div>
         </div>
         {% endif %}
