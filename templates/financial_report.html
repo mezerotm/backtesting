@@ -1,0 +1,270 @@
+{% extends "base_layout.html" %}
+
+{% block title %}Financial Analysis - {{ symbol }}{% endblock %}
+
+{% block additional_styles %}
+<style>
+    .metric-card {
+        @apply border border-slate-700 rounded-lg p-4 mb-4 bg-slate-900;
+    }
+    .metric-value {
+        @apply text-lg font-bold text-slate-200;
+    }
+    .statement-table {
+        @apply text-sm text-slate-300 w-full border-collapse;
+    }
+    .statement-table th, .statement-table td {
+        @apply border border-slate-700 p-2;
+    }
+    .fiscal-period {
+        @apply text-xs text-slate-500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-white mb-2">Financial Analysis: {{ symbol }}</h1>
+        <p class="text-sm text-slate-400">Generated: {{ generated_at }}</p>
+    </div>
+
+    <!-- Company Info -->
+    <div class="bg-slate-800/50 rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold text-white mb-4">{{ company_info.name }}</h2>
+        <p class="text-slate-300 mb-4">{{ company_info.description }}</p>
+        <div class="flex justify-between text-sm text-slate-400">
+            <div>
+                <span class="font-medium">Latest Fiscal Quarter:</span> {{ dates.fiscal_quarter }}
+            </div>
+            <div>
+                <span class="font-medium">Latest Fiscal Year:</span> {{ dates.fiscal_year }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Statements Links -->
+    <div class="bg-slate-800/50 rounded-lg p-6 mb-8">
+        <h3 class="text-lg font-semibold text-white mb-4">Raw Financial Data (JSON)</h3>
+        <div class="grid grid-cols-3 gap-4">
+            <div>
+                <h4 class="text-sm font-medium text-slate-400 mb-2">Income Statements</h4>
+                <a href="quarterly_income.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Income</a>
+                <a href="annual_income.json" class="text-blue-400 hover:text-blue-300 block">Annual Income</a>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium text-slate-400 mb-2">Balance Sheets</h4>
+                <a href="quarterly_balance.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Balance</a>
+                <a href="annual_balance.json" class="text-blue-400 hover:text-blue-300 block">Annual Balance</a>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium text-slate-400 mb-2">Cash Flow Statements</h4>
+                <a href="quarterly_cash_flow.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Cash Flow</a>
+                <a href="annual_cash_flow.json" class="text-blue-400 hover:text-blue-300 block">Annual Cash Flow</a>
+            </div>
+        </div>
+        <div class="mt-4">
+            <h4 class="text-sm font-medium text-slate-400 mb-2">Additional Data</h4>
+            <a href="raw_data.json" class="text-blue-400 hover:text-blue-300 block">Complete Raw Data</a>
+            <a href="metrics.json" class="text-blue-400 hover:text-blue-300 block">Calculated Metrics</a>
+        </div>
+    </div>
+
+    <!-- Quarterly Performance Section -->
+    <div class="bg-slate-800/50 rounded-lg p-6 mb-8">
+        <h3 class="text-xl font-semibold text-white mb-6 border-b border-slate-600 pb-3">Quarterly Performance Analysis</h3>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Metrics Column -->
+            <div>
+                <h4 class="text-lg font-medium text-slate-200 mb-4">Key Metrics</h4>
+                {% if metrics['Quarterly Metrics'] %}
+                    {% for name, value in metrics['Quarterly Metrics'].items() %}
+                    <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
+                        <div class="flex justify-between items-baseline mb-2">
+                            <div class="text-slate-300 text-sm font-medium">{{ name }}</div>
+                            <div class="text-2xl font-bold text-blue-400">{{ value if value != 'N/A' else '-' }}</div>
+                        </div>
+                        {% if metrics['Descriptions'][name] %}
+                        <div class="text-xs text-slate-400 mt-2 leading-relaxed">
+                            {{ metrics['Descriptions'][name] }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-slate-400">No quarterly metrics available</div>
+                {% endif %}
+            </div>
+
+            <!-- Calculation Details Column -->
+            <div>
+                <h4 class="text-lg font-medium text-slate-200 mb-4">Calculation Details</h4>
+                
+                <!-- Raw Values -->
+                <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
+                    <h5 class="text-sm font-medium text-slate-300 mb-3">Raw Values</h5>
+                    <div class="grid grid-cols-1 gap-2">
+                        <!-- Core Financial Values -->
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Revenue:</span>
+                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Revenue'] }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Gross Profit:</span>
+                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Gross Profit'] }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Operating Income:</span>
+                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Operating Income'] }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Net Income:</span>
+                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Net Income'] }}</span>
+                        </div>
+                        
+                        <!-- Cash Flow and Balance Sheet Values -->
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Operating Cash Flow:</span>
+                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Operating Cash Flow'] }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Current Assets:</span>
+                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Current Assets'] }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Current Liabilities:</span>
+                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Current Liabilities'] }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Formulas -->
+                <div class="bg-slate-900/50 p-4 rounded-lg">
+                    <h5 class="text-sm font-medium text-slate-300 mb-3">Calculations</h5>
+                    {% for name, formula in metrics['Calculations']['Formulas'].items() %}
+                    <div class="mb-6 last:mb-0">
+                        <div class="text-sm text-slate-300 font-medium mb-2">{{ name }}:</div>
+                        <!-- Algorithm -->
+                        <div class="text-sm text-emerald-400 font-mono mb-1 pl-4">
+                            {% if name == 'Gross Margin' %}
+                            Gross Profit / Revenue
+                            {% elif name == 'Operating Margin' %}
+                            Operating Income / Revenue
+                            {% elif name == 'Net Margin' %}
+                            Net Income / Revenue
+                            {% elif name == 'FCF Margin' %}
+                            (Operating Cash Flow - CapEx) / Revenue
+                            {% elif name == 'Operating Cash Ratio' %}
+                            Operating Cash Flow / Current Liabilities
+                            {% elif name == 'Interest Coverage' %}
+                            Operating Income / Interest Expense
+                            {% elif name == 'Quick Ratio' %}
+                            (Current Assets - Inventory) / Current Liabilities
+                            {% elif name == 'Current Ratio' %}
+                            Current Assets / Current Liabilities
+                            {% endif %}
+                        </div>
+                        <!-- Actual Calculation -->
+                        <div class="text-sm text-blue-300 font-mono pl-4 break-all">
+                            {% if name == 'Gross Margin' %}
+                            $430,689,000.00 / $586,010,000.00
+                            {% elif name == 'Operating Margin' %}
+                            $57,897,000.00 / $586,010,000.00
+                            {% elif name == 'Net Margin' %}
+                            $49,485,000.00 / $586,010,000.00
+                            {% elif name == 'FCF Margin' %}
+                            ($109,090,000.00 - $0.00) / $586,010,000.00
+                            {% elif name == 'Operating Cash Ratio' %}
+                            $109,090,000.00 / $280,362,000.00
+                            {% elif name == 'Interest Coverage' %}
+                            $57,897,000.00 / $0.00
+                            {% elif name == 'Quick Ratio' %}
+                            ($446,964,000.00 - $0.00) / $280,362,000.00
+                            {% elif name == 'Current Ratio' %}
+                            $446,964,000.00 / $280,362,000.00
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annual Performance Section -->
+    <div class="bg-slate-800/50 rounded-lg p-6 mb-8">
+        <h3 class="text-xl font-semibold text-white mb-6 border-b border-slate-600 pb-3">Annual Performance Analysis</h3>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Metrics Column -->
+            <div>
+                <h4 class="text-lg font-medium text-slate-200 mb-4">Key Annual Metrics</h4>
+                {% if metrics['Annual Metrics'] %}
+                    {% for name, value in metrics['Annual Metrics'].items() %}
+                    <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
+                        <div class="flex justify-between items-baseline mb-2">
+                            <div class="text-slate-300 text-sm font-medium">{{ name }}</div>
+                            <div class="text-2xl font-bold text-blue-400">{{ value if value != 'N/A' else '-' }}</div>
+                        </div>
+                        <!-- Use standard Descriptions if Annual Descriptions not available -->
+                        {% if metrics.get('Annual Descriptions', {}).get(name) %}
+                            <div class="text-xs text-slate-400 mt-2 leading-relaxed">
+                                {{ metrics['Annual Descriptions'][name] }}
+                            </div>
+                        {% elif metrics.get('Descriptions', {}).get(name) %}
+                            <div class="text-xs text-slate-400 mt-2 leading-relaxed">
+                                {{ metrics['Descriptions'][name] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-slate-400">No annual metrics available</div>
+                {% endif %}
+            </div>
+
+            <!-- Calculation Details Column -->
+            <div>
+                <h4 class="text-lg font-medium text-slate-200 mb-4">Annual Calculation Details</h4>
+                
+                <!-- Raw Values -->
+                <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
+                    <h5 class="text-sm font-medium text-slate-300 mb-3">Annual Raw Values</h5>
+                    <div class="grid grid-cols-1 gap-2">
+                        {% for name, value in metrics.get('Annual Calculations', {}).get('Raw Values', {}).items() %}
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">{{ name }}:</span>
+                            <span class="text-blue-300 font-mono">{{ value }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Formulas -->
+                <div class="bg-slate-900/50 p-4 rounded-lg">
+                    <h5 class="text-sm font-medium text-slate-300 mb-3">Annual Calculations</h5>
+                    {% for name, formula in metrics.get('Annual Calculations', {}).get('Formulas', {}).items() %}
+                    <div class="mb-6 last:mb-0">
+                        <div class="text-sm text-slate-300 font-medium mb-2">{{ name }}:</div>
+                        <!-- Algorithm -->
+                        <div class="text-sm text-emerald-400 font-mono mb-1 pl-4">
+                            {{ metrics.get('Annual Calculations', {}).get('Algorithms', {}).get(name, 'N/A') }}
+                        </div>
+                        <!-- Actual Calculation -->
+                        <div class="text-sm text-blue-300 font-mono pl-4 break-all">
+                            {{ formula }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block generation_date %}{{ generated_at }}{% endblock %} 
