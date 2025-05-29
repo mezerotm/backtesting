@@ -9,6 +9,9 @@ import requests
 import yfinance as yf
 import logging
 from dateutil.relativedelta import relativedelta
+from typing import Dict, Optional, Tuple, List
+from random import uniform
+from functools import lru_cache
 
 # Add the project root to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,10 +21,20 @@ from utils import config
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('data_fetcher')
 
-# Cache configuration
-_CACHE_DURATION = 30 * 60  # 30 minutes in seconds
+# Update cache configuration to use public/data_cache.json
+_CACHE_DURATION = 24 * 60 * 60  # 24 hours in seconds
 _CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'data_cache.json')
-_MAX_CACHE_ENTRIES = 100  # Maximum number of entries to keep in cache
+
+# Global throttle between calls
+THROTTLE_DELAY = 3  # Increased from 1 to 3 seconds
+MAX_RETRIES = 5     # Increased from 3 to 5
+INITIAL_DELAY = 5   # Increased initial delay
+
+@lru_cache(maxsize=100)
+def get_ticker(symbol: str) -> yf.Ticker:
+    """Get cached Ticker object with throttling"""
+    time.sleep(THROTTLE_DELAY)  # Global throttle
+    return yf.Ticker(symbol)
 
 def get_polygon_client():
     """Initialize and return a Polygon REST client."""
@@ -30,6 +43,10 @@ def get_polygon_client():
 def _get_cache_key(ticker, start_date, end_date, timeframe):
     """Generate a unique cache key based on request parameters."""
     return f"{ticker}_{start_date}_{end_date}_{timeframe}"
+
+def _get_financial_cache_key(symbol: str, statement_type: str) -> str:
+    """Generate a unique cache key for financial statements"""
+    return f"financial_{symbol}_{statement_type}"
 
 def _load_cache():
     """Load cache from file."""
@@ -874,3 +891,307 @@ def get_indicator_title(indicator_id):
         'DGS10': 'US 10Y Bond Yield'
     }
     return titles.get(indicator_id, 'Economic Data')
+
+def get_historical_data(symbol: str, years: int = 5) -> pd.DataFrame:
+    """Get historical data using yf.download (single request)"""
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=years*365)
+    time.sleep(THROTTLE_DELAY)  # Add delay before download
+    return yf.download(symbol, start=start_date, end=end_date, progress=False)
+
+@lru_cache(maxsize=100)
+def get_ticker_info(symbol: str) -> Dict:
+    """Get cached ticker info with throttling"""
+    time.sleep(THROTTLE_DELAY)  # Global throttle
+    ticker = yf.Ticker(symbol)
+    return ticker.info
+
+def fetch_with_retry(func, symbol: str, max_retries: int = MAX_RETRIES, delay: int = INITIAL_DELAY) -> Optional[Dict]:
+    """Helper function to retry API calls with exponential backoff"""
+    for attempt in range(max_retries):
+        try:
+            return func(symbol)
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:  # Rate limit
+                sleep_time = delay * (2 ** attempt)
+                logger.warning(f"Rate limit hit for {symbol}, retrying in {sleep_time}s...")
+                time.sleep(sleep_time)
+                continue
+        except Exception as e:
+            if "Too Many Requests" in str(e) or "YFRateLimitError" in str(e):
+                sleep_time = delay * (2 ** attempt)
+                logger.warning(f"Rate limit hit for {symbol}, retrying in {sleep_time}s...")
+                time.sleep(sleep_time)
+                continue
+            logger.error(f"Error fetching data for {symbol}: {e}")
+            return None
+    return None
+
+@lru_cache(maxsize=100)
+def fetch_polygon_financials(symbol: str, period: str = "annual", limit: int = 5) -> pd.DataFrame:
+    """Fetch financial statements from Polygon"""
+    try:
+        client = get_polygon_client()
+        records = []
+        
+        def get_value(obj, attr_name, default=0.0):
+            """Helper function to safely get value from DataPoint objects"""
+            attr = getattr(obj, attr_name, None)
+            if attr is None:
+                return default
+            # Handle DataPoint objects
+            if hasattr(attr, 'value'):
+                return float(attr.value or default)
+            return float(attr or default)
+        
+        financials = client.vx.list_stock_financials(
+            ticker=symbol,
+            timeframe=period,
+            include_sources=True,
+            limit=limit
+        )
+        
+        for fin in financials:
+            try:
+                record = {
+                    'date': fin.filing_date,
+                    'end_date': fin.end_date,
+                    'period': fin.fiscal_period,
+                    'year': fin.fiscal_year
+                }
+                
+                # Income Statement
+                if hasattr(fin, 'financials') and hasattr(fin.financials, 'income_statement'):
+                    inc = fin.financials.income_statement
+                    record.update({
+                        'revenue': get_value(inc, 'revenues'),
+                        'net_income': get_value(inc, 'net_income_loss'),
+                        'operating_income': get_value(inc, 'operating_income_loss'),
+                        'gross_profit': get_value(inc, 'gross_profit'),
+                        'operating_expenses': get_value(inc, 'operating_expenses'),
+                        'interest_expense': get_value(inc, 'interest_expense_net'),
+                        'research_development': get_value(inc, 'research_and_development_expense'),
+                        'selling_general_administrative': get_value(inc, 'selling_general_and_administrative_expense'),
+                        'depreciation_amortization': get_value(inc, 'depreciation_and_amortization')
+                    })
+                
+                # Balance Sheet
+                if hasattr(fin, 'financials') and hasattr(fin.financials, 'balance_sheet'):
+                    bal = fin.financials.balance_sheet
+                    record.update({
+                        'total_assets': get_value(bal, 'assets'),
+                        'total_liabilities': get_value(bal, 'liabilities'),
+                        'total_equity': get_value(bal, 'stockholders_equity'),
+                        'current_assets': get_value(bal, 'current_assets'),
+                        'current_liabilities': get_value(bal, 'current_liabilities'),
+                        'cash_equivalents': get_value(bal, 'cash_and_cash_equivalents'),
+                        'total_debt': (
+                            get_value(bal, 'long_term_debt') +
+                            get_value(bal, 'current_debt')
+                        )
+                    })
+                
+                # Cash Flow
+                if hasattr(fin, 'financials') and hasattr(fin.financials, 'cash_flow_statement'):
+                    cf = fin.financials.cash_flow_statement
+                    record.update({
+                        'operating_cash_flow': get_value(cf, 'net_cash_flow_from_operating_activities'),
+                        'investing_cash_flow': get_value(cf, 'net_cash_flow_from_investing_activities'),
+                        'financing_cash_flow': get_value(cf, 'net_cash_flow_from_financing_activities'),
+                        'capital_expenditure': abs(get_value(cf, 'capital_expenditures'))
+                    })
+                
+                records.append(record)
+                logger.debug(f"Processed record: {record}")
+                
+            except Exception as e:
+                logger.error(f"Error processing statement: {e}", exc_info=True)
+                continue
+        
+        if not records:
+            logger.warning(f"No {period} financial data found for {symbol}")
+            return pd.DataFrame()
+            
+        df = pd.DataFrame(records)
+        logger.info(f"Successfully fetched {len(records)} {period} statements for {symbol}")
+        logger.debug(f"DataFrame columns: {df.columns.tolist()}")
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error fetching {period} financials for {symbol} from Polygon: {e}", exc_info=True)
+        return pd.DataFrame()
+
+def process_statements(statements_list: List[Dict], timeframe: str) -> Dict:
+    """Process and validate financial statements"""
+    try:
+        processed = {}
+        for statement in statements_list:
+            if not statement:
+                continue
+                
+            # Convert to DataFrame if it's a list
+            if isinstance(statement, list):
+                df = pd.DataFrame(statement)
+            elif isinstance(statement, pd.DataFrame):
+                df = statement
+            else:
+                logger.warning(f"Invalid statement type: {type(statement)}")
+                continue
+                
+            # Ensure required columns exist
+            required_cols = ['date', 'period_end_date', 'fiscal_period', 'fiscal_year']
+            if not all(col in df.columns for col in required_cols):
+                logger.warning(f"Missing required columns in statement")
+                continue
+                
+            # Sort by period_end_date
+            df['period_end_date'] = pd.to_datetime(df['period_end_date'])
+            df = df.sort_values('period_end_date', ascending=False)
+            
+            # Determine statement type from columns
+            if 'revenue' in df.columns:
+                processed['quarterly_financials' if timeframe == 'quarterly' else 'annual_financials'] = df
+            elif 'total_assets' in df.columns:
+                processed['balance_sheet'] = df
+            elif 'operating_cash_flow' in df.columns:
+                processed['cash_flow'] = df
+                
+        return processed
+        
+    except Exception as e:
+        logger.error(f"Error processing statements: {e}", exc_info=True)
+        return {}
+
+def format_percentage(value: float) -> str:
+    """Format a value as a percentage"""
+    if value is None or pd.isna(value):
+        return 'N/A'
+    return f"{value * 100:.2f}%"
+
+def format_decimal(value: float) -> str:
+    """Format a value as a decimal"""
+    if value is None or pd.isna(value):
+        return 'N/A'
+    return f"{value:.2f}"
+
+def fetch_financial_statements(symbol: str, years: int = 5) -> Dict:
+    """Fetch all financial statements"""
+    try:
+        # Fetch statements from Polygon
+        annual_financials = fetch_polygon_financials(symbol, "annual", limit=5)
+        quarterly_financials = fetch_polygon_financials(symbol, "quarterly", limit=20)
+        
+        statements = {
+            'quarterly_financials': quarterly_financials,
+            'annual_financials': annual_financials
+        }
+
+        # Calculate annual metrics if data is available
+        if not annual_financials.empty:
+            latest_annual = annual_financials.iloc[0]
+            
+            # Add annual metrics with proper formatting
+            statements['Annual Metrics'] = {
+                'Gross Margin': format_percentage(latest_annual['gross_profit'] / latest_annual['revenue'] if latest_annual['revenue'] != 0 else None),
+                'Operating Margin': format_percentage(latest_annual['operating_income'] / latest_annual['revenue'] if latest_annual['revenue'] != 0 else None),
+                'Net Margin': format_percentage(latest_annual['net_income'] / latest_annual['revenue'] if latest_annual['revenue'] != 0 else None),
+                'FCF Margin': format_percentage((latest_annual['operating_cash_flow'] - latest_annual['capital_expenditure']) / latest_annual['revenue'] if latest_annual['revenue'] != 0 else None)
+            }
+            
+            # Add annual calculations for transparency
+            statements['Annual Calculations'] = {
+                'Raw Values': {
+                    'Revenue': f"${latest_annual['revenue']:,.2f}",
+                    'Gross Profit': f"${latest_annual['gross_profit']:,.2f}",
+                    'Operating Income': f"${latest_annual['operating_income']:,.2f}",
+                    'Net Income': f"${latest_annual['net_income']:,.2f}",
+                    'Operating Cash Flow': f"${latest_annual['operating_cash_flow']:,.2f}"
+                },
+                'Algorithms': {
+                    'Gross Margin': 'Annual Gross Profit / Annual Revenue',
+                    'Operating Margin': 'Annual Operating Income / Annual Revenue',
+                    'Net Margin': 'Annual Net Income / Annual Revenue',
+                    'FCF Margin': '(Annual Operating Cash Flow - Annual CapEx) / Annual Revenue'
+                },
+                'Formulas': {
+                    'Gross Margin': f"${latest_annual['gross_profit']:,.2f} / ${latest_annual['revenue']:,.2f}",
+                    'Operating Margin': f"${latest_annual['operating_income']:,.2f} / ${latest_annual['revenue']:,.2f}",
+                    'Net Margin': f"${latest_annual['net_income']:,.2f} / ${latest_annual['revenue']:,.2f}",
+                    'FCF Margin': f"(${latest_annual['operating_cash_flow']:,.2f} - ${latest_annual['capital_expenditure']:,.2f}) / ${latest_annual['revenue']:,.2f}"
+                }
+            }
+        else:
+            logger.warning(f"No annual financial data found for {symbol}")
+            statements['Annual Metrics'] = {}
+            statements['Annual Calculations'] = {'Raw Values': {}, 'Algorithms': {}, 'Formulas': {}}
+
+        # Get company info
+        company_info = fetch_polygon_company_info(symbol)
+        statements.update(company_info)
+
+        return statements
+
+    except Exception as e:
+        logger.error(f"Error fetching financial statements: {e}", exc_info=True)
+        return {
+            'quarterly_financials': pd.DataFrame(),
+            'annual_financials': pd.DataFrame(),
+            'Annual Metrics': {},
+            'Annual Calculations': {'Raw Values': {}, 'Algorithms': {}, 'Formulas': {}}
+        }
+
+def fetch_key_metrics(symbol: str):
+    """Fetch key metrics from Polygon."""
+    info = fetch_polygon_company_info(symbol)
+    return {
+        'name': info.get('name', 'N/A'),
+        'sector': info.get('sector', 'N/A'),
+        'market_cap': info.get('market_cap', 0),
+        'description': info.get('description', 'N/A'),
+        'exchange': info.get('exchange', 'N/A'),
+    }
+
+def fetch_polygon_company_info(symbol: str) -> dict:
+    """
+    Fetch company info from Polygon.
+    
+    Args:
+        symbol (str): Stock symbol (e.g., 'AAPL')
+        
+    Returns:
+        dict: Company information or fallback values if fetch fails
+    """
+    try:
+        client = get_polygon_client()
+        logger.info(f"Fetching company info for {symbol}")
+        
+        # Get ticker details using v1.14.5 client
+        ticker_details = client.get_ticker_details(symbol)
+        logger.info(f"Raw ticker details type: {type(ticker_details)}")
+        
+        # Debug the raw response
+        for attr in ['name', 'sector', 'market_cap', 'description', 'primary_exchange']:
+            logger.info(f"Attribute {attr}: {getattr(ticker_details, attr, 'Not found')}")
+        
+        info = {
+            'name': getattr(ticker_details, 'name', symbol),
+            'sector': getattr(ticker_details, 'sector', 'N/A'),
+            'market_cap': getattr(ticker_details, 'market_cap', 0),
+            'description': getattr(ticker_details, 'description', 'N/A'),
+            'exchange': getattr(ticker_details, 'primary_exchange', 'N/A'),
+        }
+        
+        logger.info(f"Processed company info: {info}")
+        return info
+        
+    except Exception as e:
+        logger.error(f"Error fetching company info for {symbol} from Polygon: {e}", exc_info=True)
+        fallback = {
+            'name': symbol,
+            'sector': 'N/A',
+            'market_cap': 0,
+            'description': 'N/A',
+            'exchange': 'N/A',
+        }
+        logger.info(f"Returning fallback info: {fallback}")
+        return fallback
