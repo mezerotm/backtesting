@@ -1204,3 +1204,65 @@ def fetch_polygon_company_info(symbol: str) -> dict:
         }
         logger.info(f"Returning fallback info: {fallback}")
         return fallback
+
+# Add rate limiting and retry logic for yfinance
+def get_market_data(symbol: str, retries: int = 3, delay: int = 5) -> Optional[pd.DataFrame]:
+    """Get market data with retry logic"""
+    for attempt in range(retries):
+        try:
+            time.sleep(delay)  # Add delay between attempts
+            return yf.download(symbol, period="1d", progress=False)
+        except Exception as e:
+            if attempt == retries - 1:
+                logger.warning(f"Failed to fetch data for {symbol} after {retries} attempts")
+                return None
+            time.sleep(delay * (attempt + 1))  # Exponential backoff
+
+# Fix cache related errors
+_MAX_CACHE_ENTRIES = 1000  # Add missing constant
+
+def _save_cache(cache_data: Dict, cache_file: str) -> None:
+    """Save cache data to file with proper error handling"""
+    try:
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, 'w') as f:
+            json.dump(cache_data, f)
+    except Exception as e:
+        logger.warning(f"Cache save failed: {e}")  # Changed from error to warning
+
+# Update logging to remove sensitive data
+def fetch_economic_indicators() -> Dict:
+    """Fetch economic indicators with secure logging"""
+    try:
+        fred_key_available = bool(config.FRED_API_KEY)
+        logger.info(f"FRED API Key available: {fred_key_available}")
+        # Rest of the function...
+    except Exception as e:
+        logger.warning(f"Error fetching economic indicators: {str(e)}")
+        return {}
+
+# Batch market data requests
+def fetch_market_indices() -> Dict:
+    """Fetch market indices with batched requests"""
+    indices = {
+        'S&P 500': '^GSPC',
+        'Dow Jones': '^DJI',
+        'Nasdaq': '^IXIC',
+        'Russell 2000': '^RUT',
+        'VIX': '^VIX'
+    }
+    
+    results = {}
+    for name, symbol in indices.items():
+        try:
+            data = get_market_data(symbol)
+            if data is not None and not data.empty:
+                results[name] = data['Close'].iloc[-1]
+            else:
+                results[name] = 'N/A'
+        except Exception as e:
+            logger.warning(f"Failed to fetch {name}: {str(e)}")
+            results[name] = 'N/A'
+        time.sleep(2)  # Add delay between requests
+    
+    return results

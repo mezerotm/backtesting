@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Financial Analysis CLI Tool
-Fetches and analyzes financial statements and key metrics
+Fetches and analyzes financial statements and key metrics from Polygon
 """
 
 import argparse
@@ -10,11 +10,19 @@ import logging
 import json
 import pandas as pd
 from typing import Dict, List
-from utils.data_fetcher import fetch_financial_statements, fetch_key_metrics, fetch_market_indices, fetch_economic_indicators
+from utils.data_fetcher import fetch_financial_statements, fetch_key_metrics
 from utils.financial_report_generator import generate_financial_report
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
+# Update logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('financial_analysis.log')
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
 def parse_args():
@@ -36,23 +44,16 @@ def main():
         logger.info(f"Analyzing {symbol}...")
         
         try:
-            # Fetch financial data
+            # Fetch financial data from Polygon
             financial_data = fetch_financial_statements(symbol, args.years)
             
-            # Fetch company metrics
+            # Fetch company metrics from Polygon
             company_metrics = fetch_key_metrics(symbol)
             
-            # Add market data
-            market_data = {
-                'market_indices': fetch_market_indices(),
-                'economic_indicators': fetch_economic_indicators()
-            }
-            
-            # Combine all data for report generation
+            # Combine data for report generation
             report_data = {
                 **financial_data,
-                **company_metrics,
-                **market_data
+                **company_metrics
             }
             
             # Generate report
@@ -64,13 +65,9 @@ def main():
             
             if report_path:
                 logger.info(f"Report generated: {report_path}")
-                # Verify and log the metrics file
                 metrics_file = os.path.join(os.path.dirname(report_path), 'metrics.json')
                 if os.path.exists(metrics_file):
-                    with open(metrics_file, 'r') as f:
-                        metrics = json.load(f)
                     logger.info(f"Successfully saved metrics to {metrics_file}")
-                    logger.debug(f"Metrics structure: {json.dumps(metrics, indent=2)}")
             else:
                 logger.error(f"Failed to generate report for {symbol}")
                 
