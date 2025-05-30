@@ -245,68 +245,126 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         Optional[str]: Path to generated report or None if failed
     """
     try:
-        logger.info(f"Generating financial report for {symbol}")
+        logger.info(f"Starting financial report generation for {symbol}")
         
-        # Always use the default results directory
+        # Log the data structure we received
+        logger.info("Received data keys:")
+        for key in data.keys():
+            if isinstance(data[key], pd.DataFrame):
+                logger.info(f"DataFrame '{key}': {len(data[key])} rows")
+            else:
+                logger.info(f"Key '{key}': {type(data[key])}")
+
         report_dir = os.path.join('public', 'results', f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         os.makedirs(report_dir, exist_ok=True)
+        
+        # Get company info including sector
+        company_info = {
+            'name': metrics.get('name', 'N/A'),
+            'description': metrics.get('description', 'N/A'),
+            'sector': metrics.get('sector', 'N/A')
+        }
+        
+        # Create common metadata
+        common_metadata = {
+            "symbol": symbol,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "company_info": company_info  # Include company info in metadata
+        }
         
         # Calculate all metrics first
         calculated_metrics = calculate_financial_metrics(data)
         
-        # Save metrics to a separate file
+        # Save metrics with metadata
         metrics_file = os.path.join(report_dir, 'metrics.json')
         metrics_data = {
-            'symbol': symbol,
-            'company_info': {
-                'name': metrics.get('name', 'N/A'),
-                'description': metrics.get('description', 'N/A'),
-                'sector': metrics.get('sector', 'N/A')
-            },
-            'metrics': calculated_metrics,
-            'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            **common_metadata,
+            'metrics': calculated_metrics
         }
         
         with open(metrics_file, 'w') as f:
             json.dump(metrics_data, f, indent=2)
-        logger.info(f"Saved metrics to {metrics_file}")
+        logger.info("Successfully saved metrics.json")
         
         # Get latest date from data
         formatted_date = datetime.now().strftime('%Y-%m-%d')
         fiscal_quarter_date = formatted_date
         fiscal_year_date = formatted_date
         
-        # Save individual statement files
+        # Update statement_types dictionary to ensure proper data mapping
         statement_types = {
             'quarterly_income': data.get('quarterly_financials', pd.DataFrame()),
             'annual_income': data.get('annual_financials', pd.DataFrame()),
-            'quarterly_balance': data.get('quarterly_balance', pd.DataFrame()),
-            'annual_balance': data.get('annual_balance', pd.DataFrame()),
+            'quarterly_balance': data.get('quarterly_balance_sheet', pd.DataFrame()),
+            'annual_balance': data.get('annual_balance_sheet', pd.DataFrame()),
             'quarterly_cash_flow': data.get('quarterly_cash_flow', pd.DataFrame()),
             'annual_cash_flow': data.get('annual_cash_flow', pd.DataFrame())
         }
-        
+
+        # Try alternative keys if primary ones aren't found
+        alternative_keys = {
+            'annual_balance': ['annual_balance_sheet', 'annual_balance', 'balance_sheet_annual'],
+            'annual_cash_flow': ['annual_cash_flow', 'cash_flow_annual', 'annual_cashflow']
+        }
+
+        for statement_key, alt_keys in alternative_keys.items():
+            if statement_types[statement_key].empty:
+                for alt_key in alt_keys:
+                    if alt_key in data and isinstance(data[alt_key], pd.DataFrame) and not data[alt_key].empty:
+                        logger.info(f"Found alternative key {alt_key} for {statement_key}")
+                        statement_types[statement_key] = data[alt_key]
+                        break
+
+        # Create balance sheet and cash flow files from the consolidated data
+        if isinstance(data.get('quarterly_financials'), pd.DataFrame):
+            # Create quarterly balance sheet
+            quarterly_balance = data['quarterly_financials'][['date', 'fiscal_period', 'fiscal_year', 
+                'total_assets', 'current_assets', 'current_liabilities', 'inventory', 'liabilities']]
+            statement_types['quarterly_balance'] = quarterly_balance
+
+            # Create quarterly cash flow
+            quarterly_cash_flow = data['quarterly_financials'][['date', 'fiscal_period', 'fiscal_year',
+                'operating_cash_flow', 'capital_expenditure', 'financing_cash_flow']]
+            statement_types['quarterly_cash_flow'] = quarterly_cash_flow
+
+        if isinstance(data.get('annual_financials'), pd.DataFrame):
+            # Create annual balance sheet
+            annual_balance = data['annual_financials'][['date', 'fiscal_period', 'fiscal_year',
+                'total_assets', 'current_assets', 'current_liabilities', 'inventory', 'liabilities']]
+            statement_types['annual_balance'] = annual_balance
+
+            # Create annual cash flow
+            annual_cash_flow = data['annual_financials'][['date', 'fiscal_period', 'fiscal_year',
+                'operating_cash_flow', 'capital_expenditure', 'financing_cash_flow']]
+            statement_types['annual_cash_flow'] = annual_cash_flow
+
         for name, df in statement_types.items():
             try:
-                if not df.empty:
-                    # Create a copy to avoid modifying original data
+                if isinstance(df, pd.DataFrame) and not df.empty:
+                    logger.info(f"Processing {name} with {len(df)} rows")
                     df_copy = df.copy()
                     
                     # Handle date columns safely
                     date_columns = ['date', 'end_date']
                     for col in date_columns:
                         if col in df_copy.columns:
-                            # Convert dates safely
                             df_copy[col] = df_copy[col].apply(lambda x: 
                                 pd.to_datetime(x, errors='coerce').strftime('%Y-%m-%d') 
                                 if pd.notna(x) and x != 'N/A' 
                                 else 'N/A'
                             )
                     
+                    # Create JSON data with metadata
+                    json_data = {
+                        **common_metadata,
+                        'data': df_copy.to_dict('records')
+                    }
+                    
                     # Save to JSON
                     file_path = os.path.join(report_dir, f"{name}.json")
-                    df_copy.to_json(file_path, orient='records', date_format='iso')
-                    logger.info(f"Successfully saved {name}.json")
+                    with open(file_path, 'w') as f:
+                        json.dump(json_data, f, indent=2)
+                    logger.info(f"Successfully saved {file_path}")
                     
                     # Update fiscal dates if available
                     if name == 'quarterly_income' and 'end_date' in df_copy.columns:
@@ -319,20 +377,29 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
                         if not valid_dates.empty:
                             fiscal_year_date = valid_dates.iloc[0]
                             
+                else:
+                    logger.warning(f"No data available for {name}")
+                    
             except Exception as e:
-                logger.error(f"Error saving {name}.json: {e}", exc_info=True)
+                logger.error(f"Error processing {name}: {str(e)}", exc_info=True)
                 continue
         
-        # Save raw data
+        # Save raw data with metadata
         try:
             raw_data_path = os.path.join(report_dir, 'raw_data.json')
+            # Convert DataFrames to records for JSON serialization
+            serializable_data = {
+                k: v.to_dict('records') if isinstance(v, pd.DataFrame) else v
+                for k, v in data.items()
+            }
+            
+            raw_data_with_metadata = {
+                **common_metadata,  # Add common metadata
+                'data': serializable_data
+            }
+            
             with open(raw_data_path, 'w') as f:
-                # Convert DataFrames to records for JSON serialization
-                serializable_data = {
-                    k: v.to_dict('records') if isinstance(v, pd.DataFrame) else v
-                    for k, v in data.items()
-                }
-                json.dump(serializable_data, f, indent=2, default=str)
+                json.dump(raw_data_with_metadata, f, indent=2, default=str)
             logger.info("Successfully saved raw_data.json")
         except Exception as e:
             logger.error(f"Error saving raw data: {e}", exc_info=True)
@@ -341,34 +408,18 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         env = Environment(loader=FileSystemLoader('templates'))
         template = env.get_template('financial_report.html')
         
-        # Prepare report data with default values
+        # Prepare report data
         report_data = {
             'symbol': symbol,
-            'company_info': {
-                'name': metrics.get('name', 'N/A'),
-                'description': metrics.get('description', 'N/A'),
-                'sector': metrics.get('sector', 'N/A')
-            },
+            'company_info': company_info,
             'dates': {
                 'latest': formatted_date,
                 'fiscal_quarter': fiscal_quarter_date,
-                'fiscal_year': fiscal_year_date,
-                'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                'fiscal_year': fiscal_year_date
             },
-            'metrics': {
-                'Quarterly Metrics': {},
-                'Annual Metrics': {},
-                'Growth Metrics': {},
-                'Valuation Metrics': {},
-                'Liquidity Metrics': {}
-            },
+            'metrics': calculated_metrics,
             'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        
-        # Only calculate metrics if we have the required data
-        if ('quarterly_financials' in data and isinstance(data['quarterly_financials'], pd.DataFrame) and 
-            'annual_financials' in data and isinstance(data['annual_financials'], pd.DataFrame)):
-            report_data['metrics'] = calculate_financial_metrics(data)
         
         # Generate HTML
         html_content = template.render(**report_data)

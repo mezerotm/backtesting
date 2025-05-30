@@ -1,0 +1,20 @@
+<!-- Company Info -->
+<div class="bg-slate-800/50 rounded-lg p-6 mb-8">
+    <h2 class="text-xl font-semibold text-white mb-4">{{ company_info.name }}</h2>
+    <div class="grid grid-cols-1 gap-4">
+        <div class="text-slate-300">{{ company_info.description }}</div>
+        <div class="text-sm text-slate-400 grid grid-cols-1 gap-2">
+            <div>
+                <span class="font-medium">Sector:</span> {{ company_info.sector if company_info.sector != 'N/A' else '-' }}
+            </div>
+            {% if dates %}
+            <div>
+                <span class="font-medium">Latest Quarter:</span> {{ dates.fiscal_quarter if dates.fiscal_quarter else '-' }}
+            </div>
+            <div>
+                <span class="font-medium">Fiscal Year:</span> {{ dates.fiscal_year if dates.fiscal_year else '-' }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div> 
