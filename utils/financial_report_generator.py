@@ -244,6 +244,26 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         report_dir = os.path.join('public', 'results', f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         os.makedirs(report_dir, exist_ok=True)
         
+        # Calculate all metrics first
+        calculated_metrics = calculate_financial_metrics(data)
+        
+        # Save metrics to a separate file
+        metrics_file = os.path.join(report_dir, 'metrics.json')
+        metrics_data = {
+            'symbol': symbol,
+            'company_info': {
+                'name': metrics.get('name', 'N/A'),
+                'description': metrics.get('description', 'N/A'),
+                'sector': metrics.get('sector', 'N/A')
+            },
+            'metrics': calculated_metrics,
+            'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        with open(metrics_file, 'w') as f:
+            json.dump(metrics_data, f, indent=2)
+        logger.info(f"Saved metrics to {metrics_file}")
+        
         # Get latest date from data
         formatted_date = datetime.now().strftime('%Y-%m-%d')
         fiscal_quarter_date = formatted_date
