@@ -98,40 +98,36 @@
                 {% endif %}
             </div>
 
-            <!-- Calculation Details Column -->
+            <!-- Calculations Column -->
             <div>
                 <h4 class="text-lg font-medium text-slate-200 mb-4">Calculation Details</h4>
-                
-                <!-- Raw Values -->
-                <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
-                    <h5 class="text-sm font-medium text-slate-300 mb-3">Raw Values</h5>
-                    <div class="grid grid-cols-1 gap-2">
-                        {% for name, value in metrics.get('Calculations', {}).get('Raw Values', {}).items() %}
-                        <div class="flex justify-between text-sm">
+                {% if metrics['Calculations']['Raw Values'] %}
+                    <!-- Raw Values Section -->
+                    <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
+                        <div class="text-slate-300 text-sm font-medium mb-3">Raw Values</div>
+                        {% for name, value in metrics['Calculations']['Raw Values'].items() %}
+                        <div class="flex justify-between text-xs mb-2">
                             <span class="text-slate-400">{{ name }}:</span>
                             <span class="text-blue-300 font-mono">{{ value }}</span>
                         </div>
                         {% endfor %}
                     </div>
-                </div>
-                
-                <!-- Formulas -->
-                <div class="bg-slate-900/50 p-4 rounded-lg">
-                    <h5 class="text-sm font-medium text-slate-300 mb-3">Calculations</h5>
-                    {% for name, formula in metrics.get('Calculations', {}).get('Formulas', {}).items() %}
-                    <div class="mb-6 last:mb-0">
-                        <div class="text-sm text-slate-300 font-medium mb-2">{{ name }}:</div>
-                        <!-- Algorithm -->
-                        <div class="text-sm text-emerald-400 font-mono mb-1 pl-4">
-                            {{ metrics.get('Calculations', {}).get('Algorithms', {}).get(name, '') }}
+
+                    <!-- Formulas Section -->
+                    {% for name, formula in metrics['Calculations']['Formulas'].items() %}
+                    <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
+                        <div class="text-slate-300 text-sm font-medium mb-2">{{ name }}</div>
+                        <div class="text-xs text-emerald-400 font-mono mb-1">
+                            {{ metrics['Calculations']['Algorithms'][name] }}
                         </div>
-                        <!-- Actual Calculation -->
-                        <div class="text-sm text-blue-300 font-mono pl-4 break-all">
+                        <div class="text-xs text-blue-300 font-mono break-all">
                             {{ formula }}
                         </div>
                     </div>
                     {% endfor %}
-                </div>
+                {% else %}
+                    <div class="text-slate-400">No calculations available</div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -151,15 +147,10 @@
                             <div class="text-slate-300 text-sm font-medium">{{ name }}</div>
                             <div class="text-2xl font-bold text-blue-400">{{ value if value != 'N/A' else '-' }}</div>
                         </div>
-                        <!-- Use standard Descriptions if Annual Descriptions not available -->
-                        {% if metrics.get('Annual Descriptions', {}).get(name) %}
-                            <div class="text-xs text-slate-400 mt-2 leading-relaxed">
-                                {{ metrics['Annual Descriptions'][name] }}
-                            </div>
-                        {% elif metrics.get('Descriptions', {}).get(name) %}
-                            <div class="text-xs text-slate-400 mt-2 leading-relaxed">
-                                {{ metrics['Descriptions'][name] }}
-                            </div>
+                        {% if metrics.get('Annual Descriptions', {}).get(name) or metrics.get('Descriptions', {}).get(name) %}
+                        <div class="text-xs text-slate-400 mt-2 leading-relaxed">
+                            {{ metrics.get('Annual Descriptions', {}).get(name) or metrics.get('Descriptions', {}).get(name) }}
+                        </div>
                         {% endif %}
                     </div>
                     {% endfor %}
@@ -168,128 +159,36 @@
                 {% endif %}
             </div>
 
-            <!-- Calculation Details Column -->
+            <!-- Annual Calculations Column -->
             <div>
                 <h4 class="text-lg font-medium text-slate-200 mb-4">Annual Calculation Details</h4>
-                
-                <!-- Raw Values -->
-                <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
-                    <h5 class="text-sm font-medium text-slate-300 mb-3">Annual Raw Values</h5>
-                    <div class="grid grid-cols-1 gap-2">
-                        {% for name, value in metrics.get('Annual Calculations', {}).get('Raw Values', {}).items() %}
-                        <div class="flex justify-between text-sm">
+                {% if metrics['Annual Calculations']['Raw Values'] %}
+                    <!-- Annual Raw Values Section -->
+                    <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
+                        <div class="text-slate-300 text-sm font-medium mb-3">Annual Raw Values</div>
+                        {% for name, value in metrics['Annual Calculations']['Raw Values'].items() %}
+                        <div class="flex justify-between text-xs mb-2">
                             <span class="text-slate-400">{{ name }}:</span>
                             <span class="text-blue-300 font-mono">{{ value }}</span>
                         </div>
                         {% endfor %}
                     </div>
-                </div>
-                
-                <!-- Formulas -->
-                <div class="bg-slate-900/50 p-4 rounded-lg">
-                    <h5 class="text-sm font-medium text-slate-300 mb-3">Annual Calculations</h5>
-                    {% for name, formula in metrics.get('Annual Calculations', {}).get('Formulas', {}).items() %}
-                    <div class="mb-6 last:mb-0">
-                        <div class="text-sm text-slate-300 font-medium mb-2">{{ name }}:</div>
-                        <!-- Algorithm -->
-                        <div class="text-sm text-emerald-400 font-mono mb-1 pl-4">
-                            {{ metrics.get('Annual Calculations', {}).get('Algorithms', {}).get(name, 'N/A') }}
+
+                    <!-- Annual Formulas Section -->
+                    {% for name, formula in metrics['Annual Calculations']['Formulas'].items() %}
+                    <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
+                        <div class="text-slate-300 text-sm font-medium mb-2">{{ name }}</div>
+                        <div class="text-xs text-emerald-400 font-mono mb-1">
+                            {{ metrics['Annual Calculations']['Algorithms'][name] }}
                         </div>
-                        <!-- Actual Calculation -->
-                        <div class="text-sm text-blue-300 font-mono pl-4 break-all">
+                        <div class="text-xs text-blue-300 font-mono break-all">
                             {{ formula }}
                         </div>
                     </div>
                     {% endfor %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Balance Sheet Metrics -->
-    <div class="bg-slate-800/50 rounded-lg p-6 mb-8">
-        <h3 class="text-lg font-semibold text-white mb-4">Balance Sheet Overview</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="metric-card">
-                <h4 class="text-sm text-slate-400">Total Assets</h4>
-                <div class="metric-value">{{ metrics['Annual Calculations']['Raw Values']['Total Assets'] }}</div>
-            </div>
-            <div class="metric-card">
-                <h4 class="text-sm text-slate-400">Current Assets</h4>
-                <div class="metric-value">{{ metrics['Annual Calculations']['Raw Values']['Current Assets'] }}</div>
-            </div>
-            <div class="metric-card">
-                <h4 class="text-sm text-slate-400">Current Liabilities</h4>
-                <div class="metric-value">{{ metrics['Annual Calculations']['Raw Values']['Current Liabilities'] }}</div>
-            </div>
-            <div class="metric-card">
-                <h4 class="text-sm text-slate-400">Current Ratio</h4>
-                <div class="metric-value">{{ metrics['Annual Metrics']['Current Ratio'] }}</div>
-            </div>
-            <div class="metric-card">
-                <h4 class="text-sm text-slate-400">Quick Ratio</h4>
-                <div class="metric-value">{{ metrics['Annual Metrics']['Quick Ratio'] }}</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cash Flow Metrics -->
-    <div class="bg-slate-800/50 rounded-lg p-6 mb-8">
-        <h3 class="text-lg font-semibold text-white mb-4">Cash Flow Overview</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="metric-card">
-                <h4 class="text-sm text-slate-400">Operating Cash Flow</h4>
-                <div class="metric-value">{{ metrics['Annual Calculations']['Raw Values']['Annual Operating Cash Flow'] }}</div>
-            </div>
-            <div class="metric-card">
-                <h4 class="text-sm text-slate-400">Capital Expenditure</h4>
-                <div class="metric-value">{{ metrics['Annual Calculations']['Raw Values']['Capital Expenditure'] }}</div>
-            </div>
-            <div class="metric-card">
-                <h4 class="text-sm text-slate-400">FCF Margin</h4>
-                <div class="metric-value">{{ metrics['Annual Metrics']['FCF Margin'] }}</div>
-            </div>
-            <div class="metric-card">
-                <h4 class="text-sm text-slate-400">Operating Cash Ratio</h4>
-                <div class="metric-value">{{ metrics['Annual Metrics']['Operating Cash Ratio'] }}</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Calculation Details -->
-    <div class="bg-slate-800/50 rounded-lg p-6 mb-8">
-        <h3 class="text-lg font-semibold text-white mb-4">Calculation Details</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Quarterly Calculations -->
-            <div>
-                <h4 class="text-md font-medium text-slate-300 mb-3">Quarterly Formulas</h4>
-                {% for name, formula in metrics.get('Calculations', {}).get('Formulas', {}).items() %}
-                <div class="mb-4 bg-slate-900/50 p-3 rounded">
-                    <div class="text-sm text-slate-300 font-medium mb-2">{{ name }}</div>
-                    <div class="text-xs text-emerald-400 font-mono mb-1">
-                        {{ metrics.get('Calculations', {}).get('Algorithms', {}).get(name, 'N/A') }}
-                    </div>
-                    <div class="text-xs text-blue-300 font-mono break-all">
-                        {{ formula }}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <!-- Annual Calculations -->
-            <div>
-                <h4 class="text-md font-medium text-slate-300 mb-3">Annual Formulas</h4>
-                {% for name, formula in metrics.get('Annual Calculations', {}).get('Formulas', {}).items() %}
-                <div class="mb-4 bg-slate-900/50 p-3 rounded">
-                    <div class="text-sm text-slate-300 font-medium mb-2">{{ name }}</div>
-                    <div class="text-xs text-emerald-400 font-mono mb-1">
-                        {{ metrics.get('Annual Calculations', {}).get('Algorithms', {}).get(name, 'N/A') }}
-                    </div>
-                    <div class="text-xs text-blue-300 font-mono break-all">
-                        {{ formula }}
-                    </div>
-                </div>
-                {% endfor %}
+                {% else %}
+                    <div class="text-slate-400">No calculations available</div>
+                {% endif %}
             </div>
         </div>
     </div>
