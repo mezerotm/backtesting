@@ -20,11 +20,11 @@ def validate_percentage(value: float) -> Optional[float]:
         return round(value * 100, 2)  # Convert to percentage and round to 2 decimals
     return None
 
-def format_percentage(value: Optional[float]) -> str:
-    """Format percentage with 2 decimal places"""
-    if value is None:
-        return "N/A"
-    return f"{value:.2f}%"
+def format_percentage(value: float) -> str:
+    """Format a value as a percentage"""
+    if value is None or pd.isna(value):
+        return 'N/A'
+    return f"{value * 100:.2f}%"
 
 def format_decimal(value: Optional[float]) -> str:
     """Format decimal with 2 decimal places"""
@@ -66,70 +66,29 @@ def calculate_financial_metrics(data: Dict) -> Dict:
             'Calculations': {'Raw Values': {}, 'Algorithms': {}, 'Formulas': {}},
             'Annual Calculations': {'Raw Values': {}, 'Algorithms': {}, 'Formulas': {}}
         }
-
-        # Debug data structure
-        logger.info(f"Input data structure: {list(data.keys())}")
         
-        # Handle quarterly metrics
-        q_financials = data.get('quarterly_financials')
-        if isinstance(q_financials, pd.DataFrame) and not q_financials.empty:
-            logger.info(f"Processing quarterly data with columns: {q_financials.columns.tolist()}")
-            logger.info(f"First row sample: {q_financials.iloc[0].to_dict()}")
-            
-            current_q = q_financials.iloc[0]
-            
-            # Calculate quarterly raw values
-            metrics['Calculations']['Raw Values'] = {
-                'Quarterly Revenue': format_currency(current_q.get('revenue', 0)),
-                'Quarterly Net Income': format_currency(current_q.get('net_income', 0)),
-                'Quarterly Gross Profit': format_currency(current_q.get('gross_profit', 0)),
-                'Quarterly Operating Income': format_currency(current_q.get('operating_income', 0)),
-                'Quarterly Operating Cash Flow': format_currency(current_q.get('operating_cash_flow', 0)),
-                'Total Assets': format_currency(current_q.get('total_assets', 0)),
-                'Current Assets': format_currency(current_q.get('current_assets', 0)),
-                'Current Liabilities': format_currency(current_q.get('current_liabilities', 0))
-            }
-            
-            # Calculate metrics
+        # Process quarterly data
+        if isinstance(data.get('quarterly_financials'), pd.DataFrame) and not data['quarterly_financials'].empty:
+            current_q = data['quarterly_financials'].iloc[0]
             metrics['Quarterly Metrics'] = calculate_period_metrics(current_q, 'Quarterly')
             metrics['Calculations']['Algorithms'] = generate_metric_formulas('Quarterly')
             metrics['Calculations']['Formulas'] = generate_actual_calculations(current_q, 'Quarterly')
-            metrics['Descriptions'].update(generate_metric_descriptions('Quarterly'))
-            
-            logger.info(f"Quarterly metrics calculated: {metrics['Quarterly Metrics']}")
-            logger.info(f"Quarterly raw values: {metrics['Calculations']['Raw Values']}")
-
-        # Handle annual metrics (similar structure)
-        a_financials = data.get('annual_financials')
-        if isinstance(a_financials, pd.DataFrame) and not a_financials.empty:
-            logger.info(f"Processing annual data with columns: {a_financials.columns.tolist()}")
-            logger.info(f"First row sample: {a_financials.iloc[0].to_dict()}")
-            
-            current_a = a_financials.iloc[0]
-            
-            # Calculate annual raw values
-            metrics['Annual Calculations']['Raw Values'] = {
-                'Annual Revenue': format_currency(current_a.get('revenue', 0)),
-                'Annual Net Income': format_currency(current_a.get('net_income', 0)),
-                'Annual Gross Profit': format_currency(current_a.get('gross_profit', 0)),
-                'Annual Operating Income': format_currency(current_a.get('operating_income', 0)),
-                'Annual Operating Cash Flow': format_currency(current_a.get('operating_cash_flow', 0)),
-                'Total Assets': format_currency(current_a.get('total_assets', 0)),
-                'Current Assets': format_currency(current_a.get('current_assets', 0)),
-                'Current Liabilities': format_currency(current_a.get('current_liabilities', 0))
-            }
-            
-            # Calculate metrics
+            metrics['Calculations']['Raw Values'] = generate_calculation_details(current_q, 'Quarterly')['Raw Values']
+        
+        # Process annual data
+        if isinstance(data.get('annual_financials'), pd.DataFrame) and not data['annual_financials'].empty:
+            current_a = data['annual_financials'].iloc[0]
             metrics['Annual Metrics'] = calculate_period_metrics(current_a, 'Annual')
             metrics['Annual Calculations']['Algorithms'] = generate_metric_formulas('Annual')
             metrics['Annual Calculations']['Formulas'] = generate_actual_calculations(current_a, 'Annual')
-            metrics['Annual Descriptions'].update(generate_metric_descriptions('Annual'))
-            
-            logger.info(f"Annual metrics calculated: {metrics['Annual Metrics']}")
-            logger.info(f"Annual raw values: {metrics['Annual Calculations']['Raw Values']}")
-
+            metrics['Annual Calculations']['Raw Values'] = generate_calculation_details(current_a, 'Annual')['Raw Values']
+        
+        # Add descriptions
+        metrics['Descriptions'] = generate_metric_descriptions('Quarterly')
+        metrics['Annual Descriptions'] = generate_metric_descriptions('Annual')
+        
         return metrics
-
+        
     except Exception as e:
         logger.error(f"Error calculating financial metrics: {e}", exc_info=True)
         return {
@@ -190,45 +149,57 @@ def generate_actual_calculations(data: pd.Series, period: str) -> Dict[str, str]
     }
 
 def calculate_period_metrics(data: pd.Series, period: str) -> Dict:
-    """Calculate metrics for a given period"""
-    metrics = {}
+    """Calculate financial metrics for a given period"""
     try:
-        # Debug the input data
-        logger.debug(f"{period} data fields: {data.index.tolist()}")
+        # Get raw values with better None handling
+        revenue = data.get('revenue', 0)
+        gross_profit = data.get('gross_profit', 0)
+        operating_income = data.get('operating_income', 0)
+        net_income = data.get('net_income', 0)
+        operating_cash_flow = data.get('operating_cash_flow', 0)
+        capital_expenditure = data.get('capital_expenditure', 0)
+        current_assets = data.get('current_assets', 0)
+        current_liabilities = data.get('current_liabilities', 0)
+        inventory = data.get('inventory', 0)
+        total_assets = data.get('total_assets', 0)
         
-        revenue = float(data.get('revenue', 0))
+        # Calculate metrics only if we have valid revenue
+        metrics = {}
+        formulas = {}
+        algorithms = {}
+        
         if revenue > 0:
-            metrics.update({
+            metrics = {
                 f'{period} Revenue': format_currency(revenue),
-                f'{period} Net Income': format_currency(float(data.get('net_income', 0))),
-                'Gross Margin': format_percentage(float(data.get('gross_profit', 0)) / revenue if revenue else 0),
-                'Operating Margin': format_percentage(float(data.get('operating_income', 0)) / revenue if revenue else 0),
-                'Net Margin': format_percentage(float(data.get('net_income', 0)) / revenue if revenue else 0)
-            })
+                f'{period} Net Income': format_currency(net_income),
+                'Gross Margin': format_percentage(gross_profit / revenue) if revenue else 'N/A',
+                'Operating Margin': format_percentage(operating_income / revenue) if revenue else 'N/A',
+                'Net Margin': format_percentage(net_income / revenue) if revenue else 'N/A',
+                'FCF Margin': format_percentage((operating_cash_flow - capital_expenditure) / revenue) if revenue else 'N/A',
+                'Operating Cash Ratio': format_decimal(operating_cash_flow / current_liabilities) if current_liabilities else 'N/A',
+                'Quick Ratio': format_decimal((current_assets - inventory) / current_liabilities) if current_liabilities else 'N/A',
+                'Current Ratio': format_decimal(current_assets / current_liabilities) if current_liabilities else 'N/A'
+            }
             
-            # Calculate FCF Margin
-            operating_cash_flow = float(data.get('operating_cash_flow', 0))
-            capex = float(data.get('capital_expenditure', 0))
-            metrics['FCF Margin'] = format_percentage((operating_cash_flow - capex) / revenue if revenue else 0)
+            # Add formulas to show calculations
+            formulas = {
+                'Gross Margin': f'{gross_profit:,.2f} / {revenue:,.2f}',
+                'Operating Margin': f'{operating_income:,.2f} / {revenue:,.2f}',
+                'Net Margin': f'{net_income:,.2f} / {revenue:,.2f}',
+                'FCF Margin': f'({operating_cash_flow:,.2f} - {capital_expenditure:,.2f}) / {revenue:,.2f}',
+                'Operating Cash Ratio': f'{operating_cash_flow:,.2f} / {current_liabilities:,.2f}',
+                'Quick Ratio': f'({current_assets:,.2f} - {inventory:,.2f}) / {current_liabilities:,.2f}',
+                'Current Ratio': f'{current_assets:,.2f} / {current_liabilities:,.2f}'
+            }
             
-            # Calculate liquidity ratios
-            current_liabilities = float(data.get('current_liabilities', 0))
-            if current_liabilities > 0:
-                current_assets = float(data.get('current_assets', 0))
-                inventory = float(data.get('inventory', 0))
-                
-                metrics.update({
-                    'Operating Cash Ratio': format_decimal(operating_cash_flow / current_liabilities),
-                    'Quick Ratio': format_decimal((current_assets - inventory) / current_liabilities),
-                    'Current Ratio': format_decimal(current_assets / current_liabilities)
-                })
+            # Add algorithms (explanations)
+            algorithms = generate_metric_formulas(period)
         
-        logger.debug(f"Calculated {period} metrics: {metrics}")
-        return metrics
+        return metrics  # Return just the metrics, not a nested dictionary
         
     except Exception as e:
-        logger.error(f"Error calculating {period.lower()} metrics: {e}", exc_info=True)
-        return metrics
+        logger.error(f"Error calculating {period} metrics: {e}", exc_info=True)
+        return {}
 
 def generate_calculation_details(data: pd.Series, period: str) -> Dict:
     """Generate calculation details for transparency"""
@@ -247,15 +218,13 @@ def generate_calculation_details(data: pd.Series, period: str) -> Dict:
         'Formulas': generate_actual_calculations(data, period)
     }
 
-def format_currency(value: float) -> str:
-    """Format currency values with proper handling of None/zero"""
-    try:
-        if value is None or value == 0:
-            return "$0.00"
-        return f"${value:,.2f}"
-    except Exception as e:
-        logger.error(f"Error formatting currency: {e}")
-        return "$0.00"
+def format_currency(value: Optional[float]) -> str:
+    """Format currency with better handling of zero and None values"""
+    if value is None:
+        return 'N/A'
+    if value == 0:
+        return '-'  # Show dash instead of $0.00
+    return f"${value:,.2f}"
 
 def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optional[str]:
     """Generate financial analysis report
@@ -284,10 +253,10 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         statement_types = {
             'quarterly_income': data.get('quarterly_financials', pd.DataFrame()),
             'annual_income': data.get('annual_financials', pd.DataFrame()),
-            'quarterly_balance': data.get('quarterly_financials', pd.DataFrame()),
-            'annual_balance': data.get('annual_financials', pd.DataFrame()),
-            'quarterly_cash_flow': data.get('quarterly_financials', pd.DataFrame()),
-            'annual_cash_flow': data.get('annual_financials', pd.DataFrame())
+            'quarterly_balance': data.get('quarterly_balance', pd.DataFrame()),
+            'annual_balance': data.get('annual_balance', pd.DataFrame()),
+            'quarterly_cash_flow': data.get('quarterly_cash_flow', pd.DataFrame()),
+            'annual_cash_flow': data.get('annual_cash_flow', pd.DataFrame())
         }
         
         for name, df in statement_types.items():

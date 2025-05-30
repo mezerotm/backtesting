@@ -996,7 +996,6 @@ def debug_object_structure(obj, prefix=''):
 
 @lru_cache(maxsize=100)
 def fetch_polygon_financials(symbol: str, period: str = "annual", limit: int = 5) -> pd.DataFrame:
-    """Fetch financial statements from Polygon"""
     try:
         client = get_polygon_client()
         records = []
@@ -1009,118 +1008,54 @@ def fetch_polygon_financials(symbol: str, period: str = "annual", limit: int = 5
             limit=limit
         )
         
-        record_count = 0
         for fin in financials:
             try:
-                record_count += 1
-                logger.info(f"\n{'='*50}")
-                logger.info(f"Processing financial record {record_count}")
+                record = {}
                 
-                # Extract base record
-                record = {
-                    'date': fin.filing_date,
-                    'end_date': fin.end_date,
-                    'period': fin.fiscal_period,
-                    'year': fin.fiscal_year
-                }
+                # Extract date information
+                record['date'] = getattr(fin, 'filing_date', None)
+                record['fiscal_period'] = getattr(fin, 'fiscal_period', None)
+                record['fiscal_year'] = getattr(fin, 'fiscal_year', None)
                 
                 if hasattr(fin, 'financials'):
-                    # Process income statement
+                    # Income Statement
                     if hasattr(fin.financials, 'income_statement'):
                         inc = fin.financials.income_statement
-                        record.update({
-                            'revenue': get_value_from_datapoint(inc.revenues),
-                            'gross_profit': get_value_from_datapoint(inc.gross_profit),
-                            'operating_income': get_value_from_datapoint(getattr(inc, 'operating_income', None) or 
-                                                                       getattr(inc, 'operating_income_loss', None) or 
-                                                                       getattr(inc, 'operating_profit', None)),
-                            'net_income': get_value_from_datapoint(getattr(inc, 'net_income', None) or 
-                                                                 getattr(inc, 'net_income_loss', None))
-                        })
-                        logger.info(f"Income statement values: {json.dumps({k:v for k,v in record.items() if k in ['revenue', 'gross_profit', 'operating_income', 'net_income']}, indent=2)}")
+                        record['revenue'] = get_value_from_datapoint(getattr(inc, 'revenues', None))
+                        record['gross_profit'] = get_value_from_datapoint(getattr(inc, 'gross_profit', None))
+                        record['operating_income'] = get_value_from_datapoint(getattr(inc, 'operating_income_loss', None))
+                        record['net_income'] = get_value_from_datapoint(getattr(inc, 'net_income_loss', None))
                     
-                    # Process balance sheet
+                    # Balance Sheet
                     if hasattr(fin.financials, 'balance_sheet'):
-                        bal = fin.financials.balance_sheet
-                        record.update({
-                            'total_assets': get_value_from_datapoint(bal.assets),
-                            'current_assets': get_value_from_datapoint(bal.current_assets),
-                            'total_liabilities': get_value_from_datapoint(bal.liabilities),
-                            'current_liabilities': get_value_from_datapoint(bal.current_liabilities),
-                            'inventory': get_value_from_datapoint(bal.inventory)
-                        })
-                        logger.info(f"Balance sheet values: {json.dumps({k:v for k,v in record.items() if k in ['total_assets', 'current_assets', 'total_liabilities', 'current_liabilities', 'inventory']}, indent=2)}")
+                        bs = fin.financials.balance_sheet
+                        record['total_assets'] = get_value_from_datapoint(getattr(bs, 'assets', None))
+                        record['current_assets'] = get_value_from_datapoint(getattr(bs, 'current_assets', None))
+                        record['current_liabilities'] = get_value_from_datapoint(getattr(bs, 'current_liabilities', None))
+                        record['inventory'] = get_value_from_datapoint(getattr(bs, 'inventory', None))
+                        record['liabilities'] = get_value_from_datapoint(getattr(bs, 'liabilities', None))
                     
-                    # Process cash flow with detailed debugging
+                    # Cash Flow Statement
                     if hasattr(fin.financials, 'cash_flow_statement'):
-                        logger.info("\nCash Flow Statement Structure:")
                         cf = fin.financials.cash_flow_statement
-                        
-                        # Debug all available attributes
-                        logger.info("Available cash flow attributes:")
-                        for attr in dir(cf):
-                            if not attr.startswith('_'):
-                                try:
-                                    value = getattr(cf, attr)
-                                    logger.info(f"  {attr}: {value} (type: {type(value)})")
-                                except Exception as e:
-                                    logger.info(f"  {attr}: <error accessing: {e}>")
-                        
-                        # Try multiple possible attribute names for operating cash flow
-                        cf_attrs = [
-                            'operating_cash_flow',
-                            'net_cash_from_operations',
-                            'cash_flow_from_operations',
-                            'net_operating_cash_flow',
-                            'operating_activities_net_cash_flow'
-                        ]
-                        
-                        operating_cash_flow = None
-                        for attr in cf_attrs:
-                            if hasattr(cf, attr):
-                                logger.info(f"Found operating cash flow attribute: {attr}")
-                                operating_cash_flow = getattr(cf, attr)
-                                break
-                        
-                        # Try multiple possible attribute names for capital expenditure
-                        capex_attrs = [
-                            'capital_expenditure',
-                            'capital_expenditures',
-                            'capex',
-                            'purchase_of_property_and_equipment'
-                        ]
-                        
-                        capital_expenditure = None
-                        for attr in capex_attrs:
-                            if hasattr(cf, attr):
-                                logger.info(f"Found capital expenditure attribute: {attr}")
-                                capital_expenditure = getattr(cf, attr)
-                                break
-                        
-                        record.update({
-                            'operating_cash_flow': get_value_from_datapoint(operating_cash_flow),
-                            'capital_expenditure': abs(get_value_from_datapoint(capital_expenditure))
-                        })
-                        logger.info(f"Cash flow values: {json.dumps({k:v for k,v in record.items() if k in ['operating_cash_flow', 'capital_expenditure']}, indent=2)}")
+                        record['operating_cash_flow'] = get_value_from_datapoint(
+                            getattr(cf, 'net_cash_flow_from_operating_activities', None))
+                        record['capital_expenditure'] = get_value_from_datapoint(
+                            getattr(cf, 'net_cash_flow_from_investing_activities', None))
+                        record['financing_cash_flow'] = get_value_from_datapoint(
+                            getattr(cf, 'net_cash_flow_from_financing_activities', None))
                 
-                records.append(record)
-                logger.info(f"Successfully processed record {record_count} for {record['period']} {record['year']}")
-                
+                if any(record.values()):  # Only append if we have some data
+                    records.append(record)
+                    
             except Exception as e:
                 logger.error(f"Error processing financial record: {e}", exc_info=True)
                 continue
         
-        logger.info(f"Processed {record_count} financial records")
-        
-        if not records:
-            logger.warning(f"No {period} financial data found for {symbol}")
-            return pd.DataFrame()
-            
         df = pd.DataFrame(records)
-        logger.info(f"Final DataFrame shape: {df.shape}")
         if not df.empty:
-            logger.info(f"Sample of first record:\n{json.dumps(df.iloc[0].to_dict(), indent=2)}")
-        
+            logger.info(f"Final DataFrame columns: {df.columns.tolist()}")
+            logger.info(f"First row of processed data: {df.iloc[0].to_dict()}")
         return df
         
     except Exception as e:
