@@ -333,13 +333,8 @@
                 <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
                     ${report.timeframe || '-'}
                 </td>
-                <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
-                    ${(startDate && endDate) ? `
-                    <div class="flex items-center space-x-1">
-                        <span>${startDate}</span>
-                        <i class="fa-solid fa-arrow-right text-gray-500 text-xs"></i>
-                        <span>${endDate}</span>
-                    </div>` : '-'}
+                <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-gray-300">
+                    {{ format_report_date(report) }}
                 </td>
                 <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
                     ${report.created ? formatDate(report.created, true, true) : '-'}
@@ -366,9 +361,7 @@
                 if (includeTime) {
                     const hours = date.getHours();
                     const minutes = date.getMinutes().toString().padStart(2, '0');
-                    const ampm = hours >= 12 ? 'PM' : 'AM';
-                    const displayHours = hours % 12 || 12;
-                    formatted = `${month} ${day}, ${hours}:${minutes}${ampm}`;
+                    formatted = `${month} ${day}, ${year} ${hours}:${minutes}`;
                 }
                 
                 return formatted;
@@ -377,7 +370,8 @@
                 const options = { 
                     year: 'numeric', 
                     month: 'short', 
-                    day: 'numeric'
+                    day: 'numeric',
+                    hour12: false
                 };
                 
                 if (includeTime) {
@@ -388,6 +382,7 @@
                 return date.toLocaleDateString('en-US', options);
             }
         } catch (e) {
+            console.error('Date parsing error:', e, 'for date:', dateString);
             return dateString; // Return original if parsing fails
         }
     }

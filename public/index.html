@@ -104,8 +104,6 @@
                             <select id="symbol" class="hs-select-disabled:opacity-50 p-3 pe-9 block w-full border border-gray-600 bg-slate-700 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
                                 <option value="all">All Symbols</option>
                                 
-                                <option value="HIMS">HIMS</option>
-                                
                             </select>
                             <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
                                 <i class="fa-solid fa-angle-down text-white"></i>
@@ -161,7 +159,7 @@
                     
                     <!-- Last Updated Indicator -->
                     <div class="text-sm text-gray-500">
-                        Last updated: <span id="last-updated">2025-05-29 21:53:52</span>
+                        Last updated: <span id="last-updated"></span>
                     </div>
                 </div>
                 
@@ -215,10 +213,10 @@
         <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div class="text-slate-400 text-sm">
-                    &copy; 2025 Trading Strategy Suite. All rights reserved.
+                    &copy;  Trading Strategy Suite. All rights reserved.
                 </div>
                 <div class="text-slate-400 text-sm">
-                    Generated on: 2025-05-29 21:53:52
+                    Generated on: 
                 </div>
             </div>
         </div>
@@ -406,13 +404,8 @@
                 <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
                     ${report.timeframe || '-'}
                 </td>
-                <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
-                    ${(startDate && endDate) ? `
-                    <div class="flex items-center space-x-1">
-                        <span>${startDate}</span>
-                        <i class="fa-solid fa-arrow-right text-gray-500 text-xs"></i>
-                        <span>${endDate}</span>
-                    </div>` : '-'}
+                <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-gray-300">
+                    -
                 </td>
                 <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
                     ${report.created ? formatDate(report.created, true, true) : '-'}
@@ -439,9 +432,7 @@
                 if (includeTime) {
                     const hours = date.getHours();
                     const minutes = date.getMinutes().toString().padStart(2, '0');
-                    const ampm = hours >= 12 ? 'PM' : 'AM';
-                    const displayHours = hours % 12 || 12;
-                    formatted = `${month} ${day}, ${hours}:${minutes}${ampm}`;
+                    formatted = `${month} ${day}, ${year} ${hours}:${minutes}`;
                 }
                 
                 return formatted;
@@ -450,7 +441,8 @@
                 const options = { 
                     year: 'numeric', 
                     month: 'short', 
-                    day: 'numeric'
+                    day: 'numeric',
+                    hour12: false
                 };
                 
                 if (includeTime) {
@@ -461,6 +453,7 @@
                 return date.toLocaleDateString('en-US', options);
             }
         } catch (e) {
+            console.error('Date parsing error:', e, 'for date:', dateString);
             return dateString; // Return original if parsing fails
         }
     }

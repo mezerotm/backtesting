@@ -430,18 +430,21 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
             f.write(html_content)
         
         # Generate and save metadata
+        current_date = datetime.now().strftime('%Y-%m-%d')
         metadata = generate_metadata(
             symbol=symbol,
-            timeframe="N/A",
-            start_date=formatted_date,
-            end_date=formatted_date,
+            timeframe="snapshot",
+            start_date=current_date,
+            end_date=current_date,
             initial_capital=0,
             commission=0,
             report_type="financial",
             directory_name=os.path.basename(report_dir),
             additional_data={
                 "status": "finished",
-                "title": f"Financial Analysis - {symbol}"
+                "title": f"Financial Analysis - {symbol}",
+                "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "report_type": "snapshot"
             }
         )
         save_metadata(metadata, report_dir)
