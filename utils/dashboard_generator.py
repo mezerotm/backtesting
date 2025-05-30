@@ -12,6 +12,9 @@ import threading
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import shutil
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_report_metadata(report_dir):
     """Extract metadata from report directory's metadata.json file."""
@@ -24,6 +27,14 @@ def get_report_metadata(report_dir):
                 
                 # Add additional info that might not be in metadata
                 metadata['dir'] = os.path.basename(report_dir)
+                
+                # Standardize dates to ISO format
+                if 'start_date' in metadata:
+                    metadata['start_date'] = datetime.strptime(metadata['start_date'], '%Y-%m-%d').strftime('%Y-%m-%d')
+                if 'end_date' in metadata:
+                    metadata['end_date'] = datetime.strptime(metadata['end_date'], '%Y-%m-%d').strftime('%Y-%m-%d')
+                if 'created' in metadata:
+                    metadata['created'] = datetime.strptime(metadata['created'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
                 
                 # Ensure we have a path property
                 if 'path' not in metadata:
@@ -67,66 +78,73 @@ def get_report_metadata(report_dir):
     
     return metadata
 
+def format_report_date(report):
+    """Format the report date based on report type."""
+    if not report:
+        return '-'
+    
+    if report.get('timeframe') == "snapshot" or report.get('type') == "financial":
+        return report.get('created', '-').split(' ')[0]  # Just get the date part
+    
+    start = report.get('start_date', '-')
+    end = report.get('end_date', '-')
+    return f"{start} → {end}"
+
 def generate_dashboard(refresh_interval=1000):
     """Generate a dashboard HTML file with links to all reports."""
-    # Get the path to the results directory
-    script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    public_dir = os.path.join(script_dir, 'public')
-    results_dir = os.path.join(public_dir, 'results')
-    
-    # Ensure results directory exists
-    if not os.path.exists(results_dir):
-        os.makedirs(results_dir)
-    
-    # Ensure public directory exists
-    if not os.path.exists(public_dir):
-        os.makedirs(public_dir)
-    
-    # Find all report directories in the results directory
-    report_dirs = []
-    for item in os.listdir(results_dir):
-        item_path = os.path.join(results_dir, item)
-        if os.path.isdir(item_path):
-            report_dirs.append(item_path)
-    
-    # Extract metadata from each report directory
-    reports = [get_report_metadata(dir) for dir in report_dirs]
-    
-    # Sort reports: comparison reports first, then by date (newest first)
-    reports.sort(key=lambda x: (0 if x.get('type', '') == 'comparison' else 1, 
-                              x.get('created', ''), 
-                              x.get('symbol', '')))
-    
-    # Get unique symbols and strategies for filtering
-    symbols = sorted(list(set(report.get('symbol', '') for report in reports if 'symbol' in report)))
-    strategies = sorted(list(set(report.get('strategy', '') for report in reports if 'strategy' in report)))
-    
-    # Set up Jinja2 environment to load template from file
-    templates_dir = os.path.join(script_dir, 'templates')
-    env = Environment(loader=FileSystemLoader(templates_dir))
-    template = env.get_template('dashboard.html')
-    
-    # Render the template with our data
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    current_year = datetime.now().year
-    
-    dashboard_html = template.render(
-        reports=reports,
-        symbols=symbols,
-        strategies=strategies,
-        now=current_time,
-        current_year=current_year,
-        refresh_interval=refresh_interval
-    )
-    
-    # Create the dashboard HTML file in the public directory as index.html
-    public_dir = os.path.join(script_dir, 'public')
-    dashboard_path = os.path.join(public_dir, 'index.html')
-    with open(dashboard_path, 'w') as f:
-        f.write(dashboard_html)
-    
-    print(f"Dashboard generated at: {dashboard_path}")
-    return dashboard_path
+    try:
+        # Get the path to the results directory
+        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        public_dir = os.path.join(script_dir, 'public')
+        results_dir = os.path.join(public_dir, 'results')
+        
+        # Ensure results directory exists
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+        
+        # Find all report directories
+        report_dirs = []
+        for item in os.listdir(results_dir):
+            item_path = os.path.join(results_dir, item)
+            if os.path.isdir(item_path):
+                report_dirs.append(item_path)
+        
+        # Extract metadata from each report directory
+        reports = []
+        for dir in report_dirs:
+            try:
+                metadata = get_report_metadata(dir)
+                if metadata:
+                    reports.append(metadata)
+            except Exception as e:
+                logger.error(f"Error processing report directory {dir}: {e}")
+                continue
+        
+        # Sort reports by creation time (newest first)
+        reports.sort(key=lambda x: x.get('created', ''), reverse=True)
+        
+        # Set up Jinja environment
+        env = Environment(loader=FileSystemLoader('templates'))
+        template = env.get_template('dashboard.html')
+        
+        # Render dashboard with reports data
+        dashboard_html = template.render(
+            reports=reports,
+            refresh_interval=refresh_interval,
+            timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            format_report_date=format_report_date  # Pass the function to template
+        )
+        
+        # Save dashboard
+        dashboard_path = os.path.join(public_dir, 'index.html')
+        with open(dashboard_path, 'w', encoding='utf-8') as f:
+            f.write(dashboard_html)
+        
+        return dashboard_path
+        
+    except Exception as e:
+        logger.error(f"Error generating dashboard: {e}", exc_info=True)
+        raise
 
 # File watcher class to detect changes and update the dashboard
 class DashboardUpdateHandler(FileSystemEventHandler):
