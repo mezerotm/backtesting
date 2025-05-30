@@ -34,40 +34,23 @@
     <div class="bg-slate-800/50 rounded-lg p-6 mb-8">
         <h2 class="text-xl font-semibold text-white mb-4">{{ company_info.name }}</h2>
         <p class="text-slate-300 mb-4">{{ company_info.description }}</p>
-        <div class="flex justify-between text-sm text-slate-400">
+        <div class="grid grid-cols-1 gap-2 text-sm text-slate-400">
             <div>
-                <span class="font-medium">Latest Fiscal Quarter:</span> {{ dates.fiscal_quarter }}
+                <span class="font-medium">Sector:</span> 
+                <span class="text-slate-300">
+                    {%- if company_info.sector and company_info.sector not in ['N/A', '-'] -%}
+                        {{ company_info.sector }}
+                    {%- else -%}
+                        -
+                    {%- endif -%}
+                </span>
             </div>
+            {% if dates %}
             <div>
-                <span class="font-medium">Latest Fiscal Year:</span> {{ dates.fiscal_year }}
+                <span class="font-medium">Latest Quarter:</span> 
+                <span class="text-slate-300">{{ dates.fiscal_quarter if dates.fiscal_quarter else '-' }}</span>
             </div>
-        </div>
-    </div>
-
-    <!-- Financial Statements Links -->
-    <div class="bg-slate-800/50 rounded-lg p-6 mb-8">
-        <h3 class="text-lg font-semibold text-white mb-4">Raw Financial Data (JSON)</h3>
-        <div class="grid grid-cols-3 gap-4">
-            <div>
-                <h4 class="text-sm font-medium text-slate-400 mb-2">Income Statements</h4>
-                <a href="quarterly_income.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Income</a>
-                <a href="annual_income.json" class="text-blue-400 hover:text-blue-300 block">Annual Income</a>
-            </div>
-            <div>
-                <h4 class="text-sm font-medium text-slate-400 mb-2">Balance Sheets</h4>
-                <a href="quarterly_balance.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Balance</a>
-                <a href="annual_balance.json" class="text-blue-400 hover:text-blue-300 block">Annual Balance</a>
-            </div>
-            <div>
-                <h4 class="text-sm font-medium text-slate-400 mb-2">Cash Flow Statements</h4>
-                <a href="quarterly_cash_flow.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Cash Flow</a>
-                <a href="annual_cash_flow.json" class="text-blue-400 hover:text-blue-300 block">Annual Cash Flow</a>
-            </div>
-        </div>
-        <div class="mt-4">
-            <h4 class="text-sm font-medium text-slate-400 mb-2">Additional Data</h4>
-            <a href="raw_data.json" class="text-blue-400 hover:text-blue-300 block">Complete Raw Data</a>
-            <a href="metrics.json" class="text-blue-400 hover:text-blue-300 block">Calculated Metrics</a>
+            {% endif %}
         </div>
     </div>
 
@@ -190,6 +173,33 @@
                     <div class="text-slate-400">No calculations available</div>
                 {% endif %}
             </div>
+        </div>
+    </div>
+
+    <!-- Raw Financial Data Section (Moved to bottom) -->
+    <div class="bg-slate-800/50 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-white mb-4">Raw Financial Data (JSON)</h3>
+        <div class="grid grid-cols-3 gap-4">
+            <div>
+                <h4 class="text-sm font-medium text-slate-400 mb-2">Income Statements</h4>
+                <a href="quarterly_income.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Income</a>
+                <a href="annual_income.json" class="text-blue-400 hover:text-blue-300 block">Annual Income</a>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium text-slate-400 mb-2">Balance Sheets</h4>
+                <a href="quarterly_balance.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Balance</a>
+                <a href="annual_balance.json" class="text-blue-400 hover:text-blue-300 block">Annual Balance</a>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium text-slate-400 mb-2">Cash Flow Statements</h4>
+                <a href="quarterly_cash_flow.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Cash Flow</a>
+                <a href="annual_cash_flow.json" class="text-blue-400 hover:text-blue-300 block">Annual Cash Flow</a>
+            </div>
+        </div>
+        <div class="mt-4">
+            <h4 class="text-sm font-medium text-slate-400 mb-2">Additional Data</h4>
+            <a href="raw_data.json" class="text-blue-400 hover:text-blue-300 block">Complete Raw Data</a>
+            <a href="metrics.json" class="text-blue-400 hover:text-blue-300 block">Calculated Metrics</a>
         </div>
     </div>
 </div>

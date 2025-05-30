@@ -1008,14 +1008,18 @@ def fetch_polygon_financials(symbol: str, period: str = "annual", limit: int = 5
             limit=limit
         )
         
+        # Get company details including sector
+        company_details = client.get_ticker_details(symbol)
+        sector = company_details.sic_description if hasattr(company_details, 'sic_description') else None
+        
         for fin in financials:
             try:
-                record = {}
-                
-                # Extract date information
-                record['date'] = getattr(fin, 'filing_date', None)
-                record['fiscal_period'] = getattr(fin, 'fiscal_period', None)
-                record['fiscal_year'] = getattr(fin, 'fiscal_year', None)
+                record = {
+                    'date': fin.filing_date,
+                    'fiscal_period': fin.fiscal_period,
+                    'fiscal_year': fin.fiscal_year,
+                    'sector': sector,  # Add sector to each record
+                }
                 
                 if hasattr(fin, 'financials'):
                     # Income Statement
@@ -1053,6 +1057,11 @@ def fetch_polygon_financials(symbol: str, period: str = "annual", limit: int = 5
                 continue
         
         df = pd.DataFrame(records)
+        
+        # Add sector as metadata to the DataFrame
+        if sector:
+            df.attrs['sector'] = sector
+        
         if not df.empty:
             logger.info(f"Final DataFrame columns: {df.columns.tolist()}")
             logger.info(f"First row of processed data: {df.iloc[0].to_dict()}")
@@ -1161,49 +1170,34 @@ def fetch_key_metrics(symbol: str):
     }
 
 def fetch_polygon_company_info(symbol: str) -> dict:
-    """
-    Fetch company info from Polygon.
-    
-    Args:
-        symbol (str): Stock symbol (e.g., 'AAPL')
-        
-    Returns:
-        dict: Company information or fallback values if fetch fails
-    """
+    """Fetch company info from Polygon."""
     try:
-        client = get_polygon_client()
-        logger.info(f"Fetching company info for {symbol}")
-        
-        # Get ticker details using v1.14.5 client
+        client = RESTClient(config.POLYGON_API_KEY)
         ticker_details = client.get_ticker_details(symbol)
-        logger.info(f"Raw ticker details type: {type(ticker_details)}")
         
-        # Debug the raw response
-        for attr in ['name', 'sector', 'market_cap', 'description', 'primary_exchange']:
-            logger.info(f"Attribute {attr}: {getattr(ticker_details, attr, 'Not found')}")
-        
-        info = {
-            'name': getattr(ticker_details, 'name', symbol),
-            'sector': getattr(ticker_details, 'sector', 'N/A'),
-            'market_cap': getattr(ticker_details, 'market_cap', 0),
-            'description': getattr(ticker_details, 'description', 'N/A'),
-            'exchange': getattr(ticker_details, 'primary_exchange', 'N/A'),
+        # Get sector information
+        sector = None
+        if hasattr(ticker_details, 'sic_description'):
+            sector = ticker_details.sic_description
+        elif hasattr(ticker_details, 'sector'):
+            sector = ticker_details.sector
+            
+        return {
+            'name': ticker_details.name if hasattr(ticker_details, 'name') else 'N/A',
+            'sector': sector or 'N/A',  # Use the sector we found or N/A
+            'market_cap': ticker_details.market_cap if hasattr(ticker_details, 'market_cap') else 0,
+            'description': ticker_details.description if hasattr(ticker_details, 'description') else 'N/A',
+            'exchange': ticker_details.primary_exchange if hasattr(ticker_details, 'primary_exchange') else 'N/A',
         }
-        
-        logger.info(f"Processed company info: {info}")
-        return info
-        
     except Exception as e:
-        logger.error(f"Error fetching company info for {symbol} from Polygon: {e}", exc_info=True)
-        fallback = {
-            'name': symbol,
+        logger.error(f"Error fetching company info for {symbol}: {e}", exc_info=True)
+        return {
+            'name': 'N/A',
             'sector': 'N/A',
             'market_cap': 0,
             'description': 'N/A',
-            'exchange': 'N/A',
+            'exchange': 'N/A'
         }
-        logger.info(f"Returning fallback info: {fallback}")
-        return fallback
 
 # Add rate limiting and retry logic for yfinance
 def get_market_data(symbol: str, retries: int = 3, delay: int = 5) -> Optional[pd.DataFrame]:
