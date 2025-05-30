@@ -126,8 +126,31 @@ def generate_metric_formulas(period: str) -> Dict[str, str]:
         'Current Ratio': 'Current Assets / Current Liabilities'
     }
 
+def format_large_number(value: float) -> str:
+    """Format large numbers to use K, M, B, T suffixes"""
+    try:
+        if value is None or pd.isna(value):
+            return 'N/A'
+        
+        if value == 0:
+            return '-'
+            
+        abs_value = abs(value)
+        if abs_value >= 1_000_000_000_000:  # Trillion
+            return f"${value / 1_000_000_000_000:.2f}T"
+        elif abs_value >= 1_000_000_000:  # Billion
+            return f"${value / 1_000_000_000:.2f}B"
+        elif abs_value >= 1_000_000:  # Million
+            return f"${value / 1_000_000:.2f}M"
+        elif abs_value >= 1_000:  # Thousand
+            return f"${value / 1_000:.2f}K"
+        else:
+            return f"${value:.2f}"
+    except:
+        return 'N/A'
+
 def generate_actual_calculations(data: pd.Series, period: str) -> Dict[str, str]:
-    """Generate actual calculations with values"""
+    """Generate actual calculations with formatted values"""
     revenue = data.get('revenue', 0)
     gross_profit = data.get('gross_profit', 0)
     operating_income = data.get('operating_income', 0)
@@ -139,13 +162,13 @@ def generate_actual_calculations(data: pd.Series, period: str) -> Dict[str, str]
     inventory = data.get('inventory', 0)
 
     return {
-        'Gross Margin': f'{gross_profit:,.2f} / {revenue:,.2f}',
-        'Operating Margin': f'{operating_income:,.2f} / {revenue:,.2f}',
-        'Net Margin': f'{net_income:,.2f} / {revenue:,.2f}',
-        'FCF Margin': f'({operating_cash_flow:,.2f} - {capex:,.2f}) / {revenue:,.2f}',
-        'Operating Cash Ratio': f'{operating_cash_flow:,.2f} / {current_liabilities:,.2f}',
-        'Quick Ratio': f'({current_assets:,.2f} - {inventory:,.2f}) / {current_liabilities:,.2f}',
-        'Current Ratio': f'{current_assets:,.2f} / {current_liabilities:,.2f}'
+        'Gross Margin': f'{format_large_number(gross_profit)} / {format_large_number(revenue)}',
+        'Operating Margin': f'{format_large_number(operating_income)} / {format_large_number(revenue)}',
+        'Net Margin': f'{format_large_number(net_income)} / {format_large_number(revenue)}',
+        'FCF Margin': f'({format_large_number(operating_cash_flow)} - {format_large_number(capex)}) / {format_large_number(revenue)}',
+        'Operating Cash Ratio': f'{format_large_number(operating_cash_flow)} / {format_large_number(current_liabilities)}',
+        'Quick Ratio': f'({format_large_number(current_assets)} - {format_large_number(inventory)}) / {format_large_number(current_liabilities)}',
+        'Current Ratio': f'{format_large_number(current_assets)} / {format_large_number(current_liabilities)}'
     }
 
 def calculate_period_metrics(data: pd.Series, period: str) -> Dict:
@@ -165,13 +188,11 @@ def calculate_period_metrics(data: pd.Series, period: str) -> Dict:
         
         # Calculate metrics only if we have valid revenue
         metrics = {}
-        formulas = {}
-        algorithms = {}
         
         if revenue > 0:
             metrics = {
-                f'{period} Revenue': format_currency(revenue),
-                f'{period} Net Income': format_currency(net_income),
+                f'{period} Revenue': format_large_number(revenue),
+                f'{period} Net Income': format_large_number(net_income),
                 'Gross Margin': format_percentage(gross_profit / revenue) if revenue else 'N/A',
                 'Operating Margin': format_percentage(operating_income / revenue) if revenue else 'N/A',
                 'Net Margin': format_percentage(net_income / revenue) if revenue else 'N/A',
@@ -180,22 +201,8 @@ def calculate_period_metrics(data: pd.Series, period: str) -> Dict:
                 'Quick Ratio': format_decimal((current_assets - inventory) / current_liabilities) if current_liabilities else 'N/A',
                 'Current Ratio': format_decimal(current_assets / current_liabilities) if current_liabilities else 'N/A'
             }
-            
-            # Add formulas to show calculations
-            formulas = {
-                'Gross Margin': f'{gross_profit:,.2f} / {revenue:,.2f}',
-                'Operating Margin': f'{operating_income:,.2f} / {revenue:,.2f}',
-                'Net Margin': f'{net_income:,.2f} / {revenue:,.2f}',
-                'FCF Margin': f'({operating_cash_flow:,.2f} - {capital_expenditure:,.2f}) / {revenue:,.2f}',
-                'Operating Cash Ratio': f'{operating_cash_flow:,.2f} / {current_liabilities:,.2f}',
-                'Quick Ratio': f'({current_assets:,.2f} - {inventory:,.2f}) / {current_liabilities:,.2f}',
-                'Current Ratio': f'{current_assets:,.2f} / {current_liabilities:,.2f}'
-            }
-            
-            # Add algorithms (explanations)
-            algorithms = generate_metric_formulas(period)
         
-        return metrics  # Return just the metrics, not a nested dictionary
+        return metrics
         
     except Exception as e:
         logger.error(f"Error calculating {period} metrics: {e}", exc_info=True)
@@ -205,14 +212,14 @@ def generate_calculation_details(data: pd.Series, period: str) -> Dict:
     """Generate calculation details for transparency"""
     return {
         'Raw Values': {
-            f'{period} Revenue': format_currency(data.get('revenue', 0)),
-            f'{period} Net Income': format_currency(data.get('net_income', 0)),
-            f'{period} Gross Profit': format_currency(data.get('gross_profit', 0)),
-            f'{period} Operating Income': format_currency(data.get('operating_income', 0)),
-            f'{period} Operating Cash Flow': format_currency(data.get('operating_cash_flow', 0)),
-            'Total Assets': format_currency(data.get('total_assets', 0)),
-            'Current Assets': format_currency(data.get('current_assets', 0)),
-            'Current Liabilities': format_currency(data.get('current_liabilities', 0))
+            f'{period} Revenue': format_large_number(data.get('revenue', 0)),
+            f'{period} Net Income': format_large_number(data.get('net_income', 0)),
+            f'{period} Gross Profit': format_large_number(data.get('gross_profit', 0)),
+            f'{period} Operating Income': format_large_number(data.get('operating_income', 0)),
+            f'{period} Operating Cash Flow': format_large_number(data.get('operating_cash_flow', 0)),
+            'Total Assets': format_large_number(data.get('total_assets', 0)),
+            'Current Assets': format_large_number(data.get('current_assets', 0)),
+            'Current Liabilities': format_large_number(data.get('current_liabilities', 0))
         },
         'Algorithms': generate_metric_formulas(period),
         'Formulas': generate_actual_calculations(data, period)
