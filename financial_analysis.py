@@ -7,6 +7,8 @@ Fetches and analyzes financial statements and key metrics
 import argparse
 import os
 import logging
+import json
+import pandas as pd
 from typing import Dict, List
 from utils.data_fetcher import fetch_financial_statements, fetch_key_metrics
 from utils.financial_report_generator import generate_financial_report
@@ -30,46 +32,38 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # Create default output directory
-    os.makedirs('public/results', exist_ok=True)
-    
     for symbol in args.symbols:
         logger.info(f"Analyzing {symbol}...")
         
-        # Fetch data
+        # Fetch financial data
         financial_data = fetch_financial_statements(symbol, args.years)
-        key_metrics = fetch_key_metrics(symbol)
         
-        # Log available statements
-        expected_statements = [
-            'quarterly_financials', 
-            'annual_financials'
-        ]
+        # Fetch company metrics
+        company_metrics = fetch_key_metrics(symbol)
         
-        for statement in expected_statements:
-            if statement in financial_data and financial_data[statement] is not None:
-                logger.info(f"Found {statement} with shape: {financial_data[statement].shape}")
-            else:
-                logger.warning(f"Missing {statement}")
+        # Combine data for report generation
+        report_data = {
+            **financial_data,
+            **company_metrics
+        }
         
-        if financial_data and key_metrics:
-            # Generate report with default output directory
-            report_path = generate_financial_report(
-                symbol=symbol,
-                data=financial_data,
-                metrics=key_metrics
-            )
-            
-            if report_path:
-                logger.info(f"Report generated: {report_path}")
-            else:
-                logger.error(f"Failed to generate report for {symbol}")
+        # Generate report
+        report_path = generate_financial_report(
+            symbol=symbol,
+            data=report_data,
+            metrics=company_metrics
+        )
+        
+        if report_path:
+            logger.info(f"Report generated: {report_path}")
+            # Verify the metrics file was created
+            metrics_file = os.path.join(os.path.dirname(report_path), 'metrics.json')
+            if os.path.exists(metrics_file):
+                with open(metrics_file, 'r') as f:
+                    metrics = json.load(f)
+                logger.info(f"Metrics structure: {json.dumps(metrics, indent=2)}")
         else:
-            logger.error(f"Failed to analyze {symbol}")
-    
-    logger.info("Analysis complete!")
-    logger.info("To view reports, run: python -m utils.dashboard_generator")
-    logger.info("Or access via: http://localhost:8000/")
+            logger.error(f"Failed to generate report for {symbol}")
 
 if __name__ == "__main__":
     main() 

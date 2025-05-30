@@ -927,6 +927,73 @@ def fetch_with_retry(func, symbol: str, max_retries: int = MAX_RETRIES, delay: i
             return None
     return None
 
+def get_value(obj, field_names: list, default: float = 0.0) -> float:
+    """Helper function to safely get numeric value from multiple possible field names"""
+    if obj is None:
+        return default
+        
+    for name in field_names:
+        try:
+            value = getattr(obj, name, None)
+            logger.debug(f"Trying field {name}: {value}")
+            
+            if value is not None:
+                # Handle string values that should be numeric
+                if isinstance(value, str):
+                    try:
+                        return float(value.replace(',', ''))
+                    except (ValueError, TypeError):
+                        continue
+                # Handle numeric values
+                elif isinstance(value, (int, float)):
+                    return float(value)
+                
+        except Exception as e:
+            logger.debug(f"Error getting value for {name}: {e}")
+            continue
+            
+    return default
+
+def get_value_from_datapoint(datapoint) -> float:
+    """Extract numeric value from a DataPoint object or return 0"""
+    try:
+        if datapoint is None:
+            return 0.0
+        if hasattr(datapoint, 'value'):
+            return float(datapoint.value or 0)
+        if hasattr(datapoint, 'raw_value'):
+            return float(datapoint.raw_value or 0)
+        return float(datapoint or 0)
+    except (ValueError, TypeError, AttributeError) as e:
+        logger.debug(f"Error converting datapoint to float: {e}")
+        return 0.0
+
+def debug_object_structure(obj, prefix=''):
+    """Helper function to debug object structure and available fields"""
+    if obj is None:
+        logger.debug(f"{prefix}Object is None")
+        return
+        
+    logger.debug(f"{prefix}Object type: {type(obj)}")
+    
+    if hasattr(obj, '__dict__'):
+        for key, value in obj.__dict__.items():
+            logger.debug(f"{prefix}Field: {key} = {value} (type: {type(value)})")
+            
+            # Debug nested objects
+            if hasattr(value, '__dict__'):
+                debug_object_structure(value, prefix=f"{prefix}  {key}.")
+    else:
+        # Try dir() if __dict__ is not available
+        logger.debug(f"{prefix}Available attributes via dir():")
+        for attr in dir(obj):
+            if not attr.startswith('_'):  # Skip private attributes
+                try:
+                    value = getattr(obj, attr)
+                    logger.debug(f"{prefix}  {attr} = {value} (type: {type(value)})")
+                except Exception as e:
+                    logger.debug(f"{prefix}  {attr} = <error accessing: {e}>")
+
 @lru_cache(maxsize=100)
 def fetch_polygon_financials(symbol: str, period: str = "annual", limit: int = 5) -> pd.DataFrame:
     """Fetch financial statements from Polygon"""
@@ -934,16 +1001,7 @@ def fetch_polygon_financials(symbol: str, period: str = "annual", limit: int = 5
         client = get_polygon_client()
         records = []
         
-        def get_value(obj, attr_name, default=0.0):
-            """Helper function to safely get value from DataPoint objects"""
-            attr = getattr(obj, attr_name, None)
-            if attr is None:
-                return default
-            # Handle DataPoint objects
-            if hasattr(attr, 'value'):
-                return float(attr.value or default)
-            return float(attr or default)
-        
+        logger.info(f"Fetching {period} financials for {symbol}")
         financials = client.vx.list_stock_financials(
             ticker=symbol,
             timeframe=period,
@@ -951,8 +1009,14 @@ def fetch_polygon_financials(symbol: str, period: str = "annual", limit: int = 5
             limit=limit
         )
         
+        record_count = 0
         for fin in financials:
             try:
+                record_count += 1
+                logger.info(f"\n{'='*50}")
+                logger.info(f"Processing financial record {record_count}")
+                
+                # Extract base record
                 record = {
                     'date': fin.filing_date,
                     'end_date': fin.end_date,
@@ -960,65 +1024,107 @@ def fetch_polygon_financials(symbol: str, period: str = "annual", limit: int = 5
                     'year': fin.fiscal_year
                 }
                 
-                # Income Statement
-                if hasattr(fin, 'financials') and hasattr(fin.financials, 'income_statement'):
-                    inc = fin.financials.income_statement
-                    record.update({
-                        'revenue': get_value(inc, 'revenues'),
-                        'net_income': get_value(inc, 'net_income_loss'),
-                        'operating_income': get_value(inc, 'operating_income_loss'),
-                        'gross_profit': get_value(inc, 'gross_profit'),
-                        'operating_expenses': get_value(inc, 'operating_expenses'),
-                        'interest_expense': get_value(inc, 'interest_expense_net'),
-                        'research_development': get_value(inc, 'research_and_development_expense'),
-                        'selling_general_administrative': get_value(inc, 'selling_general_and_administrative_expense'),
-                        'depreciation_amortization': get_value(inc, 'depreciation_and_amortization')
-                    })
-                
-                # Balance Sheet
-                if hasattr(fin, 'financials') and hasattr(fin.financials, 'balance_sheet'):
-                    bal = fin.financials.balance_sheet
-                    record.update({
-                        'total_assets': get_value(bal, 'assets'),
-                        'total_liabilities': get_value(bal, 'liabilities'),
-                        'total_equity': get_value(bal, 'stockholders_equity'),
-                        'current_assets': get_value(bal, 'current_assets'),
-                        'current_liabilities': get_value(bal, 'current_liabilities'),
-                        'cash_equivalents': get_value(bal, 'cash_and_cash_equivalents'),
-                        'total_debt': (
-                            get_value(bal, 'long_term_debt') +
-                            get_value(bal, 'current_debt')
-                        )
-                    })
-                
-                # Cash Flow
-                if hasattr(fin, 'financials') and hasattr(fin.financials, 'cash_flow_statement'):
-                    cf = fin.financials.cash_flow_statement
-                    record.update({
-                        'operating_cash_flow': get_value(cf, 'net_cash_flow_from_operating_activities'),
-                        'investing_cash_flow': get_value(cf, 'net_cash_flow_from_investing_activities'),
-                        'financing_cash_flow': get_value(cf, 'net_cash_flow_from_financing_activities'),
-                        'capital_expenditure': abs(get_value(cf, 'capital_expenditures'))
-                    })
+                if hasattr(fin, 'financials'):
+                    # Process income statement
+                    if hasattr(fin.financials, 'income_statement'):
+                        inc = fin.financials.income_statement
+                        record.update({
+                            'revenue': get_value_from_datapoint(inc.revenues),
+                            'gross_profit': get_value_from_datapoint(inc.gross_profit),
+                            'operating_income': get_value_from_datapoint(getattr(inc, 'operating_income', None) or 
+                                                                       getattr(inc, 'operating_income_loss', None) or 
+                                                                       getattr(inc, 'operating_profit', None)),
+                            'net_income': get_value_from_datapoint(getattr(inc, 'net_income', None) or 
+                                                                 getattr(inc, 'net_income_loss', None))
+                        })
+                        logger.info(f"Income statement values: {json.dumps({k:v for k,v in record.items() if k in ['revenue', 'gross_profit', 'operating_income', 'net_income']}, indent=2)}")
+                    
+                    # Process balance sheet
+                    if hasattr(fin.financials, 'balance_sheet'):
+                        bal = fin.financials.balance_sheet
+                        record.update({
+                            'total_assets': get_value_from_datapoint(bal.assets),
+                            'current_assets': get_value_from_datapoint(bal.current_assets),
+                            'total_liabilities': get_value_from_datapoint(bal.liabilities),
+                            'current_liabilities': get_value_from_datapoint(bal.current_liabilities),
+                            'inventory': get_value_from_datapoint(bal.inventory)
+                        })
+                        logger.info(f"Balance sheet values: {json.dumps({k:v for k,v in record.items() if k in ['total_assets', 'current_assets', 'total_liabilities', 'current_liabilities', 'inventory']}, indent=2)}")
+                    
+                    # Process cash flow with detailed debugging
+                    if hasattr(fin.financials, 'cash_flow_statement'):
+                        logger.info("\nCash Flow Statement Structure:")
+                        cf = fin.financials.cash_flow_statement
+                        
+                        # Debug all available attributes
+                        logger.info("Available cash flow attributes:")
+                        for attr in dir(cf):
+                            if not attr.startswith('_'):
+                                try:
+                                    value = getattr(cf, attr)
+                                    logger.info(f"  {attr}: {value} (type: {type(value)})")
+                                except Exception as e:
+                                    logger.info(f"  {attr}: <error accessing: {e}>")
+                        
+                        # Try multiple possible attribute names for operating cash flow
+                        cf_attrs = [
+                            'operating_cash_flow',
+                            'net_cash_from_operations',
+                            'cash_flow_from_operations',
+                            'net_operating_cash_flow',
+                            'operating_activities_net_cash_flow'
+                        ]
+                        
+                        operating_cash_flow = None
+                        for attr in cf_attrs:
+                            if hasattr(cf, attr):
+                                logger.info(f"Found operating cash flow attribute: {attr}")
+                                operating_cash_flow = getattr(cf, attr)
+                                break
+                        
+                        # Try multiple possible attribute names for capital expenditure
+                        capex_attrs = [
+                            'capital_expenditure',
+                            'capital_expenditures',
+                            'capex',
+                            'purchase_of_property_and_equipment'
+                        ]
+                        
+                        capital_expenditure = None
+                        for attr in capex_attrs:
+                            if hasattr(cf, attr):
+                                logger.info(f"Found capital expenditure attribute: {attr}")
+                                capital_expenditure = getattr(cf, attr)
+                                break
+                        
+                        record.update({
+                            'operating_cash_flow': get_value_from_datapoint(operating_cash_flow),
+                            'capital_expenditure': abs(get_value_from_datapoint(capital_expenditure))
+                        })
+                        logger.info(f"Cash flow values: {json.dumps({k:v for k,v in record.items() if k in ['operating_cash_flow', 'capital_expenditure']}, indent=2)}")
                 
                 records.append(record)
-                logger.debug(f"Processed record: {record}")
+                logger.info(f"Successfully processed record {record_count} for {record['period']} {record['year']}")
                 
             except Exception as e:
-                logger.error(f"Error processing statement: {e}", exc_info=True)
+                logger.error(f"Error processing financial record: {e}", exc_info=True)
                 continue
+        
+        logger.info(f"Processed {record_count} financial records")
         
         if not records:
             logger.warning(f"No {period} financial data found for {symbol}")
             return pd.DataFrame()
             
         df = pd.DataFrame(records)
-        logger.info(f"Successfully fetched {len(records)} {period} statements for {symbol}")
-        logger.debug(f"DataFrame columns: {df.columns.tolist()}")
+        logger.info(f"Final DataFrame shape: {df.shape}")
+        if not df.empty:
+            logger.info(f"Sample of first record:\n{json.dumps(df.iloc[0].to_dict(), indent=2)}")
+        
         return df
         
     except Exception as e:
-        logger.error(f"Error fetching {period} financials for {symbol} from Polygon: {e}", exc_info=True)
+        logger.error(f"Error fetching {period} financials for {symbol}: {e}", exc_info=True)
         return pd.DataFrame()
 
 def process_statements(statements_list: List[Dict], timeframe: str) -> Dict:
@@ -1075,69 +1181,37 @@ def format_decimal(value: float) -> str:
     return f"{value:.2f}"
 
 def fetch_financial_statements(symbol: str, years: int = 5) -> Dict:
-    """Fetch all financial statements"""
+    """Fetch financial statements with enhanced debugging"""
     try:
-        # Fetch statements from Polygon
-        annual_financials = fetch_polygon_financials(symbol, "annual", limit=5)
-        quarterly_financials = fetch_polygon_financials(symbol, "quarterly", limit=20)
+        logger.info(f"Fetching financial statements for {symbol}")
         
-        statements = {
-            'quarterly_financials': quarterly_financials,
-            'annual_financials': annual_financials
-        }
-
-        # Calculate annual metrics if data is available
-        if not annual_financials.empty:
-            latest_annual = annual_financials.iloc[0]
-            
-            # Add annual metrics with proper formatting
-            statements['Annual Metrics'] = {
-                'Gross Margin': format_percentage(latest_annual['gross_profit'] / latest_annual['revenue'] if latest_annual['revenue'] != 0 else None),
-                'Operating Margin': format_percentage(latest_annual['operating_income'] / latest_annual['revenue'] if latest_annual['revenue'] != 0 else None),
-                'Net Margin': format_percentage(latest_annual['net_income'] / latest_annual['revenue'] if latest_annual['revenue'] != 0 else None),
-                'FCF Margin': format_percentage((latest_annual['operating_cash_flow'] - latest_annual['capital_expenditure']) / latest_annual['revenue'] if latest_annual['revenue'] != 0 else None)
-            }
-            
-            # Add annual calculations for transparency
-            statements['Annual Calculations'] = {
-                'Raw Values': {
-                    'Revenue': f"${latest_annual['revenue']:,.2f}",
-                    'Gross Profit': f"${latest_annual['gross_profit']:,.2f}",
-                    'Operating Income': f"${latest_annual['operating_income']:,.2f}",
-                    'Net Income': f"${latest_annual['net_income']:,.2f}",
-                    'Operating Cash Flow': f"${latest_annual['operating_cash_flow']:,.2f}"
-                },
-                'Algorithms': {
-                    'Gross Margin': 'Annual Gross Profit / Annual Revenue',
-                    'Operating Margin': 'Annual Operating Income / Annual Revenue',
-                    'Net Margin': 'Annual Net Income / Annual Revenue',
-                    'FCF Margin': '(Annual Operating Cash Flow - Annual CapEx) / Annual Revenue'
-                },
-                'Formulas': {
-                    'Gross Margin': f"${latest_annual['gross_profit']:,.2f} / ${latest_annual['revenue']:,.2f}",
-                    'Operating Margin': f"${latest_annual['operating_income']:,.2f} / ${latest_annual['revenue']:,.2f}",
-                    'Net Margin': f"${latest_annual['net_income']:,.2f} / ${latest_annual['revenue']:,.2f}",
-                    'FCF Margin': f"(${latest_annual['operating_cash_flow']:,.2f} - ${latest_annual['capital_expenditure']:,.2f}) / ${latest_annual['revenue']:,.2f}"
-                }
-            }
+        # Fetch quarterly and annual data
+        quarterly = fetch_polygon_financials(symbol, "quarterly", limit=years * 4)
+        annual = fetch_polygon_financials(symbol, "annual", limit=years)
+        
+        # Debug the data
+        if not quarterly.empty:
+            logger.info(f"Quarterly data columns: {quarterly.columns.tolist()}")
+            logger.info(f"Quarterly data sample: {quarterly.iloc[0].to_dict()}")
         else:
-            logger.warning(f"No annual financial data found for {symbol}")
-            statements['Annual Metrics'] = {}
-            statements['Annual Calculations'] = {'Raw Values': {}, 'Algorithms': {}, 'Formulas': {}}
-
-        # Get company info
-        company_info = fetch_polygon_company_info(symbol)
-        statements.update(company_info)
-
-        return statements
-
+            logger.warning("No quarterly data found")
+            
+        if not annual.empty:
+            logger.info(f"Annual data columns: {annual.columns.tolist()}")
+            logger.info(f"Annual data sample: {annual.iloc[0].to_dict()}")
+        else:
+            logger.warning("No annual data found")
+        
+        return {
+            'quarterly_financials': quarterly,
+            'annual_financials': annual
+        }
+        
     except Exception as e:
         logger.error(f"Error fetching financial statements: {e}", exc_info=True)
         return {
             'quarterly_financials': pd.DataFrame(),
-            'annual_financials': pd.DataFrame(),
-            'Annual Metrics': {},
-            'Annual Calculations': {'Raw Values': {}, 'Algorithms': {}, 'Formulas': {}}
+            'annual_financials': pd.DataFrame()
         }
 
 def fetch_key_metrics(symbol: str):

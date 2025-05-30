@@ -56,200 +56,206 @@ def calculate_cagr(series: pd.Series, years: int) -> Optional[float]:
     return validate_percentage(growth)
 
 def calculate_financial_metrics(data: Dict) -> Dict:
-    """Calculate financial metrics from statements with strict validation"""
+    """Calculate financial metrics from raw data"""
     try:
-        logger.info("Starting to calculate financial metrics")
-        
         metrics = {
             'Quarterly Metrics': {},
             'Annual Metrics': {},
             'Descriptions': {},
             'Annual Descriptions': {},
-            'Calculations': {'Raw Values': {}, 'Formulas': {}},
+            'Calculations': {'Raw Values': {}, 'Algorithms': {}, 'Formulas': {}},
             'Annual Calculations': {'Raw Values': {}, 'Algorithms': {}, 'Formulas': {}}
         }
 
+        # Debug data structure
+        logger.info(f"Input data structure: {list(data.keys())}")
+        
         # Handle quarterly metrics
         q_financials = data.get('quarterly_financials')
-        if not (q_financials is None or q_financials.empty):
-            current_q = q_financials.iloc[0] if not q_financials.empty else None
+        if isinstance(q_financials, pd.DataFrame) and not q_financials.empty:
+            logger.info(f"Processing quarterly data with columns: {q_financials.columns.tolist()}")
+            logger.info(f"First row sample: {q_financials.iloc[0].to_dict()}")
             
-            if current_q is not None:
-                # Get base values
-                revenue = current_q.get('revenue', 0) or 0
-                gross_profit = current_q.get('gross_profit', 0) or 0
-                operating_income = current_q.get('operating_income', 0) or 0
-                net_income = current_q.get('net_income', 0) or 0
-                operating_cash_flow = current_q.get('operating_cash_flow', 0) or 0
-                current_assets = current_q.get('current_assets', 0) or 0
-                current_liabilities = current_q.get('current_liabilities', 1) or 1
-                inventory = current_q.get('inventory', 0) or 0
-                interest_expense = current_q.get('interest_expense', 0) or 0
-                capex = current_q.get('capital_expenditure', 0) or 0
-                
-                # Store raw values for transparency (only the ones we use)
-                metrics['Calculations']['Raw Values'] = {
-                    'Revenue': f"{revenue:,.2f}",
-                    'Gross Profit': f"{gross_profit:,.2f}",
-                    'Operating Income': f"{operating_income:,.2f}",
-                    'Net Income': f"{net_income:,.2f}",
-                    'Operating Cash Flow': f"{operating_cash_flow:,.2f}",
-                    'Current Assets': f"{current_assets:,.2f}",
-                    'Current Liabilities': f"{current_liabilities:,.2f}"
-                }
-                
-                # Store formulas for transparency
-                metrics['Calculations']['Formulas'] = {
-                    'Gross Margin': f"Gross Profit / Revenue = ${gross_profit:,.2f} / ${revenue:,.2f}",
-                    'Operating Margin': f"Operating Income / Revenue = ${operating_income:,.2f} / ${revenue:,.2f}",
-                    'Net Margin': f"Net Income / Revenue = ${net_income:,.2f} / ${revenue:,.2f}",
-                    'FCF Margin': f"(Operating Cash Flow - CapEx) / Revenue = (${operating_cash_flow:,.2f} - ${capex:,.2f}) / ${revenue:,.2f}",
-                    'Operating Cash Ratio': f"Operating Cash Flow / Current Liabilities = ${operating_cash_flow:,.2f} / ${current_liabilities:,.2f}",
-                    'Interest Coverage': f"Operating Income / Interest Expense = ${operating_income:,.2f} / ${abs(interest_expense):,.2f}",
-                    'Quick Ratio': f"(Current Assets - Inventory) / Current Liabilities = (${current_assets:,.2f} - ${inventory:,.2f}) / ${current_liabilities:,.2f}",
-                    'Current Ratio': f"Current Assets / Current Liabilities = ${current_assets:,.2f} / ${current_liabilities:,.2f}"
-                }
-                
-                # Calculate metrics
-                metrics['Quarterly Metrics'].update({
-                    'Gross Margin': format_percentage(gross_profit / revenue if revenue != 0 else None),
-                    'Operating Margin': format_percentage(operating_income / revenue if revenue != 0 else None),
-                    'Net Margin': format_percentage(net_income / revenue if revenue != 0 else None),
-                    'FCF Margin': format_percentage((operating_cash_flow - capex) / revenue if revenue != 0 else None),
-                    'Operating Cash Ratio': format_decimal(operating_cash_flow / current_liabilities),
-                    'Interest Coverage': format_decimal(operating_income / abs(interest_expense) if interest_expense != 0 else None),
-                    'Quick Ratio': format_decimal((current_assets - inventory) / current_liabilities),
-                    'Current Ratio': format_decimal(current_assets / current_liabilities)
-                })
-                
-                # Add descriptions
-                metrics['Descriptions'] = {
-                    'Gross Margin': 'Percentage of revenue remaining after direct costs, indicating pricing power and production efficiency',
-                    'Operating Margin': 'Percentage of revenue remaining after operating expenses, showing operational efficiency',
-                    'Net Margin': 'Percentage of revenue converted to profit, indicating overall profitability',
-                    'FCF Margin': 'Free cash flow as a percentage of revenue, showing cash generation efficiency',
-                    'Operating Cash Ratio': 'Operating cash flow relative to current liabilities, indicating short-term debt coverage',
-                    'Interest Coverage': 'Operating income relative to interest expenses, showing debt service capability',
-                    'Quick Ratio': 'Liquid assets relative to current liabilities, indicating immediate solvency (excluding inventory)',
-                    'Current Ratio': 'Current assets relative to current liabilities, showing short-term solvency'
-                }
+            current_q = q_financials.iloc[0]
+            
+            # Calculate quarterly raw values
+            metrics['Calculations']['Raw Values'] = {
+                'Quarterly Revenue': format_currency(current_q.get('revenue', 0)),
+                'Quarterly Net Income': format_currency(current_q.get('net_income', 0)),
+                'Quarterly Gross Profit': format_currency(current_q.get('gross_profit', 0)),
+                'Quarterly Operating Income': format_currency(current_q.get('operating_income', 0)),
+                'Quarterly Operating Cash Flow': format_currency(current_q.get('operating_cash_flow', 0)),
+                'Total Assets': format_currency(current_q.get('total_assets', 0)),
+                'Current Assets': format_currency(current_q.get('current_assets', 0)),
+                'Current Liabilities': format_currency(current_q.get('current_liabilities', 0))
+            }
+            
+            # Calculate metrics
+            metrics['Quarterly Metrics'] = calculate_period_metrics(current_q, 'Quarterly')
+            metrics['Calculations']['Algorithms'] = generate_metric_formulas('Quarterly')
+            metrics['Calculations']['Formulas'] = generate_actual_calculations(current_q, 'Quarterly')
+            metrics['Descriptions'].update(generate_metric_descriptions('Quarterly'))
+            
+            logger.info(f"Quarterly metrics calculated: {metrics['Quarterly Metrics']}")
+            logger.info(f"Quarterly raw values: {metrics['Calculations']['Raw Values']}")
 
-        # Handle annual metrics
+        # Handle annual metrics (similar structure)
         a_financials = data.get('annual_financials')
-        if not (a_financials is None or a_financials.empty):
-            current_a = a_financials.iloc[0] if not a_financials.empty else None
+        if isinstance(a_financials, pd.DataFrame) and not a_financials.empty:
+            logger.info(f"Processing annual data with columns: {a_financials.columns.tolist()}")
+            logger.info(f"First row sample: {a_financials.iloc[0].to_dict()}")
             
-            if current_a is not None:
-                # Get base annual values
-                revenue = current_a.get('revenue', 0) or 0
-                gross_profit = current_a.get('gross_profit', 0) or 0
-                operating_income = current_a.get('operating_income', 0) or 0
-                net_income = current_a.get('net_income', 0) or 0
-                operating_cash_flow = current_a.get('operating_cash_flow', 0) or 0
-                total_assets = current_a.get('total_assets', 0) or 0
-                total_equity = current_a.get('total_equity', 0) or 0
-                total_debt = current_a.get('total_debt', 0) or 0
-                interest_expense = current_a.get('interest_expense', 0) or 0
-                depreciation = current_a.get('depreciation_amortization', 0) or 0
-                rd_expense = current_a.get('research_development', 0) or 0
-                sga_expense = current_a.get('selling_general_administrative', 0) or 0
-                capex = current_a.get('capital_expenditure', 0) or 0
-                
-                # Calculate invested capital
-                invested_capital = total_equity + total_debt - (current_a.get('cash_equivalents', 0) or 0)
-                
-                # Store annual raw values
-                metrics['Annual Calculations']['Raw Values'] = {
-                    'Annual Revenue': f"${revenue:,.2f}",
-                    'Annual Net Income': f"${net_income:,.2f}",
-                    'Annual Gross Profit': f"${gross_profit:,.2f}",
-                    'Annual Operating Income': f"${operating_income:,.2f}",
-                    'Annual Operating Cash Flow': f"${operating_cash_flow:,.2f}",
-                    'Total Assets': f"${total_assets:,.2f}",
-                    'Total Equity': f"${total_equity:,.2f}",
-                    'Invested Capital': f"${invested_capital:,.2f}",
-                    'Interest Expense': f"${abs(interest_expense):,.2f}",
-                    'Depreciation': f"${depreciation:,.2f}",
-                    'R&D Expense': f"${rd_expense:,.2f}",
-                    'SG&A Expense': f"${sga_expense:,.2f}"
-                }
-
-                # Calculate annual metrics
-                metrics['Annual Metrics'] = {
-                    'Annual Revenue': f"${revenue:,.2f}",
-                    'Annual Net Income': f"${net_income:,.2f}",
-                    'Gross Margin': format_percentage(gross_profit / revenue if revenue != 0 else None),
-                    'Operating Margin': format_percentage(operating_income / revenue if revenue != 0 else None),
-                    'Net Margin': format_percentage(net_income / revenue if revenue != 0 else None),
-                    'FCF Margin': format_percentage((operating_cash_flow - capex) / revenue if revenue != 0 else None),
-                    'Return on Assets (ROA)': format_percentage(net_income / total_assets if total_assets != 0 else None),
-                    'Return on Equity (ROE)': format_percentage(net_income / total_equity if total_equity != 0 else None),
-                    'Return on Invested Capital (ROIC)': format_percentage(operating_income * (1 - 0.21) / invested_capital if invested_capital != 0 else None),
-                    'Interest Coverage Ratio': format_decimal(operating_income / abs(interest_expense) if interest_expense != 0 else None),
-                    'Depreciation % of Revenue': format_percentage(depreciation / revenue if revenue != 0 else None),
-                    'R&D % of Revenue': format_percentage(rd_expense / revenue if revenue != 0 else None),
-                    'SG&A % of Revenue': format_percentage(sga_expense / revenue if revenue != 0 else None)
-                }
-
-                # Store annual calculation formulas
-                metrics['Annual Calculations']['Algorithms'] = {
-                    'Gross Margin': 'Annual Gross Profit / Annual Revenue',
-                    'Operating Margin': 'Annual Operating Income / Annual Revenue',
-                    'Net Margin': 'Annual Net Income / Annual Revenue',
-                    'FCF Margin': '(Annual Operating Cash Flow - Annual CapEx) / Annual Revenue',
-                    'Return on Assets': 'Annual Net Income / Total Assets',
-                    'Return on Equity': 'Annual Net Income / Total Equity',
-                    'Return on Invested Capital': 'Annual Operating Income * (1 - Tax Rate) / Invested Capital',
-                    'Interest Coverage Ratio': 'Annual Operating Income / Interest Expense',
-                    'Depreciation % of Revenue': 'Annual Depreciation / Annual Revenue',
-                    'R&D % of Revenue': 'Annual R&D Expense / Annual Revenue',
-                    'SG&A % of Revenue': 'Annual SG&A Expense / Annual Revenue'
-                }
-
-                # Store actual calculations
-                metrics['Annual Calculations']['Formulas'] = {
-                    'Gross Margin': f"${gross_profit:,.2f} / ${revenue:,.2f}",
-                    'Operating Margin': f"${operating_income:,.2f} / ${revenue:,.2f}",
-                    'Net Margin': f"${net_income:,.2f} / ${revenue:,.2f}",
-                    'FCF Margin': f"(${operating_cash_flow:,.2f} - ${capex:,.2f}) / ${revenue:,.2f}",
-                    'Return on Assets': f"${net_income:,.2f} / ${total_assets:,.2f}",
-                    'Return on Equity': f"${net_income:,.2f} / ${total_equity:,.2f}",
-                    'Return on Invested Capital': f"(${operating_income:,.2f} * 0.79) / ${invested_capital:,.2f}",
-                    'Interest Coverage Ratio': f"${operating_income:,.2f} / ${abs(interest_expense):,.2f}",
-                    'Depreciation % of Revenue': f"${depreciation:,.2f} / ${revenue:,.2f}",
-                    'R&D % of Revenue': f"${rd_expense:,.2f} / ${revenue:,.2f}",
-                    'SG&A % of Revenue': f"${sga_expense:,.2f} / ${revenue:,.2f}"
-                }
-
-        # Add descriptions for annual metrics
-        metrics['Annual Descriptions'] = {
-            'Annual Revenue': 'Total annual sales revenue',
-            'Annual Net Income': 'Total annual profit after all expenses and taxes',
-            'Gross Margin': 'Annual percentage of revenue remaining after direct costs',
-            'Operating Margin': 'Annual percentage of revenue remaining after operating expenses',
-            'Net Margin': 'Annual percentage of revenue converted to profit',
-            'FCF Margin': 'Annual free cash flow as a percentage of revenue',
-            'Return on Assets (ROA)': 'Annual net income relative to total assets, showing asset efficiency',
-            'Return on Equity (ROE)': 'Annual net income relative to shareholder equity, showing equity efficiency',
-            'Return on Invested Capital (ROIC)': 'Annual after-tax operating income relative to invested capital',
-            'Interest Coverage Ratio': 'Annual operating income relative to interest expenses',
-            'Depreciation % of Revenue': 'Annual depreciation and amortization as a percentage of revenue',
-            'R&D % of Revenue': 'Annual research and development expenses as a percentage of revenue',
-            'SG&A % of Revenue': 'Annual selling, general, and administrative expenses as a percentage of revenue'
-        }
+            current_a = a_financials.iloc[0]
+            
+            # Calculate annual raw values
+            metrics['Annual Calculations']['Raw Values'] = {
+                'Annual Revenue': format_currency(current_a.get('revenue', 0)),
+                'Annual Net Income': format_currency(current_a.get('net_income', 0)),
+                'Annual Gross Profit': format_currency(current_a.get('gross_profit', 0)),
+                'Annual Operating Income': format_currency(current_a.get('operating_income', 0)),
+                'Annual Operating Cash Flow': format_currency(current_a.get('operating_cash_flow', 0)),
+                'Total Assets': format_currency(current_a.get('total_assets', 0)),
+                'Current Assets': format_currency(current_a.get('current_assets', 0)),
+                'Current Liabilities': format_currency(current_a.get('current_liabilities', 0))
+            }
+            
+            # Calculate metrics
+            metrics['Annual Metrics'] = calculate_period_metrics(current_a, 'Annual')
+            metrics['Annual Calculations']['Algorithms'] = generate_metric_formulas('Annual')
+            metrics['Annual Calculations']['Formulas'] = generate_actual_calculations(current_a, 'Annual')
+            metrics['Annual Descriptions'].update(generate_metric_descriptions('Annual'))
+            
+            logger.info(f"Annual metrics calculated: {metrics['Annual Metrics']}")
+            logger.info(f"Annual raw values: {metrics['Annual Calculations']['Raw Values']}")
 
         return metrics
 
     except Exception as e:
-        logger.error(f"Error in calculate_financial_metrics: {e}", exc_info=True)
+        logger.error(f"Error calculating financial metrics: {e}", exc_info=True)
         return {
             'Quarterly Metrics': {},
             'Annual Metrics': {},
             'Descriptions': {},
             'Annual Descriptions': {},
-            'Calculations': {'Raw Values': {}, 'Formulas': {}},
+            'Calculations': {'Raw Values': {}, 'Algorithms': {}, 'Formulas': {}},
             'Annual Calculations': {'Raw Values': {}, 'Algorithms': {}, 'Formulas': {}}
         }
+
+def generate_metric_descriptions(period: str) -> Dict[str, str]:
+    """Generate descriptions for financial metrics"""
+    return {
+        f'{period} Revenue': 'Total revenue generated during the period',
+        f'{period} Net Income': 'Net profit after all expenses and taxes',
+        'Gross Margin': 'Percentage of revenue remaining after direct costs',
+        'Operating Margin': 'Percentage of revenue remaining after operating expenses',
+        'Net Margin': 'Percentage of revenue converted to profit',
+        'FCF Margin': 'Free cash flow as a percentage of revenue',
+        'Operating Cash Ratio': 'Operating cash flow relative to current liabilities',
+        'Quick Ratio': 'Ability to pay short-term obligations with liquid assets',
+        'Current Ratio': 'Ability to pay short-term obligations with all current assets'
+    }
+
+def generate_metric_formulas(period: str) -> Dict[str, str]:
+    """Generate formulas for financial metrics"""
+    return {
+        'Gross Margin': 'Gross Profit / Revenue',
+        'Operating Margin': 'Operating Income / Revenue',
+        'Net Margin': 'Net Income / Revenue',
+        'FCF Margin': '(Operating Cash Flow - CapEx) / Revenue',
+        'Operating Cash Ratio': 'Operating Cash Flow / Current Liabilities',
+        'Quick Ratio': '(Current Assets - Inventory) / Current Liabilities',
+        'Current Ratio': 'Current Assets / Current Liabilities'
+    }
+
+def generate_actual_calculations(data: pd.Series, period: str) -> Dict[str, str]:
+    """Generate actual calculations with values"""
+    revenue = data.get('revenue', 0)
+    gross_profit = data.get('gross_profit', 0)
+    operating_income = data.get('operating_income', 0)
+    net_income = data.get('net_income', 0)
+    operating_cash_flow = data.get('operating_cash_flow', 0)
+    capex = data.get('capital_expenditure', 0)
+    current_assets = data.get('current_assets', 0)
+    current_liabilities = data.get('current_liabilities', 0)
+    inventory = data.get('inventory', 0)
+
+    return {
+        'Gross Margin': f'{gross_profit:,.2f} / {revenue:,.2f}',
+        'Operating Margin': f'{operating_income:,.2f} / {revenue:,.2f}',
+        'Net Margin': f'{net_income:,.2f} / {revenue:,.2f}',
+        'FCF Margin': f'({operating_cash_flow:,.2f} - {capex:,.2f}) / {revenue:,.2f}',
+        'Operating Cash Ratio': f'{operating_cash_flow:,.2f} / {current_liabilities:,.2f}',
+        'Quick Ratio': f'({current_assets:,.2f} - {inventory:,.2f}) / {current_liabilities:,.2f}',
+        'Current Ratio': f'{current_assets:,.2f} / {current_liabilities:,.2f}'
+    }
+
+def calculate_period_metrics(data: pd.Series, period: str) -> Dict:
+    """Calculate metrics for a given period"""
+    metrics = {}
+    try:
+        # Debug the input data
+        logger.debug(f"{period} data fields: {data.index.tolist()}")
+        
+        revenue = float(data.get('revenue', 0))
+        if revenue > 0:
+            metrics.update({
+                f'{period} Revenue': format_currency(revenue),
+                f'{period} Net Income': format_currency(float(data.get('net_income', 0))),
+                'Gross Margin': format_percentage(float(data.get('gross_profit', 0)) / revenue if revenue else 0),
+                'Operating Margin': format_percentage(float(data.get('operating_income', 0)) / revenue if revenue else 0),
+                'Net Margin': format_percentage(float(data.get('net_income', 0)) / revenue if revenue else 0)
+            })
+            
+            # Calculate FCF Margin
+            operating_cash_flow = float(data.get('operating_cash_flow', 0))
+            capex = float(data.get('capital_expenditure', 0))
+            metrics['FCF Margin'] = format_percentage((operating_cash_flow - capex) / revenue if revenue else 0)
+            
+            # Calculate liquidity ratios
+            current_liabilities = float(data.get('current_liabilities', 0))
+            if current_liabilities > 0:
+                current_assets = float(data.get('current_assets', 0))
+                inventory = float(data.get('inventory', 0))
+                
+                metrics.update({
+                    'Operating Cash Ratio': format_decimal(operating_cash_flow / current_liabilities),
+                    'Quick Ratio': format_decimal((current_assets - inventory) / current_liabilities),
+                    'Current Ratio': format_decimal(current_assets / current_liabilities)
+                })
+        
+        logger.debug(f"Calculated {period} metrics: {metrics}")
+        return metrics
+        
+    except Exception as e:
+        logger.error(f"Error calculating {period.lower()} metrics: {e}", exc_info=True)
+        return metrics
+
+def generate_calculation_details(data: pd.Series, period: str) -> Dict:
+    """Generate calculation details for transparency"""
+    return {
+        'Raw Values': {
+            f'{period} Revenue': format_currency(data.get('revenue', 0)),
+            f'{period} Net Income': format_currency(data.get('net_income', 0)),
+            f'{period} Gross Profit': format_currency(data.get('gross_profit', 0)),
+            f'{period} Operating Income': format_currency(data.get('operating_income', 0)),
+            f'{period} Operating Cash Flow': format_currency(data.get('operating_cash_flow', 0)),
+            'Total Assets': format_currency(data.get('total_assets', 0)),
+            'Current Assets': format_currency(data.get('current_assets', 0)),
+            'Current Liabilities': format_currency(data.get('current_liabilities', 0))
+        },
+        'Algorithms': generate_metric_formulas(period),
+        'Formulas': generate_actual_calculations(data, period)
+    }
+
+def format_currency(value: float) -> str:
+    """Format currency values with proper handling of None/zero"""
+    try:
+        if value is None or value == 0:
+            return "$0.00"
+        return f"${value:,.2f}"
+    except Exception as e:
+        logger.error(f"Error formatting currency: {e}")
+        return "$0.00"
 
 def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optional[str]:
     """Generate financial analysis report

@@ -106,85 +106,28 @@
                 <div class="mb-6 bg-slate-900/50 p-4 rounded-lg">
                     <h5 class="text-sm font-medium text-slate-300 mb-3">Raw Values</h5>
                     <div class="grid grid-cols-1 gap-2">
-                        <!-- Core Financial Values -->
+                        {% for name, value in metrics.get('Calculations', {}).get('Raw Values', {}).items() %}
                         <div class="flex justify-between text-sm">
-                            <span class="text-slate-400">Revenue:</span>
-                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Revenue'] }}</span>
+                            <span class="text-slate-400">{{ name }}:</span>
+                            <span class="text-blue-300 font-mono">{{ value }}</span>
                         </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-400">Gross Profit:</span>
-                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Gross Profit'] }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-400">Operating Income:</span>
-                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Operating Income'] }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-400">Net Income:</span>
-                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Net Income'] }}</span>
-                        </div>
-                        
-                        <!-- Cash Flow and Balance Sheet Values -->
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-400">Operating Cash Flow:</span>
-                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Operating Cash Flow'] }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-400">Current Assets:</span>
-                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Current Assets'] }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-400">Current Liabilities:</span>
-                            <span class="text-blue-300 font-mono">${{ metrics['Calculations']['Raw Values']['Current Liabilities'] }}</span>
-                        </div>
+                        {% endfor %}
                     </div>
                 </div>
                 
                 <!-- Formulas -->
                 <div class="bg-slate-900/50 p-4 rounded-lg">
                     <h5 class="text-sm font-medium text-slate-300 mb-3">Calculations</h5>
-                    {% for name, formula in metrics['Calculations']['Formulas'].items() %}
+                    {% for name, formula in metrics.get('Calculations', {}).get('Formulas', {}).items() %}
                     <div class="mb-6 last:mb-0">
                         <div class="text-sm text-slate-300 font-medium mb-2">{{ name }}:</div>
                         <!-- Algorithm -->
                         <div class="text-sm text-emerald-400 font-mono mb-1 pl-4">
-                            {% if name == 'Gross Margin' %}
-                            Gross Profit / Revenue
-                            {% elif name == 'Operating Margin' %}
-                            Operating Income / Revenue
-                            {% elif name == 'Net Margin' %}
-                            Net Income / Revenue
-                            {% elif name == 'FCF Margin' %}
-                            (Operating Cash Flow - CapEx) / Revenue
-                            {% elif name == 'Operating Cash Ratio' %}
-                            Operating Cash Flow / Current Liabilities
-                            {% elif name == 'Interest Coverage' %}
-                            Operating Income / Interest Expense
-                            {% elif name == 'Quick Ratio' %}
-                            (Current Assets - Inventory) / Current Liabilities
-                            {% elif name == 'Current Ratio' %}
-                            Current Assets / Current Liabilities
-                            {% endif %}
+                            {{ metrics.get('Calculations', {}).get('Algorithms', {}).get(name, '') }}
                         </div>
                         <!-- Actual Calculation -->
                         <div class="text-sm text-blue-300 font-mono pl-4 break-all">
-                            {% if name == 'Gross Margin' %}
-                            $430,689,000.00 / $586,010,000.00
-                            {% elif name == 'Operating Margin' %}
-                            $57,897,000.00 / $586,010,000.00
-                            {% elif name == 'Net Margin' %}
-                            $49,485,000.00 / $586,010,000.00
-                            {% elif name == 'FCF Margin' %}
-                            ($109,090,000.00 - $0.00) / $586,010,000.00
-                            {% elif name == 'Operating Cash Ratio' %}
-                            $109,090,000.00 / $280,362,000.00
-                            {% elif name == 'Interest Coverage' %}
-                            $57,897,000.00 / $0.00
-                            {% elif name == 'Quick Ratio' %}
-                            ($446,964,000.00 - $0.00) / $280,362,000.00
-                            {% elif name == 'Current Ratio' %}
-                            $446,964,000.00 / $280,362,000.00
-                            {% endif %}
+                            {{ formula }}
                         </div>
                     </div>
                     {% endfor %}
