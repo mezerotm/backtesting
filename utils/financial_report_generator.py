@@ -8,6 +8,7 @@ from utils.metadata_generator import generate_metadata, save_metadata
 import logging
 import json
 import math
+from utils.metric_descriptions import METRIC_DESCRIPTIONS
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -312,9 +313,6 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
             'Enterprise Value': format_large_number(financial_ratios.get('enterprise_value')),
             'EV/EBITDA': format_decimal(financial_ratios.get('ev_ebitda')),
             'EV/Revenue': format_decimal(financial_ratios.get('ev_revenue')),
-            'Net Margin': format_percentage(financial_ratios.get('net_margin')),
-            'Operating Income': format_large_number(financial_ratios.get('operating_income')),
-            'Revenue': format_large_number(financial_ratios.get('revenue')),
             'Weighted Shares': format_large_number(fundamentals.get('weighted_shares', 0), include_currency=False),
             'Float': format_large_number(fundamentals.get('float', 0), include_currency=False),
             'Employees': format_large_number(fundamentals.get('employees', 0), include_currency=False)
@@ -348,6 +346,9 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         
         # Calculate all metrics first
         calculated_metrics = calculate_financial_metrics(data)
+        
+        # Add descriptions to metrics dictionary
+        calculated_metrics['Descriptions'] = METRIC_DESCRIPTIONS
         
         # Save metrics with metadata
         metrics_file = os.path.join(report_dir, 'metrics.json')
@@ -458,25 +459,33 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
                 logger.error(f"Error processing {name}: {str(e)}", exc_info=True)
                 continue
         
-        # Save raw data with metadata
-        try:
-            raw_data_path = os.path.join(report_dir, 'raw_data.json')
-            # Convert DataFrames to records for JSON serialization
-            serializable_data = {
-                k: v.to_dict('records') if isinstance(v, pd.DataFrame) else v
-                for k, v in data.items()
-            }
+        # Convert DataFrames to dict format before saving
+        json_safe_data = {}
+        for key, value in data.items():
+            if isinstance(value, pd.DataFrame):
+                json_safe_data[key] = value.to_dict('records')
+            else:
+                json_safe_data[key] = value
+
+        # Save complete raw data including descriptions
+        raw_data = {
+            'symbol': symbol,
+            'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'market_metrics': market_metrics,
+            'metric_descriptions': METRIC_DESCRIPTIONS,
+            'financial_data': json_safe_data,  # Use converted data
+            'calculated_metrics': calculated_metrics
+        }
+        
+        # Save raw data to JSON
+        raw_data_path = os.path.join(report_dir, 'raw_data.json')
+        with open(raw_data_path, 'w') as f:
+            json.dump(raw_data, f, indent=2)
             
-            raw_data_with_metadata = {
-                **common_metadata,  # Add common metadata
-                'data': serializable_data
-            }
-            
-            with open(raw_data_path, 'w') as f:
-                json.dump(raw_data_with_metadata, f, indent=2, default=str)
-            logger.info("Successfully saved raw_data.json")
-        except Exception as e:
-            logger.error(f"Error saving raw data: {e}", exc_info=True)
+        # Save metric descriptions separately
+        descriptions_path = os.path.join(report_dir, 'metric_descriptions.json')
+        with open(descriptions_path, 'w') as f:
+            json.dump(METRIC_DESCRIPTIONS, f, indent=2)
         
         # Setup Jinja2 environment
         env = Environment(loader=FileSystemLoader('templates'))

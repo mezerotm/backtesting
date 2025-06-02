@@ -50,7 +50,7 @@
                         {{ value }}
                     {% endif %}
                 </div>
-                {% if metrics.get('Descriptions', {}).get(name) %}
+                {% if metrics['Descriptions'][name] %}
                 <div class="text-xs text-slate-400 mt-1">
                     {{ metrics['Descriptions'][name] }}
                 </div>
@@ -192,7 +192,7 @@
         </div>
     </div>
 
-    <!-- Raw Financial Data Section (Moved to bottom) -->
+    <!-- Raw Financial Data Section -->
     <div class="bg-slate-800/50 rounded-lg p-6">
         <h3 class="text-lg font-semibold text-white mb-4">Raw Financial Data (JSON)</h3>
         <div class="grid grid-cols-3 gap-4">
@@ -216,6 +216,7 @@
             <h4 class="text-sm font-medium text-slate-400 mb-2">Additional Data</h4>
             <a href="raw_data.json" class="text-blue-400 hover:text-blue-300 block">Complete Raw Data</a>
             <a href="metrics.json" class="text-blue-400 hover:text-blue-300 block">Calculated Metrics</a>
+            <a href="metric_descriptions.json" class="text-blue-400 hover:text-blue-300 block">Metric Descriptions</a>
         </div>
     </div>
 </div>
