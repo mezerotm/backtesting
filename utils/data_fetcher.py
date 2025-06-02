@@ -1158,16 +1158,52 @@ def fetch_financial_statements(symbol: str, years: int = 5) -> Dict:
             'annual_financials': pd.DataFrame()
         }
 
-def fetch_key_metrics(symbol: str):
-    """Fetch key metrics from Polygon."""
-    info = fetch_polygon_company_info(symbol)
-    return {
-        'name': info.get('name', 'N/A'),
-        'sector': info.get('sector', 'N/A'),
-        'market_cap': info.get('market_cap', 0),
-        'description': info.get('description', 'N/A'),
-        'exchange': info.get('exchange', 'N/A'),
-    }
+def fetch_key_metrics(symbol: str) -> Dict:
+    """Fetch key metrics from Polygon with enhanced data collection."""
+    try:
+        logger.info(f"Starting fetch_key_metrics for {symbol}")
+        
+        # Get company info and ticker details directly
+        client = get_polygon_client()
+        ticker_details = client.get_ticker_details(symbol)
+        
+        # Extract market cap directly from ticker details
+        market_cap = getattr(ticker_details, 'market_cap', None)
+        sector = getattr(ticker_details, 'sic_description', 'N/A')
+        
+        # Build metrics with guaranteed market cap
+        metrics = {
+            'name': getattr(ticker_details, 'name', 'N/A'),
+            'sector': sector,
+            'description': getattr(ticker_details, 'description', 'N/A'),
+            'exchange': getattr(ticker_details, 'primary_exchange', 'N/A'),
+            'logo_url': getattr(ticker_details, 'logo_url', None),
+            'employees': getattr(ticker_details, 'total_employees', 'N/A'),
+        }
+        
+        # Add fundamentals to the metrics dictionary
+        metrics['fundamentals'] = {
+            'market_cap': market_cap if market_cap is not None else 0,
+            'weighted_shares': getattr(ticker_details, 'weighted_shares_outstanding', 'N/A'),
+            'float': getattr(ticker_details, 'share_class_shares_outstanding', 'N/A'),
+            'employees': getattr(ticker_details, 'total_employees', 'N/A'),
+            'sector': sector
+        }
+        
+        return metrics
+        
+    except Exception as e:
+        logger.error(f"Error in fetch_key_metrics for {symbol}: {e}")
+        return {
+            'name': symbol,
+            'sector': 'N/A',
+            'description': 'N/A',
+            'exchange': 'N/A',
+            'fundamentals': {
+                'market_cap': 0,
+                'sector': 'N/A'
+            }
+        }
 
 def fetch_polygon_company_info(symbol: str) -> dict:
     """Fetch company info from Polygon."""
@@ -1260,3 +1296,45 @@ def fetch_market_indices() -> Dict:
         time.sleep(2)  # Add delay between requests
     
     return results
+
+def fetch_polygon_fundamentals(symbol: str) -> Dict:
+    """Fetch full fundamentals including valuation, ownership, and short data."""
+    try:
+        client = get_polygon_client()
+        details = client.get_ticker_details(symbol)
+        
+        # Fetch short interest data
+        short_interest = client.get_short_interest(symbol, limit=1)
+        
+        # Fetch short volume data
+        short_volume = client.get_short_volume(symbol, limit=1)
+        
+        # Extract latest short interest and volume data
+        latest_short_interest = next(short_interest) if short_interest else None
+        latest_short_volume = next(short_volume) if short_volume else None
+        
+        return {
+            "exchange": getattr(details, "primary_exchange", "N/A"),
+            "currency": getattr(details, "currency_name", "USD"),
+            "employees": getattr(details, "total_employees", "N/A"),
+            "sector": getattr(details, "sic_description", "N/A"),
+            "market_cap": getattr(details, "market_cap", "N/A"),
+            "beta": getattr(details, "beta", "N/A"),
+            "float": getattr(details, "share_class_shares_outstanding", "N/A"),
+            # Short interest metrics
+            "short_interest": getattr(latest_short_interest, "short_interest", "N/A"),
+            "days_to_cover": getattr(latest_short_interest, "days_to_cover", "N/A"),
+            # Short volume metrics
+            "short_volume": getattr(latest_short_volume, "short_volume", "N/A"),
+            "short_volume_ratio": getattr(latest_short_volume, "short_volume_ratio", "N/A"),
+            "total_volume": getattr(latest_short_volume, "total_volume", "N/A"),
+            # Other metrics
+            "insider_ownership": getattr(details, "percent_insiders", "N/A"),
+            "ev_revenue": getattr(details, "ev_to_revenue", "N/A"),
+            "ev_ebitda": getattr(details, "ev_to_ebitda", "N/A"),
+            "p_sales": getattr(details, "price_to_sales", "N/A"),
+            "p_book": getattr(details, "price_to_book", "N/A")
+        }
+    except Exception as e:
+        logger.error(f"Failed to fetch fundamentals for {symbol}: {e}")
+        return {}

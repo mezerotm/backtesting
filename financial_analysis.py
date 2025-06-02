@@ -46,15 +46,20 @@ def main():
         try:
             # Fetch financial data from Polygon
             financial_data = fetch_financial_statements(symbol, args.years)
+            logger.info(f"Fetched financial data keys: {financial_data.keys()}")
             
             # Fetch company metrics from Polygon
             company_metrics = fetch_key_metrics(symbol)
+            logger.info(f"Fetched company metrics: {company_metrics}")
             
-            # Combine data for report generation
+            # Add fundamentals data to the report data
             report_data = {
                 **financial_data,
+                'fundamentals': company_metrics.get('fundamentals', {}),
                 **company_metrics
             }
+            
+            logger.info(f"Combined report data keys: {report_data.keys()}")
             
             # Generate report
             report_path = generate_financial_report(

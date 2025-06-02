@@ -7,6 +7,7 @@ from jinja2 import Environment, FileSystemLoader
 from utils.metadata_generator import generate_metadata, save_metadata
 import logging
 import json
+import math
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -28,9 +29,12 @@ def format_percentage(value: float) -> str:
 
 def format_decimal(value: Optional[float]) -> str:
     """Format decimal with 2 decimal places"""
-    if value is None:
+    if value is None or value == 'N/A' or not isinstance(value, (int, float)):
         return "N/A"
-    return f"{value:.2f}"
+    try:
+        return f"{float(value):.2f}"
+    except (ValueError, TypeError):
+        return "N/A"
 
 def calculate_growth(current: float, prior: float) -> Optional[float]:
     """Calculate growth rate with validation"""
@@ -103,15 +107,13 @@ def calculate_financial_metrics(data: Dict) -> Dict:
 def generate_metric_descriptions(period: str) -> Dict[str, str]:
     """Generate descriptions for financial metrics"""
     return {
-        f'{period} Revenue': 'Total revenue generated during the period',
-        f'{period} Net Income': 'Net profit after all expenses and taxes',
-        'Gross Margin': 'Percentage of revenue remaining after direct costs',
-        'Operating Margin': 'Percentage of revenue remaining after operating expenses',
-        'Net Margin': 'Percentage of revenue converted to profit',
-        'FCF Margin': 'Free cash flow as a percentage of revenue',
-        'Operating Cash Ratio': 'Operating cash flow relative to current liabilities',
-        'Quick Ratio': 'Ability to pay short-term obligations with liquid assets',
-        'Current Ratio': 'Ability to pay short-term obligations with all current assets'
+        'Market Cap': 'Total market value of outstanding shares',
+        'Enterprise Value': 'Market Cap + Total Debt - Cash and Equivalents',
+        'EV/EBITDA': 'Enterprise Value divided by EBITDA (valuation multiple)',
+        'Sector': 'Industry sector classification',
+        'Weighted Shares': 'Weighted average of outstanding shares',
+        'Float': 'Number of shares available for public trading',
+        'Employees': 'Total number of employees'
     }
 
 def generate_metric_formulas(period: str) -> Dict[str, str]:
@@ -126,28 +128,26 @@ def generate_metric_formulas(period: str) -> Dict[str, str]:
         'Current Ratio': 'Current Assets / Current Liabilities'
     }
 
-def format_large_number(value: float) -> str:
-    """Format large numbers to use K, M, B, T suffixes"""
+def format_large_number(value: Optional[float], include_currency: bool = True) -> str:
+    """Format large numbers with K, M, B suffixes and optional currency symbol"""
+    if value is None or pd.isna(value):
+        return "N/A"
+    
     try:
-        if value is None or pd.isna(value):
-            return 'N/A'
-        
+        value = float(value)
         if value == 0:
-            return '-'
+            return "$0" if include_currency else "0"
             
-        abs_value = abs(value)
-        if abs_value >= 1_000_000_000_000:  # Trillion
-            return f"${value / 1_000_000_000_000:.2f}T"
-        elif abs_value >= 1_000_000_000:  # Billion
-            return f"${value / 1_000_000_000:.2f}B"
-        elif abs_value >= 1_000_000:  # Million
-            return f"${value / 1_000_000:.2f}M"
-        elif abs_value >= 1_000:  # Thousand
-            return f"${value / 1_000:.2f}K"
-        else:
-            return f"${value:.2f}"
-    except:
-        return 'N/A'
+        suffixes = ['', 'K', 'M', 'B', 'T']
+        magnitude = max(0, min(len(suffixes) - 1, int(math.floor(math.log10(abs(value)) / 3))))
+        scaled_value = value / (1000 ** magnitude)
+        suffix = suffixes[magnitude]
+        
+        formatted = f"{scaled_value:.2f}{suffix}"
+        return f"${formatted}" if include_currency else formatted
+        
+    except (ValueError, TypeError):
+        return "N/A"
 
 def generate_actual_calculations(data: pd.Series, period: str) -> Dict[str, str]:
     """Generate actual calculations with formatted values"""
@@ -233,6 +233,55 @@ def format_currency(value: Optional[float]) -> str:
         return '-'  # Show dash instead of $0.00
     return f"${value:,.2f}"
 
+def calculate_financial_ratios(fundamentals: Dict, data: Dict) -> Dict:
+    """Calculate financial ratios from available data"""
+    try:
+        # Get market cap
+        market_cap = fundamentals.get('market_cap', 0)
+        
+        # Get latest quarterly data
+        quarterly_data = None
+        if isinstance(data.get('quarterly_financials'), pd.DataFrame) and not data['quarterly_financials'].empty:
+            quarterly_data = data['quarterly_financials'].iloc[0]
+            
+        # Calculate Enterprise Value
+        total_debt = float(quarterly_data.get('liabilities', 0) or 0) if quarterly_data is not None else 0
+        cash_and_equiv = float(quarterly_data.get('current_assets', 0) or 0) if quarterly_data is not None else 0
+        enterprise_value = market_cap + total_debt - cash_and_equiv
+        
+        # Calculate EBITDA and related metrics
+        revenue = float(quarterly_data.get('revenue', 0) or 0) if quarterly_data is not None else 0
+        operating_income = float(quarterly_data.get('operating_income', 0) or 0) if quarterly_data is not None else 0
+        net_income = float(quarterly_data.get('net_income', 0) or 0) if quarterly_data is not None else 0
+        
+        # Annualize quarterly numbers
+        revenue_annual = revenue * 4
+        operating_income_annual = operating_income * 4
+        
+        # Calculate ratios
+        ev_ebitda = enterprise_value / operating_income_annual if operating_income_annual and operating_income_annual > 0 else None
+        ev_revenue = enterprise_value / revenue_annual if revenue_annual and revenue_annual > 0 else None
+        net_margin = (net_income / revenue) if revenue and revenue > 0 else None
+        
+        return {
+            'enterprise_value': enterprise_value,
+            'ev_ebitda': ev_ebitda,
+            'ev_revenue': ev_revenue,
+            'net_margin': net_margin,
+            'operating_income': operating_income,
+            'revenue': revenue
+        }
+    except Exception as e:
+        logger.error(f"Error calculating financial ratios: {e}")
+        return {
+            'enterprise_value': None,
+            'ev_ebitda': None,
+            'ev_revenue': None,
+            'net_margin': None,
+            'operating_income': None,
+            'revenue': None
+        }
+
 def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optional[str]:
     """Generate financial analysis report
     
@@ -246,6 +295,31 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
     """
     try:
         logger.info(f"Starting financial report generation for {symbol}")
+        logger.info(f"Received data keys: {data.keys()}")
+        logger.info(f"Received metrics: {metrics}")
+        
+        # Get fundamentals data with debug logging
+        fundamentals = data.get('fundamentals', {})
+        logger.info(f"Retrieved fundamentals: {fundamentals}")
+        
+        # Calculate financial ratios
+        financial_ratios = calculate_financial_ratios(fundamentals, data)
+        
+        # Format market metrics with debug logging
+        market_metrics = {
+            'Sector': fundamentals.get('sector', 'N/A'),
+            'Market Cap': format_large_number(fundamentals.get('market_cap', 0)),
+            'Enterprise Value': format_large_number(financial_ratios.get('enterprise_value')),
+            'EV/EBITDA': format_decimal(financial_ratios.get('ev_ebitda')),
+            'EV/Revenue': format_decimal(financial_ratios.get('ev_revenue')),
+            'Net Margin': format_percentage(financial_ratios.get('net_margin')),
+            'Operating Income': format_large_number(financial_ratios.get('operating_income')),
+            'Revenue': format_large_number(financial_ratios.get('revenue')),
+            'Weighted Shares': format_large_number(fundamentals.get('weighted_shares', 0), include_currency=False),
+            'Float': format_large_number(fundamentals.get('float', 0), include_currency=False),
+            'Employees': format_large_number(fundamentals.get('employees', 0), include_currency=False)
+        }
+        logger.info(f"Formatted market metrics: {market_metrics}")
         
         # Log the data structure we received
         logger.info("Received data keys:")
@@ -412,6 +486,7 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         report_data = {
             'symbol': symbol,
             'company_info': company_info,
+            'market_metrics': market_metrics,  # Add market metrics
             'dates': {
                 'latest': formatted_date,
                 'fiscal_quarter': fiscal_quarter_date,
