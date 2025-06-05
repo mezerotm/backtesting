@@ -96,4 +96,11 @@ logs/
 *.tmp
 *.bak
 *.swp
-*~ 
+*~
+
+# Cache directories
+public/cache/data/*
+!public/cache/data/.gitkeep
+!public/cache/data/market/.gitkeep
+!public/cache/data/financial/.gitkeep
+!public/cache/data/backtest/.gitkeep 

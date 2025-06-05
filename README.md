@@ -114,6 +114,180 @@ A mean-reversion strategy that combines Bollinger Bands with RSI confirmation:
 - Buys when price touches lower Bollinger Band and RSI is oversold
 - Sells when price crosses middle/upper band or RSI becomes overbought
 
+## Project Workflows
+
+The project follows a consistent pattern for different types of analysis:
+
+### Common Pattern
+Each workflow follows a CLI > Generator > HTML Template pattern:
+```
+CLI Script > Report Generator > HTML Template (extends base_layout.html)
+```
+
+### Market Check Workflow
+Generates daily market snapshots with indices, rates, and economic indicators.
+
+```
+market_check.py > market_report_generator.py > market_check.html
+└── utils/data_fetchers/market_data.py (data fetching)
+```
+
+Usage:
+```bash
+python market_check.py [--force-refresh] [--output-dir path/to/dir]
+```
+
+### Financial Analysis Workflow
+Analyzes company financials and metrics.
+
+```
+financial_analysis.py > financial_report_generator.py > financial_report.html
+└── utils/data_fetchers/financial_data.py (data fetching)
+```
+
+Usage:
+```bash
+python financial_analysis.py --symbols AAPL MSFT [--years 5] [--output-dir path/to/dir]
+```
+
+### Backtest Comparison Workflow
+Compares different trading strategies.
+
+```
+backtest_comparisons.py > backtest_report_generator.py > backtest_report.html
+└── utils/data_fetchers/backtest_data.py (data fetching)
+```
+
+Usage:
+```bash
+python backtest_comparisons.py --symbol AAPL [--strategies sma ema macd bb] [--initial-capital 10000]
+```
+
+### Data Fetching
+Each workflow has its own dedicated data fetcher in `utils/data_fetchers/`:
+- `base_fetcher.py`: Base class with caching functionality
+- `market_data.py`: Market indices, rates, economic data
+- `financial_data.py`: Company financials and metrics
+- `backtest_data.py`: Historical price data for backtesting
+
+### Caching
+All data fetchers support caching with force-refresh capability:
+- Cache location: `cache/data/`
+- Cache duration: Configurable per data type
+- Force refresh: Use `--force-refresh` flag to bypass cache
+
+### Report Generation
+Reports are generated in `public/results/` with:
+- Timestamped directories for each run
+- index.html for the main report
+- raw_data.json for the underlying data
+- Additional assets (charts, etc.)
+
+### Dashboard Integration
+All reports are integrated into a central dashboard:
+- Generated reports appear in the dashboard automatically
+- Access via http://localhost:8000/ when server is running
+- Run `python -m utils.dashboard_generator` to start server
+
+### Configuration
+Environment variables in `.env`:
+```
+POLYGON_API_KEY=your_polygon_key
+FRED_API_KEY=your_fred_key
+OPENAI_API_KEY=your_openai_key  # Optional, for AI explanations
+ENV=development    # or production
+```
+
+### Project Structure
+```
+├── public/
+│   └── results/     # Generated reports
+├── templates/       # HTML templates
+│   ├── base_layout.html
+│   ├── market_check.html
+│   ├── financial_report.html
+│   └── backtest_report.html
+├── utils/
+│   ├── data_fetchers/
+│   │   ├── base_fetcher.py
+│   │   ├── market_data.py
+│   │   ├── financial_data.py
+│   │   └── backtest_data.py
+│   ├── market_report_generator.py
+│   ├── financial_report_generator.py
+│   ├── backtest_report_generator.py
+│   └── dashboard_generator.py
+├── market_check.py
+├── financial_analysis.py
+└── backtest_comparisons.py
+```
+
 ## License
 
 MIT License
+
+### Template System
+All report templates extend from a common base layout:
+
+```
+templates/
+├── base_layout.html          # Common header, footer, and styling
+├── market_check.html        ┐
+├── financial_report.html    ├─ Extend base_layout.html
+├── backtest_report.html     │
+└── dashboard.html          ┘
+```
+
+The base layout provides:
+- Consistent dark theme styling
+- Responsive header with navigation
+- Common footer with generation timestamp
+- Shared dependencies (Tailwind CSS, Font Awesome)
+- Standard meta tags and favicon
+
+Example template inheritance:
+```html
+{% extends "base_layout.html" %}
+
+{% block title %}Market Check - {{ date }}{% endblock %}
+
+{% block content %}
+  <!-- Report specific content -->
+{% endblock %}
+
+{% block generation_date %}{{ generated_at }}{% endblock %}
+```
+
+### Report Metadata
+Each report generates standardized metadata using `utils/metadata_generator.py`:
+
+```python
+metadata = generate_metadata(
+    symbol="AAPL",
+    timeframe="daily",
+    start_date="2023-01-01",
+    end_date="2023-12-31",
+    initial_capital=10000,
+    commission=0.001,
+    report_type="backtest",
+    directory_name="backtest_20231231_235959",
+    additional_data={
+        "status": "finished",
+        "strategy": "SMA Crossover"
+    }
+)
+```
+
+The metadata:
+- Enables dashboard filtering and organization
+- Tracks report status (finished/unfinished)
+- Provides quick access to key report parameters
+- Standardizes report identification
+- Facilitates report cleanup and management
+
+The dashboard uses this metadata to:
+- Display report cards with key information
+- Enable filtering by symbol, strategy, date range
+- Sort reports by generation time
+- Track report status for display
+- Manage report lifecycle (creation to deletion)

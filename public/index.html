@@ -399,13 +399,15 @@
                     </span>
                 </td>
                 <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-200">
-                    ${report.strategy || 'Unknown'}
+                    ${report.strategy === 'Unknown' ? '-' : report.strategy || '-'}
                 </td>
                 <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
                     ${report.timeframe || '-'}
                 </td>
                 <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-gray-300">
-                    -
+                    ${report.date_range || report.start_date && report.end_date ? 
+                        `${formatDate(report.start_date, false, true)} to ${formatDate(report.end_date, false, true)}` : 
+                        '-'}
                 </td>
                 <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
                     ${report.created ? formatDate(report.created, true, true) : '-'}

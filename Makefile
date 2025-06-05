@@ -27,7 +27,9 @@ freeze:
 
 # Test run with NVDA and custom parameters
 backtest-nvda: results-dir
-	$(PYTHON) backtest_strategy.py --symbol NVDA --strategies sma
+	$(PYTHON) backtest_strategy.py --symbol NVDA --strategies sma --force-refresh || \
+	(echo "Retrying in 60 seconds..." && sleep 60 && \
+	$(PYTHON) backtest_strategy.py --symbol NVDA --strategies sma --force-refresh)
 
 backtest-smci: results-dir
 	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies sma
@@ -52,10 +54,12 @@ compare-experimental: results-dir
 dev: results-dir
 	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies sma
 
-# Full market check with all indicators
-full-market-check: results-dir
-	rm -f public/data_cache.json
-	$(PYTHON) market_check.py --include-rates --include-indices --include-economic --force-refresh
+financial-analysis: results-dir
+	$(PYTHON) financial_analysis.py --symbols COST
+
+# market check with all indicators
+market-check: results-dir
+	$(PYTHON) market_check.py --force-refresh
 
 # Clean up results
 clean:
