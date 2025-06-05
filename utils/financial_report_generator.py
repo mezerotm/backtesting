@@ -37,29 +37,6 @@ def format_decimal(value: Optional[float]) -> str:
     except (ValueError, TypeError):
         return "N/A"
 
-def calculate_growth(current: float, prior: float) -> Optional[float]:
-    """Calculate growth rate with validation"""
-    if not all(isinstance(x, (int, float)) for x in [current, prior]):
-        return None
-    if prior == 0:
-        return None
-    growth = (current - prior) / prior
-    return validate_percentage(growth)
-
-def calculate_cagr(series: pd.Series, years: int) -> Optional[float]:
-    """Calculate Compound Annual Growth Rate with validation"""
-    if len(series) < 2:
-        return None
-    
-    first_value = series.iloc[-1]
-    last_value = series.iloc[0]
-    
-    if first_value <= 0 or last_value <= 0:
-        return None
-        
-    growth = (last_value / first_value) ** (1/years) - 1
-    return validate_percentage(growth)
-
 def calculate_financial_metrics(data: Dict) -> Dict:
     """Calculate financial metrics from raw data"""
     try:
@@ -111,6 +88,7 @@ def generate_metric_descriptions(period: str) -> Dict[str, str]:
         'Market Cap': 'Total market value of outstanding shares',
         'Enterprise Value': 'Market Cap + Total Debt - Cash and Equivalents',
         'EV/EBITDA': 'Enterprise Value divided by EBITDA (valuation multiple)',
+        'PEG Ratio': 'Price/Earnings ratio divided by earnings growth rate. Values under 1 may indicate undervaluation.',
         'Sector': 'Industry sector classification',
         'Weighted Shares': 'Weighted average of outstanding shares',
         'Float': 'Number of shares available for public trading',
@@ -237,8 +215,9 @@ def format_currency(value: Optional[float]) -> str:
 def calculate_financial_ratios(fundamentals: Dict, data: Dict) -> Dict:
     """Calculate financial ratios from available data"""
     try:
-        # Get market cap
+        # Get market cap and PEG ratio
         market_cap = fundamentals.get('market_cap', 0)
+        peg_ratio = fundamentals.get('peg_ratio')  # Get PEG from fundamentals
         
         # Get latest quarterly data
         quarterly_data = None
@@ -264,24 +243,66 @@ def calculate_financial_ratios(fundamentals: Dict, data: Dict) -> Dict:
         ev_revenue = enterprise_value / revenue_annual if revenue_annual and revenue_annual > 0 else None
         net_margin = (net_income / revenue) if revenue and revenue > 0 else None
         
-        return {
+        # If PEG is None, try calculating it directly
+        if peg_ratio is None and isinstance(data.get('annual_financials'), pd.DataFrame) and not data['annual_financials'].empty:
+            annual_data = data['annual_financials']
+            if len(annual_data) >= 2:
+                current_earnings = annual_data.iloc[0].get('net_income', 0)
+                prev_earnings = annual_data.iloc[1].get('net_income', 0)
+                
+                if prev_earnings > 0 and current_earnings > 0:
+                    growth_rate = (current_earnings - prev_earnings) / prev_earnings
+                    if growth_rate > 0:
+                        pe_ratio = market_cap / (current_earnings * 4)
+                        peg_ratio = pe_ratio / growth_rate
+                        # Validate PEG ratio range
+                        if peg_ratio <= 0 or peg_ratio > 100:
+                            peg_ratio = None
+        
+        result = {
             'enterprise_value': enterprise_value,
             'ev_ebitda': ev_ebitda,
             'ev_revenue': ev_revenue,
             'net_margin': net_margin,
             'operating_income': operating_income,
-            'revenue': revenue
+            'revenue': revenue,
+            'peg_ratio': peg_ratio
         }
+        return result
     except Exception as e:
-        logger.error(f"Error calculating financial ratios: {e}")
+        logger.error(f"Error calculating financial ratios: {e}", exc_info=True)
         return {
             'enterprise_value': None,
             'ev_ebitda': None,
             'ev_revenue': None,
             'net_margin': None,
             'operating_income': None,
-            'revenue': None
+            'revenue': None,
+            'peg_ratio': None
         }
+
+def calculate_peg_ratio(fundamentals: Dict, data: Dict) -> Optional[float]:
+    try:
+        # Calculate P/E ratio
+        market_cap = fundamentals.get('market_cap', 0)
+        if isinstance(data.get('annual_financials'), pd.DataFrame) and not data['annual_financials'].empty:
+            latest_earnings = data['annual_financials'].iloc[0].get('net_income', 0)
+            pe_ratio = market_cap / (latest_earnings * 4) if latest_earnings > 0 else None
+            
+            # Calculate earnings growth (using last 2 years)
+            if len(data['annual_financials']) >= 2:
+                current_earnings = data['annual_financials'].iloc[0].get('net_income', 0)
+                prev_earnings = data['annual_financials'].iloc[1].get('net_income', 0)
+                growth_rate = ((current_earnings - prev_earnings) / prev_earnings) if prev_earnings > 0 else None
+                
+                # Calculate PEG
+                if pe_ratio and growth_rate and growth_rate > 0:
+                    return pe_ratio / growth_rate
+                    
+        return None
+    except Exception as e:
+        logger.error(f"Error calculating PEG ratio: {e}")
+        return None
 
 def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optional[str]:
     """Generate financial analysis report
@@ -313,6 +334,7 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
             'Enterprise Value': format_large_number(financial_ratios.get('enterprise_value')),
             'EV/EBITDA': format_decimal(financial_ratios.get('ev_ebitda')),
             'EV/Revenue': format_decimal(financial_ratios.get('ev_revenue')),
+            'PEG Ratio': format_decimal(financial_ratios.get('peg_ratio')),
             'Weighted Shares': format_large_number(fundamentals.get('weighted_shares', 0), include_currency=False),
             'Float': format_large_number(fundamentals.get('float', 0), include_currency=False),
             'Employees': format_large_number(fundamentals.get('employees', 0), include_currency=False)
@@ -538,3 +560,25 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
     except Exception as e:
         logger.error(f"Error generating financial report: {e}", exc_info=True)
         return None
+
+def generate_market_metrics(data: Dict) -> Dict:
+    """Generate market metrics including PEG ratio"""
+    metrics = {}
+    
+    # Add PEG ratio calculation
+    try:
+        pe_ratio = float(data.get('market_metrics', {}).get('P/E Ratio', 0))
+        growth_rate = float(data.get('annual_metrics', {}).get('Earnings Growth Rate', 0))
+        
+        if pe_ratio > 0 and growth_rate > 0:
+            peg_ratio = pe_ratio / growth_rate
+            metrics['PEG Ratio'] = f"{peg_ratio:.2f}"
+        else:
+            metrics['PEG Ratio'] = 'N/A'
+    except (ValueError, TypeError):
+        metrics['PEG Ratio'] = 'N/A'
+    
+    # Add description for PEG
+    metrics['Descriptions']['PEG Ratio'] = "Price/Earnings to Growth ratio. A value under 1 may indicate the stock is undervalued given its growth rate."
+    
+    return metrics
