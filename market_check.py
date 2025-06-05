@@ -7,9 +7,15 @@ import argparse
 import os
 from datetime import datetime
 import logging
-from utils.market_report_generator import generate_market_report
+from utils.market_report_generator import (
+    generate_market_report,
+    generate_gdp_chart,
+    generate_inflation_chart,
+    generate_unemployment_chart,
+    generate_bond_chart
+)
 from utils.metadata_generator import generate_metadata, save_metadata
-from utils.data_fetcher import fetch_interest_rates, fetch_market_indices
+from utils.data_fetchers.market_data import MarketDataFetcher
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -21,12 +27,6 @@ def parse_args():
     
     parser.add_argument('--output-dir', type=str, default='public/results',
                       help='Directory to save the report (default: public/results)')
-    parser.add_argument('--include-rates', action='store_true', default=True,
-                      help='Include interest rate data')
-    parser.add_argument('--include-indices', action='store_true', default=True,
-                      help='Include major market indices')
-    parser.add_argument('--include-economic', action='store_true', default=True,
-                      help='Include economic indicators')
     parser.add_argument('--force-refresh', action='store_true', default=False,
                       help='Force refresh of data (bypass cache)')
     
@@ -37,66 +37,66 @@ def create_market_report(args):
     # Create output directory structure
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_base_dir = os.path.join(script_dir, args.output_dir)
-    os.makedirs(output_base_dir, exist_ok=True)
     
     # Create timestamped directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     report_dir_name = f"market_check_{timestamp}"
     report_dir = os.path.join(output_base_dir, report_dir_name)
     
-    # Gather data
-    current_time = datetime.now()
+    # Create directories
+    os.makedirs(report_dir, exist_ok=True)
+    
+    # Create data fetcher
+    data_fetcher = MarketDataFetcher(force_refresh=args.force_refresh)
+    
+    # Initialize data dictionary
     data = {
-        'generated_at': current_time.strftime('%Y-%m-%d %H:%M:%S'),
-        'date': current_time.strftime('%B %d, %Y'),
-        'current_year': current_time.year,
-        'now': current_time.strftime('%Y-%m-%d %H:%M:%S')
+        'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'date': datetime.now().strftime('%B %d, %Y'),
+        'current_year': datetime.now().year,
+        'now': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'gdp_chart_path': None,
+        'inflation_chart_path': None,
+        'unemployment_chart_path': None,
+        'bond_chart_path': None
     }
     
-    # Fetch market data based on arguments
-    if args.include_rates:
-        data['interest_rates'] = fetch_interest_rates()
-        logger.info("Fetched interest rates data")
+    # Fetch market data
+    data['interest_rates'] = data_fetcher.fetch_interest_rates()
+    logger.info("Fetched interest rates data")
     
-    if args.include_indices:
-        data['indices'] = fetch_market_indices()
-        logger.info("Fetched market indices data")
+    data['indices'] = data_fetcher.fetch_market_indices()
+    logger.info("Fetched market indices data")
     
-    if args.include_economic:
-        from utils.data_fetcher import fetch_economic_indicators, fetch_economic_history
-        from utils.chart_generator import (
-            generate_gdp_chart,
-            generate_inflation_chart,
-            generate_unemployment_chart,
-            generate_bond_chart
-        )
+    data['economic_indicators'] = data_fetcher.fetch_economic_indicators()
+    
+    try:
+        # Fetch historical data
+        gdp_data = data_fetcher.fetch_economic_history('A191RL1Q225SBEA', 12)
+        inflation_data = data_fetcher.fetch_economic_history('CPIAUCSL', 24)
+        unemployment_data = data_fetcher.fetch_economic_history('UNRATE', 24)
+        bond_data = data_fetcher.fetch_economic_history('DGS10', 24)
         
-        # Fetch economic indicators and history
-        data['economic_indicators'] = fetch_economic_indicators(force_refresh=args.force_refresh)
-        
-        try:
-            # Fetch historical data
-            gdp_data = fetch_economic_history('A191RL1Q225SBEA', 12, args.force_refresh)
-            inflation_data = fetch_economic_history('CPIAUCSL', 24, args.force_refresh)
-            unemployment_data = fetch_economic_history('UNRATE', 24, args.force_refresh)
-            bond_data = fetch_economic_history('DGS10', 24, args.force_refresh)
-            
-            # Generate charts
+        # Only generate charts if we have data
+        if gdp_data and gdp_data['values']:
             data['gdp_chart_path'] = generate_gdp_chart(gdp_data, report_dir)
+        if inflation_data and inflation_data['values']:
             data['inflation_chart_path'] = generate_inflation_chart(inflation_data, report_dir)
+        if unemployment_data and unemployment_data['values']:
             data['unemployment_chart_path'] = generate_unemployment_chart(unemployment_data, report_dir)
+        if bond_data and bond_data['values']:
             data['bond_chart_path'] = generate_bond_chart(bond_data, report_dir)
-            
-            # Store historical data
-            data.update({
-                'gdp_history': gdp_data,
-                'inflation_history': inflation_data,
-                'unemployment_history': unemployment_data,
-                'bond_history': bond_data
-            })
-            
-        except Exception as e:
-            logger.error(f"Error processing economic data: {e}", exc_info=True)
+        
+        # Store historical data
+        data.update({
+            'gdp_history': gdp_data,
+            'inflation_history': inflation_data,
+            'unemployment_history': unemployment_data,
+            'bond_history': bond_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error processing economic data: {e}", exc_info=True)
     
     # Generate report using the dedicated generator
     report_path = generate_market_report(data, report_dir)
@@ -105,8 +105,8 @@ def create_market_report(args):
     metadata = generate_metadata(
         symbol="MARKET",
         timeframe="daily",
-        start_date=current_time.strftime('%Y-%m-%d'),
-        end_date=current_time.strftime('%Y-%m-%d'),
+        start_date=datetime.now().strftime('%Y-%m-%d'),
+        end_date=datetime.now().strftime('%Y-%m-%d'),
         initial_capital=0,
         commission=0,
         report_type="market_check",
@@ -114,7 +114,7 @@ def create_market_report(args):
         additional_data={
             "status": "finished",
             "report_type": "market_check",
-            "title": f"Market Check - {current_time.strftime('%Y-%m-%d')}"
+            "title": f"Market Check - {datetime.now().strftime('%Y-%m-%d')}"
         }
     )
     

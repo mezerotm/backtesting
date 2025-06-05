@@ -34,7 +34,7 @@ peewee==3.17.9
 pillow==11.1.0
 platformdirs==4.3.7
 plotly==6.0.1
-polygon-api-client==1.14.5
+polygon-api-client>=1.12.3
 proxy_tools==0.1.0
 pydantic==2.10.6
 pydantic_core==2.27.2
