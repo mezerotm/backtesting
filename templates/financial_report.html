@@ -44,10 +44,18 @@
             <div class="bg-slate-900/50 p-4 rounded-lg">
                 <div class="text-sm text-slate-400">{{ name }}</div>
                 <div class="text-lg font-bold text-blue-400">
-                    {% if value in ['N/A', '0.00', '$0.00', '-'] %}
-                        -
+                    {% if name == 'PEG Ratio' %}
+                        {% if value == 'N/A' or value == '-' %}
+                            <span title="PEG ratio could not be calculated">-</span>
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
                     {% else %}
-                        {{ value }}
+                        {% if value in ['N/A', '0.00', '$0.00', '-'] %}
+                            -
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
                     {% endif %}
                 </div>
                 {% if metrics['Descriptions'][name] %}
