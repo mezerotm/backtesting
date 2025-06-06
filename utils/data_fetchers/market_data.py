@@ -20,10 +20,17 @@ class MarketDataFetcher(BaseFetcher):
     
     def fetch_market_indices(self) -> Dict:
         """Fetch major market indices data"""
-        cache_key = f"market_indices_{datetime.now().strftime('%Y-%m-%d_%H')}"
+        # Use minute-level cache during market hours, hour-level otherwise
+        now = datetime.now()
+        et_time = datetime.now(pytz.timezone('US/Eastern'))
+        is_market_hours = 9 <= et_time.hour < 16
+        
+        cache_key = (f"market_indices_{now.strftime('%Y-%m-%d_%H_%M')}" if is_market_hours 
+                    else f"market_indices_{now.strftime('%Y-%m-%d_%H')}")
         
         if not self.force_refresh:
-            cached_data = self._load_from_cache(cache_key, max_age_hours=1)
+            max_age = 5/60 if is_market_hours else 1  # 5 minutes during market hours, 1 hour otherwise
+            cached_data = self._load_from_cache(cache_key, max_age_hours=max_age)
             if cached_data:
                 return cached_data
         
@@ -144,11 +151,14 @@ class MarketDataFetcher(BaseFetcher):
     
     def fetch_economic_indicators(self) -> Dict:
         """Fetch economic indicators"""
-        cache_key = f"economic_indicators_{datetime.now().strftime('%Y-%m-%d')}"
+        # Include timezone in cache key
+        et_now = datetime.now(pytz.timezone('US/Eastern'))
+        cache_key = f"economic_indicators_{et_now.strftime('%Y-%m-%d')}"
         
         if not self.force_refresh:
-            cached_data = self._load_from_cache(cache_key)
+            cached_data = self._load_from_cache(cache_key, max_age_hours=24)  # Daily refresh
             if cached_data:
+                logger.info("Using cached economic indicators data")
                 return cached_data
         
         try:
@@ -276,13 +286,9 @@ class MarketDataFetcher(BaseFetcher):
                                 else:
                                     prev_yoy = ((previous / prev_year_ago) - 1) * 100
                                 
-                                logger.info(f"Inflation YoY Calculations:")
-                                logger.info(f"Current YoY: ({current} / {year_ago} - 1) * 100 = {current_yoy:.2f}%")
-                                logger.info(f"Previous YoY: ({previous} / {prev_year_ago} - 1) * 100 = {prev_yoy:.2f}%")
-                                
-                                # Calculate historical YoY values
+                                # Calculate historical YoY values with improved precision
                                 historical_values = []
-                                for i in range(4):  # Get last 4 months
+                                for i in range(min(12, len(observations) - 12)):  # Get up to 12 months of history
                                     if i + 12 < len(observations):
                                         curr = observations[i]
                                         prev = observations[i + 12]
@@ -298,7 +304,7 @@ class MarketDataFetcher(BaseFetcher):
                                 current_date = datetime.strptime(data['observations'][0]['date'], '%Y-%m-%d')
                                 prev_date = datetime.strptime(data['observations'][1]['date'], '%Y-%m-%d')
                                 
-                                # Determine trend
+                                # Determine trend with more granular thresholds
                                 if abs(current_yoy - prev_yoy) < 0.1:
                                     trend = 'stable'
                                 elif current_yoy > prev_yoy:
@@ -400,10 +406,12 @@ class MarketDataFetcher(BaseFetcher):
     
     def fetch_economic_history(self, indicator_id: str, limit: int = 20) -> Dict:
         """Fetch historical economic data"""
-        cache_key = f"economic_history_{indicator_id}_{limit}"
+        # Include date in cache key for daily refresh of economic data
+        today = datetime.now().strftime('%Y-%m-%d')
+        cache_key = f"economic_history_{indicator_id}_{limit}_{today}"
         
         if not self.force_refresh:
-            cached_data = self._load_from_cache(cache_key)
+            cached_data = self._load_from_cache(cache_key, max_age_hours=24)  # Daily refresh
             if cached_data:
                 return cached_data
         
@@ -562,4 +570,21 @@ class MarketDataFetcher(BaseFetcher):
             return {
                 'events': [],
                 'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            } 
+            }
+    
+    def fetch_inflation_yoy_history(self, limit: int = 24) -> Dict:
+        """Fetch YoY inflation rates (CPI) for the last N months."""
+        # Fetch more than limit to allow YoY calculation
+        raw = self.fetch_economic_history('CPIAUCSL', limit + 12)
+        labels = raw['labels']
+        values = raw['values']
+        yoy_labels = []
+        yoy_values = []
+        for i in range(len(values) - 12):
+            current = values[i + 12]
+            year_ago = values[i]
+            if current > 0 and year_ago > 0:
+                yoy = ((current / year_ago) - 1) * 100
+                yoy_labels.append(labels[i + 12])
+                yoy_values.append(round(yoy, 2))
+        return {'labels': yoy_labels, 'values': yoy_values, 'title': 'Inflation YoY'} 

@@ -38,10 +38,15 @@ def create_market_report(args):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_base_dir = os.path.join(script_dir, args.output_dir)
     
-    # Create timestamped directory
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_dir_name = f"market_check_{timestamp}"
+    # Create daily directory instead of timestamped
+    today = datetime.now().strftime("%Y%m%d")
+    report_dir_name = f"market_check_{today}"
     report_dir = os.path.join(output_base_dir, report_dir_name)
+    
+    # Check if report already exists and force_refresh is False
+    if os.path.exists(report_dir) and not args.force_refresh:
+        logger.info(f"Report for {today} already exists and force_refresh is False. Using existing report.")
+        return os.path.join(report_dir, "index.html")
     
     # Create directories
     os.makedirs(report_dir, exist_ok=True)
@@ -73,7 +78,7 @@ def create_market_report(args):
     try:
         # Fetch historical data
         gdp_growth_data = data_fetcher.fetch_economic_history('A191RL1Q225SBEA', 8)  # Real GDP Growth Rate, Quarterly
-        inflation_data = data_fetcher.fetch_economic_history('CPIAUCSL', 24)  # Monthly data, 2 years for YoY calculation
+        inflation_data = data_fetcher.fetch_inflation_yoy_history(24)  # Use new function for YoY inflation
         unemployment_data = data_fetcher.fetch_economic_history('UNRATE', 12)  # Monthly data, 1 year
         
         # Fetch both 10Y and 2Y bond data
