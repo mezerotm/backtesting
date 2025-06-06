@@ -46,6 +46,26 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
         # Add custom filter for JSON serialization
         env.filters['safe_tojson'] = lambda obj: json.dumps(obj, cls=CustomEncoder)
         
+        # Process inflation data for better visualization
+        if 'inflation_history' in data and data['inflation_history'].get('values'):
+            inflation_data = data['inflation_history']
+            processed_inflation = []
+            for i, (label, value) in enumerate(zip(inflation_data['labels'], inflation_data['values'])):
+                try:
+                    date = datetime.strptime(label, '%Y-%m-%d')
+                    processed_inflation.append({
+                        'date': date.strftime('%Y-%m'),
+                        'value': round(float(value), 1),
+                        'label': date.strftime('%b %Y')
+                    })
+                except Exception as e:
+                    logger.error(f"Error processing inflation data point {i}: {e}")
+            data['inflation_history'] = {
+                'labels': [item['label'] for item in processed_inflation],
+                'values': [item['value'] for item in processed_inflation],
+                'dates': [item['date'] for item in processed_inflation]
+            }
+        
         # Prepare template data
         template_data = {
             'date': datetime.now().strftime('%B %d, %Y'),
@@ -189,7 +209,9 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> str:
             yaxis=dict(
                 range=y_range,
                 dtick=1  # Show tick marks every 1%
-            )
+            ),
+            plot_bgcolor='rgb(13, 18, 30)',
+            paper_bgcolor='rgb(13, 18, 30)'
         )
         
         chart_path = os.path.join(output_dir, 'gdp_chart.html')
@@ -201,36 +223,20 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> str:
         return None
 
 def generate_inflation_chart(data: Dict, output_dir: str) -> str:
-    """Generate YoY inflation rate chart"""
+    """Generate YoY inflation rate chart (expects already-calculated YoY values)."""
     try:
         values = data['values']
         dates = data['labels']
-        
-        # Calculate YoY inflation rates
-        yoy_values = []
-        yoy_dates = []
-        
-        # We need at least 13 months of data for YoY calculation
-        if len(values) >= 13:
-            for i in range(len(values) - 12):
-                current = float(values[i])
-                year_ago = float(values[i + 12])
-                
-                if current > 0 and year_ago > 0:
-                    yoy = ((current / year_ago) - 1) * 100
-                    if abs(yoy) <= 20:  # Filter out extreme values
-                        yoy_values.append(yoy)
-                        yoy_dates.append(dates[i])
-        
-        if not yoy_values:
-            logger.error("No valid inflation values after YoY calculation")
+        # Only use the last 8 data points
+        values = values[-8:]
+        dates = dates[-8:]
+        if not values or not dates or len(values) != len(dates):
+            logger.error("No valid inflation YoY values or mismatched labels/values")
             return None
-        
         fig = go.Figure()
-        
         # Add YoY inflation bars with improved colors and opacity
         colors = []
-        for v in yoy_values:
+        for v in values:
             if 1.8 <= v <= 2.2:  # Very close to target (2% ± 0.2%)
                 colors.append('rgba(74, 222, 128, 1.0)')  # Bright green
             elif 1.5 <= v <= 2.5:  # Target range
@@ -241,11 +247,9 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> str:
                 colors.append('rgba(251, 146, 60, 0.8)')  # Orange
             else:  # Far from target
                 colors.append('rgba(248, 113, 113, 0.8)')  # Red
-        
-        # Add YoY inflation bars
         fig.add_trace(go.Bar(
-            x=yoy_dates,
-            y=yoy_values,
+            x=dates,
+            y=values,
             name='Inflation Rate YoY',
             marker_color=colors,
             marker_line_width=1,
@@ -254,7 +258,6 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> str:
                          'Inflation: %{y:.1f}%<br>' +
                          '<extra></extra>'
         ))
-        
         # Add 2% Fed target line
         fig.add_hline(
             y=2,
@@ -262,18 +265,16 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> str:
             line_color="rgba(74, 222, 128, 1)",  # Bright green
             line_width=2
         )
-        
         # Add target range with improved visibility
         fig.add_hrect(
             y0=1.5, y1=2.5,
             fillcolor="rgba(74, 222, 128, 0.1)",  # Very light green
             line_width=0
         )
-        
         # Add trend line with improved visibility
         fig.add_trace(go.Scatter(
-            x=yoy_dates,
-            y=yoy_values,
+            x=dates,
+            y=values,
             name='Trend',
             line=dict(
                 color='rgba(255, 255, 255, 0.9)',  # Almost white
@@ -284,16 +285,18 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> str:
                          'Trend: %{y:.1f}%<br>' +
                          '<extra></extra>'
         ))
-        
         # Calculate reasonable y-axis range based on data
-        min_val = min(yoy_values)
-        max_val = max(yoy_values)
+        min_val = min(values)
+        max_val = max(values)
         padding = (max_val - min_val) * 0.2  # Increase padding to 20%
         y_range = [
             max(min_val - padding, -2),   # Don't go below -2%
             min(max_val + padding, 8)     # Don't go above 8%
         ]
-        
+        # Show only every 4th label on the x-axis
+        step = 4
+        tickvals = [dates[i] for i in range(0, len(dates), step)]
+        ticktext = [dates[i] for i in range(0, len(dates), step)]
         # Update layout with improved readability
         fig.update_layout(
             title=dict(
@@ -306,8 +309,9 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> str:
                 title_font=dict(size=14),
                 tickfont=dict(size=12),
                 gridcolor='rgba(128, 128, 128, 0.2)',
-                tickangle=45,
-                tickformat='%b %Y',
+                tickangle=0,  # horizontal
+                tickvals=tickvals,
+                ticktext=ticktext,
                 showgrid=True,
                 zeroline=True,
                 zerolinecolor='rgba(255, 255, 255, 0.2)',
@@ -338,85 +342,14 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> str:
                 font=dict(size=12),
                 bgcolor='rgba(0,0,0,0.5)'
             ),
-            plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
-            paper_bgcolor='rgba(0,0,0,0)',  # Transparent paper
+            plot_bgcolor='rgb(13, 18, 30)',
+            paper_bgcolor='rgb(13, 18, 30)',
             margin=dict(t=80, r=60, b=80, l=60),  # Increased bottom margin for annotations
             height=500  # Make chart taller
         )
-        
-        # Add annotations for the ranges at the bottom
-        annotations = [
-            dict(
-                text="■ At Target (2% ± 0.2%)",
-                x=0,
-                y=-0.22,
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=10, color="rgba(74, 222, 128, 1.0)")
-            ),
-            dict(
-                text="■ Near Target (1.5-2.5%)",
-                x=0.2,
-                y=-0.22,
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=10, color="rgba(74, 222, 128, 0.8)")
-            ),
-            dict(
-                text="■ Below Target (<1.5%)",
-                x=0.4,
-                y=-0.22,
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=10, color="rgba(250, 204, 21, 0.8)")
-            ),
-            dict(
-                text="■ Above Target (2.5-3.5%)",
-                x=0.6,
-                y=-0.22,
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=10, color="rgba(251, 146, 60, 0.8)")
-            ),
-            dict(
-                text="■ Far from Target (>3.5%)",
-                x=0.8,
-                y=-0.22,
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=10, color="rgba(248, 113, 113, 0.8)")
-            ),
-            dict(
-                text="Fed Target (2%)",
-                x=1.02,
-                y=0.5,
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=12, color="rgba(74, 222, 128, 1)")
-            ),
-            dict(
-                text="Target Range (1.5-2.5%)",
-                x=0.99,
-                y=0.95,
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=12, color="rgba(74, 222, 128, 0.8)")
-            )
-        ]
-        
-        fig.update_layout(annotations=annotations)
-        
         chart_path = os.path.join(output_dir, 'inflation_chart.html')
         fig.write_html(chart_path, config={'displayModeBar': True, 'displaylogo': False})
         return os.path.basename(chart_path)
-        
     except Exception as e:
         logger.error(f"Error generating inflation chart: {e}")
         return None
@@ -425,7 +358,10 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> str:
     """Generate unemployment chart"""
     try:
         values = data['values']
-        
+        labels = data['labels']
+        # Only use the last 8 data points
+        values = values[-8:]
+        labels = labels[-8:]
         fig = go.Figure()
         
         # Add unemployment rate bars with color based on value
@@ -434,7 +370,7 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> str:
                  'rgba(248, 113, 113, 0.6)' for v in values]             # High unemployment (>5.5%) or too low (<3%): Red
         
         fig.add_trace(go.Bar(
-            x=data['labels'],
+            x=labels,
             y=values,
             name='Unemployment Rate',
             marker_color=colors,
@@ -443,7 +379,7 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> str:
         
         # Add trend line
         fig.add_trace(go.Scatter(
-            x=data['labels'],
+            x=labels,
             y=values,
             name='Trend',
             line=dict(color='rgba(255, 255, 255, 0.5)', dash='dot'),
@@ -473,7 +409,9 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> str:
                 y=1.02,
                 xanchor="right",
                 x=1
-            )
+            ),
+            plot_bgcolor='rgb(13, 18, 30)',
+            paper_bgcolor='rgb(13, 18, 30)'
         )
         
         chart_path = os.path.join(output_dir, 'unemployment_chart.html')
@@ -582,28 +520,8 @@ def generate_bond_chart(data: Dict, output_dir: str) -> str:
                 xanchor="right",
                 x=1
             ),
-            annotations=[
-                dict(
-                    text="Red shading indicates yield curve inversion (2Y yield > 10Y yield)",
-                    xref="paper",
-                    yref="paper",
-                    x=0,
-                    y=-0.15,
-                    showarrow=False,
-                    font=dict(size=10, color="rgba(255, 255, 255, 0.5)")
-                ),
-                dict(
-                    text="Inversion Line",
-                    xref="paper",
-                    yref="paper",
-                    x=1,
-                    y=0,
-                    xanchor="right",
-                    yanchor="bottom",
-                    showarrow=False,
-                    font=dict(size=10, color="rgba(255, 255, 255, 0.3)")
-                )
-            ]
+            plot_bgcolor='rgb(13, 18, 30)',
+            paper_bgcolor='rgb(13, 18, 30)'
         )
         
         chart_path = os.path.join(output_dir, 'bond_chart.html')

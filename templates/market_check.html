@@ -131,18 +131,41 @@
         margin-bottom: 32px;
     }
     
-    .chart-container {
+    .chart-container, .chart-container-inflation {
         position: relative;
         width: 100%;
-        height: 450px; /* Fixed height container */
-        margin: 20px 0;
+        max-width: 500px;
+        height: 500px;
+        margin: 20px auto;
+        background: transparent;
+        border-radius: 8px;
+        overflow: hidden;
+        aspect-ratio: 1 / 1;
     }
     
-    .chart-container iframe {
+    .chart-container iframe, .chart-container-inflation iframe {
         width: 100%;
         height: 100%;
         border: none;
         background: transparent;
+    }
+    
+    .chart-title, .chart-legend {
+        display: none !important;
+    }
+    
+    .chart-description {
+        font-size: 0.92rem;
+        color: #64748b;
+        line-height: 1.5;
+        margin-top: 0.5rem;
+        margin-bottom: 0.1rem;
+        padding-left: 0;
+        border-left: none;
+        background: none;
+        border-radius: 0;
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        letter-spacing: 0.01em;
     }
 </style>
 {% endblock %}
@@ -306,36 +329,63 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
         <!-- GDP Chart -->
         {% if gdp_history is defined %}
-        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+        <div class="bg-slate-900 p-4 rounded-lg">
             <div class="chart-container">
                 <iframe src="{{ gdp_chart_path }}" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Bar color: green (strong/healthy growth), blue (moderate), yellow (low), red (negative)</li>
+                    <li>Dotted line: trend</li>
+                    <li>Blue shadow: healthy range</li>
+                </ul>
             </div>
         </div>
         {% endif %}
         
         <!-- Inflation Chart -->
         {% if inflation_history is defined %}
-        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+        <div class="bg-slate-900 p-4 rounded-lg">
             <div class="chart-container">
                 <iframe src="{{ inflation_chart_path }}" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Bar color: green (target), yellow (below target), orange/red (above target)</li>
+                    <li>Dotted line: trend</li>
+                    <li>Green shadow: Fed target range</li>
+                </ul>
             </div>
         </div>
         {% endif %}
         
         <!-- Unemployment Chart -->
         {% if unemployment_history is defined %}
-        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+        <div class="bg-slate-900 p-4 rounded-lg">
             <div class="chart-container">
                 <iframe src="{{ unemployment_chart_path }}" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Bar color: green (optimal), yellow (near optimal), red (high/low extremes)</li>
+                    <li>Dotted line: trend</li>
+                    <li>Green shadow: optimal range</li>
+                </ul>
             </div>
         </div>
         {% endif %}
         
         <!-- Bond Chart -->
         {% if bond_history is defined %}
-        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+        <div class="bg-slate-900 p-4 rounded-lg">
             <div class="chart-container">
                 <iframe src="{{ bond_chart_path }}" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Lines: blue (10Y yield), purple (2Y yield), dotted (spread)</li>
+                    <li>Red shadow: yield curve inversion (2Y > 10Y), a recession signal</li>
+                </ul>
             </div>
         </div>
         {% endif %}
