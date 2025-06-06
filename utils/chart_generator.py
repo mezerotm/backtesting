@@ -376,15 +376,13 @@ def generate_unemployment_chart(data, output_dir):
             try:
                 if label and value is not None:
                     time_str = f"{label}-01" if len(label.split('-')) == 2 else label
-                    # Color coding: purple for unemployment
-                    # Darker purple for higher unemployment
                     def get_unemployment_color(value):
                         if value <= 4.0:
-                            return 'rgba(34, 197, 94, 0.7)'  # Green for low unemployment
+                            return 'rgba(34, 197, 94, 0.7)'
                         elif value <= 4.4:
-                            return 'rgba(234, 179, 8, 0.7)'  # Yellow for near target
+                            return 'rgba(234, 179, 8, 0.7)'
                         else:
-                            return 'rgba(239, 68, 68, 0.7)'  # Red for high unemployment
+                            return 'rgba(239, 68, 68, 0.7)'
                     chart_data.append({
                         'time': time_str,
                         'value': float(value),
@@ -392,12 +390,11 @@ def generate_unemployment_chart(data, output_dir):
                     })
             except Exception as e:
                 print(f"Error processing unemployment data point {i}: {e}")
-        print(f"DEBUG - Unemployment Chart data: {chart_data}")
         # Calculate min/max for a tighter y-axis
         min_val = min([d['value'] for d in chart_data])
         max_val = max([d['value'] for d in chart_data])
-        y_min = max(0, min_val - 0.2)
-        y_max = max_val + 0.2
+        y_min = min_val - 0.15 if min_val > 0.2 else 0
+        y_max = max_val + 0.15
         chart_html = f"""
         <!DOCTYPE html>
         <html>
@@ -439,15 +436,15 @@ def generate_unemployment_chart(data, output_dir):
                         borderColor: 'rgba(148, 163, 184, 0.2)',
                         borderVisible: true,
                         scaleMargins: {{
-                            top: 0.1,
-                            bottom: 0.1,
+                            top: 0.25,
+                            bottom: 0.15,
                         }},
                         autoScale: false,
                         minimum: {y_min},
                         maximum: {y_max},
                         ticksVisible: true,
                         entireTextOnly: false,
-                        tickMarkFormatter: (price) => price.toFixed(1) + '%',
+                        tickMarkFormatter: (price) => price.toFixed(2) + '%',
                     }},
                     timeScale: {{
                         borderColor: 'rgba(148, 163, 184, 0.2)',
@@ -502,7 +499,7 @@ def generate_unemployment_chart(data, output_dir):
                 setTimeout(() => {{
                     chartData.forEach(dataPoint => {{
                         chart.addCustomPriceLabel({{
-                            price: dataPoint.value + 0.05,
+                            price: dataPoint.value + 0.01,
                             time: dataPoint.time,
                             color: '#94a3b8',
                             text: `${{dataPoint.value.toFixed(2)}}%`,

@@ -175,10 +175,7 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> str:
         fig.add_hrect(
             y0=2, y1=3,
             fillcolor="rgba(59, 130, 246, 0.1)",  # Light blue for the target range
-            line_width=0,
-            annotation_text="Healthy Growth Range (2-3%)",
-            annotation_position="bottom right",
-            annotation=dict(font_size=10, font_color="rgba(59, 130, 246, 0.5)")
+            line_width=0
         )
         
         # Calculate reasonable y-axis range based on data
@@ -390,10 +387,7 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> str:
         fig.add_hrect(
             y0=3.5, y1=4.5,
             fillcolor="rgba(74, 222, 128, 0.1)",
-            line_width=0,
-            annotation_text="Optimal Range (3.5-4.5%)",
-            annotation_position="bottom right",
-            annotation=dict(font_size=10, font_color="rgba(74, 222, 128, 0.5)")
+            line_width=0
         )
         
         fig.update_layout(
