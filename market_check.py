@@ -72,24 +72,38 @@ def create_market_report(args):
     
     try:
         # Fetch historical data
-        gdp_data = data_fetcher.fetch_economic_history('A191RL1Q225SBEA', 12)
-        inflation_data = data_fetcher.fetch_economic_history('CPIAUCSL', 24)
-        unemployment_data = data_fetcher.fetch_economic_history('UNRATE', 24)
-        bond_data = data_fetcher.fetch_economic_history('DGS10', 24)
+        gdp_growth_data = data_fetcher.fetch_economic_history('A191RL1Q225SBEA', 8)  # Real GDP Growth Rate, Quarterly
+        inflation_data = data_fetcher.fetch_economic_history('CPIAUCSL', 24)  # Monthly data, 2 years for YoY calculation
+        unemployment_data = data_fetcher.fetch_economic_history('UNRATE', 12)  # Monthly data, 1 year
+        
+        # Fetch both 10Y and 2Y bond data
+        bond_10y_data = data_fetcher.fetch_economic_history('DGS10', 12)  # 10-year yield
+        bond_2y_data = data_fetcher.fetch_economic_history('DGS2', 12)   # 2-year yield
+        
+        # Combine bond data
+        if bond_10y_data and bond_2y_data:
+            bond_data = {
+                'labels': bond_10y_data['labels'],
+                'values': bond_10y_data['values'],
+                'values_2y': bond_2y_data['values'],
+                'title': 'Treasury Yields'
+            }
+        else:
+            bond_data = bond_10y_data  # Fallback to just 10Y if 2Y not available
         
         # Only generate charts if we have data
-        if gdp_data and gdp_data['values']:
-            data['gdp_chart_path'] = generate_gdp_chart(gdp_data, report_dir)
+        if gdp_growth_data and gdp_growth_data['values']:
+            data['gdp_chart_path'] = generate_gdp_chart(gdp_growth_data, report_dir)
         if inflation_data and inflation_data['values']:
             data['inflation_chart_path'] = generate_inflation_chart(inflation_data, report_dir)
         if unemployment_data and unemployment_data['values']:
             data['unemployment_chart_path'] = generate_unemployment_chart(unemployment_data, report_dir)
-        if bond_data and bond_data['values']:
+        if bond_data:
             data['bond_chart_path'] = generate_bond_chart(bond_data, report_dir)
         
         # Store historical data
         data.update({
-            'gdp_history': gdp_data,
+            'gdp_history': gdp_growth_data,
             'inflation_history': inflation_data,
             'unemployment_history': unemployment_data,
             'bond_history': bond_data

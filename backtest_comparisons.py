@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from utils.compare_strategies import compare_strategies, plot_strategy_comparison
 from strategies.moving_average import SimpleMovingAverageCrossover, ExponentialMovingAverageCrossover
 from strategies.advanced_strategy import MACDRSIStrategy, BollingerRSIStrategy
-from utils.data_fetcher import fetch_historical_data
+from utils.data_fetchers.market_data import MarketDataFetcher
 import os
 from utils.strategy_comparison_report import read_all_results, create_comparison_table, create_strategy_ranking, plot_strategy_performance, create_html_report
 from utils.dashboard_generator import generate_dashboard_only
@@ -129,10 +129,13 @@ def main():
         end_date = args.end_date
     
     print(f"Fetching data for {args.symbol} from {args.start_date} to {end_date} using Polygon API (timeframe: {args.timeframe})...")
-    raw_data = fetch_historical_data(
-        ticker=args.symbol,  # Using symbol but keeping ticker parameter name for compatibility
-        start_date=args.start_date, 
-        end_date=end_date, 
+    
+    # Initialize market data fetcher
+    market_data = MarketDataFetcher()
+    raw_data = market_data.fetch_historical_data(
+        ticker=args.symbol,
+        start_date=args.start_date,
+        end_date=end_date,
         timeframe=args.timeframe
     )
     
