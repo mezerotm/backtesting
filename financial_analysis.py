@@ -10,7 +10,7 @@ import logging
 import json
 import pandas as pd
 from typing import Dict, List
-from utils.data_fetcher import fetch_financial_statements, fetch_key_metrics
+from utils.data_fetchers.market_data import MarketDataFetcher
 from utils.financial_report_generator import generate_financial_report
 
 # Update logging configuration
@@ -44,19 +44,28 @@ def main():
         logger.info(f"Analyzing {symbol}...")
         
         try:
-            # Fetch financial data from Polygon
-            financial_data = fetch_financial_statements(symbol, args.years)
+            # Initialize market data fetcher
+            market_data = MarketDataFetcher()
+            
+            # Fetch financial statements
+            financial_data = {
+                'quarterly_financials': market_data.fetch_polygon_financials(symbol, "quarterly", args.years * 4),
+                'annual_financials': market_data.fetch_polygon_financials(symbol, "annual", args.years)
+            }
             logger.info(f"Fetched financial data keys: {financial_data.keys()}")
             
-            # Fetch company metrics from Polygon
-            company_metrics = fetch_key_metrics(symbol)
+            # Fetch company metrics
+            company_metrics = market_data.fetch_polygon_fundamentals(symbol)
             logger.info(f"Fetched company metrics: {company_metrics}")
             
             # Add fundamentals data to the report data
             report_data = {
                 **financial_data,
-                'fundamentals': company_metrics.get('fundamentals', {}),
-                **company_metrics
+                'fundamentals': company_metrics,
+                **{'name': company_metrics.get('name', symbol),
+                   'sector': company_metrics.get('sector', 'N/A'),
+                   'description': company_metrics.get('description', 'N/A'),
+                   'exchange': company_metrics.get('exchange', 'N/A')}
             }
             
             logger.info(f"Combined report data keys: {report_data.keys()}")
