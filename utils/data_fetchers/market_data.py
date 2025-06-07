@@ -77,10 +77,13 @@ class MarketDataFetcher(BaseFetcher):
                         }
                     else:
                         results[name] = {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
-                        
+                        if name == 'VIX':
+                            logger.warning(f"VIX data missing or N/A for {datetime.now().strftime('%Y-%m-%d')}")
                 except Exception as e:
                     logger.error(f"Error processing {name}: {e}")
                     results[name] = {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
+                    if name == 'VIX':
+                        logger.error(f"VIX error: {e}")
             
             self._save_to_cache(cache_key, results)
             return results
