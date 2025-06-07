@@ -164,7 +164,6 @@ def main():
     try:
         report_path = create_market_report(args)
         print(f"Market check report generated at: {report_path}")
-        print("To view the report, run: make server")
     except Exception as e:
         logger.error(f"Failed to generate market report: {e}", exc_info=True)
         exit(1)

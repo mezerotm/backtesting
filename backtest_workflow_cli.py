@@ -296,8 +296,6 @@ def run_backtest(args):
     from utils.dashboard_generator import generate_dashboard_only
     dashboard_path = generate_dashboard_only()
     print(f"\nDashboard updated at: {dashboard_path}")
-    print("To view the dashboard, run: python -m utils.dashboard_generator")
-    print("Or access it via: http://localhost:8000/ (if server is already running)")
 
     return results
 

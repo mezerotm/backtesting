@@ -44,7 +44,7 @@ class MarketDataFetcher(BaseFetcher):
                 'S&P 500': 'SP500',
                 'Dow Jones': 'DJIA',
                 'Nasdaq': 'NASDAQCOM',
-                'Russell 2000': 'RUT',
+                'Russell 2000': 'RUTCLS',
                 'VIX': 'VIXCLS'
             }
             results = {}

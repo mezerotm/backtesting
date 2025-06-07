@@ -286,8 +286,6 @@ def main():
         # Generate and open the dashboard (only this should open the browser)
         dashboard_path = generate_dashboard_only()
         print(f"\nDashboard updated at: {dashboard_path}")
-        print("To view the dashboard, run: python -m utils.dashboard_generator")
-        print("Or access it via: http://localhost:8000/dashboard.html (if server is already running)")
     
     # Plot comparison only if not disabled
     if not args.no_plots:
