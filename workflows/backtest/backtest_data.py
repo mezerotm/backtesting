@@ -3,7 +3,7 @@ from typing import Dict, Optional
 from datetime import datetime, timedelta
 import logging
 from polygon import RESTClient
-from .base_fetcher import BaseFetcher
+from ..base_fetcher import BaseFetcher
 import time
 from functools import wraps
 from utils.config import POLYGON_API_KEY

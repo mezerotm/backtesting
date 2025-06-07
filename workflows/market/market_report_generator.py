@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 import json
 from jinja2 import Environment, FileSystemLoader
-from utils.metadata_generator import generate_metadata, save_metadata
+from ..metadata_generator import generate_metadata, save_metadata
 import plotly.graph_objects as go
 from typing import Dict
 
@@ -40,8 +40,9 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
         os.makedirs(report_dir, exist_ok=True)
         
         # Get the templates directory relative to this file
-        templates_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates')
-        env = Environment(loader=FileSystemLoader(templates_dir))
+        templates_dir = os.path.dirname(__file__)
+        parent_dir = os.path.dirname(templates_dir)
+        env = Environment(loader=FileSystemLoader([templates_dir, parent_dir]))
         
         # Add custom filter for JSON serialization
         env.filters['safe_tojson'] = lambda obj: json.dumps(obj, cls=CustomEncoder)
