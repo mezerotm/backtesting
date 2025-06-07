@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import logging
 from polygon import RESTClient
 import requests
-from .base_fetcher import BaseFetcher
+from ..base_fetcher import BaseFetcher
 from utils.config import POLYGON_API_KEY, FRED_API_KEY
 import pandas as pd
 import pytz

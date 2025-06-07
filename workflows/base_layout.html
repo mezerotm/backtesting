@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Trading Strategy Backtest{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    
+    <!-- Dark mode initialization script -->
+    <script>
+        // Force dark mode by default
+        document.querySelector('html').classList.add('dark');
+    </script>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Base styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;  /* slate-900 */
+            color: #f8fafc;  /* slate-50 */
+        }
+    </style>
+    
+    {% block additional_styles %}
+    <!-- Additional styles will be added by child templates -->
+    {% endblock %}
+</head>
+<body class="bg-slate-900 min-h-screen flex flex-col">
+    <!-- Header with bottom border and lighter background -->
+    <header class="site-header py-4 px-6 border-b border-slate-700 bg-slate-800">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <a href="/" class="flex items-center gap-2.5 text-xl font-bold text-white">
+                        <i class="fa-solid fa-chart-line text-green-400"></i>
+                        Trading Strategy Suite
+                    </a>
+                </div>
+                <div class="flex items-center gap-4">
+                    {% block header_actions %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="flex-grow py-6">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            {% block content %}
+            <!-- Content will be inserted here by child templates -->
+            {% endblock %}
+        </div>
+    </main>
+    
+    <!-- Footer with top border and lighter background -->
+    <footer class="site-footer py-4 px-6 border-t border-slate-700 bg-slate-800">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="text-slate-400 text-sm">
+                    &copy; {{ current_year }} Trading Strategy Suite. All rights reserved.
+                </div>
+                <div class="text-slate-400 text-sm">
+                    Generated on: {% block generation_date %}{{ now }}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Preline UI JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.js"></script>
+    
+    {% block scripts %}
+    <!-- Additional scripts can be added by child templates -->
+    {% endblock %}
+</body>
+</html> 

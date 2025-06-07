@@ -3,9 +3,9 @@ from datetime import datetime
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 import math
-from utils.ai_explanations import AIExplainer
+from .ai_explanations import AIExplainer
 import json
-from utils.metadata_generator import generate_metadata, save_metadata
+from ..metadata_generator import generate_metadata, save_metadata
 
 def format_number(value):
     """Format a number with commas as thousands separators"""
@@ -149,8 +149,9 @@ def create_backtest_report(results, args, output_dir, filename="index.html", cha
     }
     
     # Get the templates directory relative to this file
-    templates_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates')
-    env = Environment(loader=FileSystemLoader(templates_dir))
+    templates_dir = os.path.dirname(__file__)
+    parent_dir = os.path.dirname(templates_dir)
+    env = Environment(loader=FileSystemLoader([templates_dir, parent_dir]))
     
     # Register the format_number function as a filter
     env.filters['format_number'] = format_number

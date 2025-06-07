@@ -1,21 +1,37 @@
 #!/usr/bin/env python
 """
-Daily Market Check - Generate a report with key market indicators
+Market Analysis Workflow CLI
+
+This CLI orchestrates the market analysis workflow which:
+1. Fetches market data including indices, rates, and economic indicators
+2. Generates market charts and visualizations
+3. Creates comprehensive market reports with analysis
+4. Integrates with the central dashboard
+
+The workflow is designed to provide daily market snapshots and analysis
+through the following components:
+- workflows/market/market_data.py: Data fetching and processing
+- workflows/market/market_report_generator.py: Report generation
+- workflows/market/market_chart_generator.py: Chart creation
+- workflows/market/market_check.html: Report template
+
+Usage:
+    python market_workflow_cli.py [--force-refresh] [--output-dir path/to/dir]
 """
 
 import argparse
 import os
 from datetime import datetime
 import logging
-from utils.market_report_generator import (
+from workflows.market.market_report_generator import (
     generate_market_report,
     generate_gdp_chart,
     generate_inflation_chart,
     generate_unemployment_chart,
     generate_bond_chart
 )
-from utils.metadata_generator import generate_metadata, save_metadata
-from utils.data_fetchers.market_data import MarketDataFetcher
+from workflows.metadata_generator import generate_metadata, save_metadata
+from workflows.market.market_data import MarketDataFetcher
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

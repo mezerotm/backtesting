@@ -1,14 +1,34 @@
+"""
+Strategy Comparison Workflow CLI
+
+This CLI orchestrates the strategy comparison workflow which:
+1. Compares multiple trading strategies side by side
+2. Analyzes relative performance and risk metrics
+3. Generates comparative reports with visualizations
+4. Integrates with the central dashboard
+
+The workflow is designed to provide strategy comparison through:
+- workflows/comparison/compare_strategies.py: Comparison logic and metrics
+- workflows/comparison/strategy_comparison_report.py: Report generation
+- workflows/backtest/backtest_data.py: Historical data fetching (shared)
+- workflows/backtest/strategy_utils.py: Strategy utilities (shared)
+
+Usage:
+    python comparison_workflow_cli.py --symbol AAPL [--strategies sma ema macd bb] [--initial-capital 10000]
+"""
+
 import argparse
 import pandas as pd
 from datetime import datetime, timedelta
 from utils.compare_strategies import compare_strategies, plot_strategy_comparison
 from strategies.moving_average import SimpleMovingAverageCrossover, ExponentialMovingAverageCrossover
 from strategies.advanced_strategy import MACDRSIStrategy, BollingerRSIStrategy
-from utils.data_fetchers.market_data import MarketDataFetcher
+from workflows.market.data_fetchers.market_data import MarketDataFetcher
 import os
-from utils.strategy_comparison_report import read_all_results, create_comparison_table, create_strategy_ranking, plot_strategy_performance, create_html_report
+from workflows.comparison.strategy_comparison_report import read_all_results, create_comparison_table, create_strategy_ranking, plot_strategy_performance, create_html_report
 from utils.dashboard_generator import generate_dashboard_only
-from utils.metadata_generator import generate_metadata, save_metadata
+from workflows.metadata_generator import generate_metadata, save_metadata
+from workflows.backtest.backtest_report_generator import create_backtest_report
 
 def parse_args():
     """Parse command line arguments."""
@@ -232,8 +252,6 @@ def main():
                 print(f"Warning: Strategy '{strategy}' not found in results")
 
     # Generate and open HTML report for this specific backtest
-    from utils.backtest_report_generator import create_backtest_report
-    # Disable AI explanations for comparison reports
     report_path = create_backtest_report(
         results, 
         args, 

@@ -2,7 +2,7 @@ import pandas as pd
 from typing import Dict, Optional
 from datetime import datetime
 import logging
-from .base_fetcher import BaseFetcher
+from ..base_fetcher import BaseFetcher
 from polygon import RESTClient
 from config import POLYGON_API_KEY
 

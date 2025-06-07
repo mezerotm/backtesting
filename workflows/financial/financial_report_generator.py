@@ -4,15 +4,47 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 import numpy as np
 from jinja2 import Environment, FileSystemLoader
-from utils.metadata_generator import generate_metadata, save_metadata
+from ..metadata_generator import generate_metadata, save_metadata
 import logging
 import json
 import math
-from utils.metric_descriptions import METRIC_DESCRIPTIONS
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Standardized descriptions for financial metrics
+METRIC_DESCRIPTIONS = {
+    # Company Information
+    'Sector': 'Industry sector classification',
+    
+    # Valuation Metrics
+    'Market Cap': 'Total market value of outstanding shares',
+    'Enterprise Value': 'Market Cap + Total Debt - Cash and Equivalents',
+    'EV/EBITDA': 'Enterprise Value divided by EBITDA (valuation multiple)',
+    'EV/Revenue': 'Enterprise Value divided by Revenue (valuation multiple)',
+    
+    # Financial Performance
+    'Net Margin': 'Net Income as a percentage of Revenue (measures profitability)',
+    'Operating Income': 'Revenue minus operating expenses (quarterly)',
+    'Revenue': 'Total sales/income from business operations (quarterly)',
+    
+    # Share Information
+    'Weighted Shares': 'Time-weighted average of outstanding shares',
+    'Float': 'Number of shares available for public trading',
+    
+    # Company Size
+    'Employees': 'Total number of full-time employees',
+    
+    # Additional Metrics (for future use)
+    'Operating Margin': 'Operating Income divided by Revenue',
+    'Gross Margin': 'Gross Profit divided by Revenue',
+    'ROE': 'Return on Equity - Net Income divided by Shareholders Equity',
+    'ROA': 'Return on Assets - Net Income divided by Total Assets',
+    'Current Ratio': 'Current Assets divided by Current Liabilities',
+    'Debt/Equity': 'Total Debt divided by Shareholders Equity',
+    'Asset Turnover': 'Revenue divided by Average Total Assets'
+}
 
 def validate_percentage(value: float) -> Optional[float]:
     """Validate percentage is within acceptable range (-100% to +500%)"""
@@ -509,8 +541,10 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         with open(descriptions_path, 'w') as f:
             json.dump(METRIC_DESCRIPTIONS, f, indent=2)
         
-        # Setup Jinja2 environment
-        env = Environment(loader=FileSystemLoader('templates'))
+        # Get the templates directory relative to this file
+        templates_dir = os.path.dirname(__file__)
+        parent_dir = os.path.dirname(templates_dir)
+        env = Environment(loader=FileSystemLoader([templates_dir, parent_dir]))
         template = env.get_template('financial_report.html')
         
         # Prepare report data

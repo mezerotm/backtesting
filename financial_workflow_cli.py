@@ -1,7 +1,20 @@
 #!/usr/bin/env python
 """
-Financial Analysis CLI Tool
-Fetches and analyzes financial statements and key metrics from Polygon
+Financial Analysis Workflow CLI
+
+This CLI orchestrates the financial analysis workflow which:
+1. Fetches company financial data and metrics
+2. Analyzes financial statements and key performance indicators
+3. Generates comprehensive financial reports
+4. Integrates with the central dashboard
+
+The workflow is designed to provide in-depth financial analysis through:
+- workflows/financial/financial_data.py: Data fetching and processing
+- workflows/financial/financial_report_generator.py: Report generation
+- workflows/financial/financial_report.html: Report template
+
+Usage:
+    python financial_workflow_cli.py --symbols AAPL MSFT [--years 5] [--output-dir path/to/dir]
 """
 
 import argparse
@@ -10,8 +23,8 @@ import logging
 import json
 import pandas as pd
 from typing import Dict, List
-from utils.data_fetchers.market_data import MarketDataFetcher
-from utils.financial_report_generator import generate_financial_report
+from workflows.market.data_fetchers.market_data import MarketDataFetcher
+from workflows.financial.financial_report_generator import generate_financial_report
 
 # Update logging configuration
 logging.basicConfig(

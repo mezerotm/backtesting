@@ -27,39 +27,39 @@ freeze:
 
 # Test run with NVDA and custom parameters
 backtest-nvda: results-dir
-	$(PYTHON) backtest_strategy.py --symbol NVDA --strategies sma --force-refresh || \
+	$(PYTHON) backtest_workflow_cli.py --symbol NVDA --strategies sma --force-refresh || \
 	(echo "Retrying in 60 seconds..." && sleep 60 && \
-	$(PYTHON) backtest_strategy.py --symbol NVDA --strategies sma --force-refresh)
+	$(PYTHON) backtest_workflow_cli.py --symbol NVDA --strategies sma --force-refresh)
 
 backtest-smci: results-dir
-	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies sma
+	$(PYTHON) backtest_workflow_cli.py --symbol SMCI --strategies sma
 
 # High-frequency trading with short moving averages (generates many trades)
 backtest-active: results-dir
-	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies ema --fast-ma 5 --slow-ma 20
+	$(PYTHON) backtest_workflow_cli.py --symbol SMCI --strategies ema --fast-ma 5 --slow-ma 20
 
 # Compare strategies on NVDA
 compare-active: results-dir
-	$(PYTHON) backtest_comparisons.py --symbol SMCI
+	$(PYTHON) comparison_workflow_cli.py --symbol SMCI
 
 # Run experimental combined strategy
 backtest-experimental: results-dir
-	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies buy_hold experimental sma ema
+	$(PYTHON) backtest_workflow_cli.py --symbol SMCI --strategies buy_hold experimental sma ema
 
 # Compare only buy and hold with experimental
 compare-experimental: results-dir
-	$(PYTHON) backtest_comparisons.py --symbol SMCI --strategies buy_hold experimental
+	$(PYTHON) comparison_workflow_cli.py --symbol SMCI --strategies buy_hold experimental
 
 # Development target with error handling
 dev: results-dir
-	$(PYTHON) backtest_strategy.py --symbol SMCI --strategies sma
+	$(PYTHON) backtest_workflow_cli.py --symbol SMCI --strategies sma
 
 financial-analysis: results-dir
-	$(PYTHON) financial_analysis.py --symbols COST
+	$(PYTHON) financial_workflow_cli.py --symbols COST
 
 # market check with all indicators
 market-check: results-dir
-	$(PYTHON) market_check.py --force-refresh
+	$(PYTHON) market_workflow_cli.py --force-refresh
 
 # Clean up results
 clean:
@@ -69,9 +69,15 @@ clean:
 results-dir:
 	mkdir -p public/results
 
-# Start dashboard server
+test:
+	make market-check
+	make financial-analysis
+	make backtest-nvda
+	
+
+# Start report server
 server:
-	$(PYTHON) -m utils.dashboard_generator
+	$(PYTHON) server/report_server.py
 
 .PHONY: setup freeze backtest-nvda backtest-smci \
 	compare-active clean results-dir server ensure-venv activate-venv backtest-active \

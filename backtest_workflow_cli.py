@@ -1,3 +1,23 @@
+"""
+Backtest Strategy Workflow CLI
+
+This CLI orchestrates the backtest strategy workflow which:
+1. Executes individual trading strategies on historical data
+2. Analyzes strategy performance with AI-powered insights
+3. Generates detailed backtest reports with visualizations
+4. Integrates with the central dashboard
+
+The workflow is designed to provide comprehensive strategy testing through:
+- workflows/backtest/backtest_data.py: Historical data fetching
+- workflows/backtest/backtest_report_generator.py: Report generation
+- workflows/backtest/strategy_utils.py: Strategy utilities and indicators
+- workflows/backtest/ai_explanations.py: AI-powered analysis
+- workflows/backtest/backtest_report.html: Report template
+
+Usage:
+    python backtest_workflow_cli.py --symbol AAPL --strategy sma [--initial-capital 10000]
+"""
+
 import os
 import pandas as pd
 from backtesting import Backtest
@@ -8,13 +28,14 @@ from datetime import datetime, date, timedelta
 # Add the project root to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from utils.data_fetchers.backtest_data import BacktestDataFetcher
+from workflows.market.data_fetchers.backtest_data import BacktestDataFetcher
 from strategies.moving_average import SimpleMovingAverageCrossover, ExponentialMovingAverageCrossover
 from strategies.advanced_strategy import MACDRSIStrategy, BollingerRSIStrategy
 from utils import config
-from utils.metadata_generator import generate_metadata, save_metadata
+from workflows.metadata_generator import generate_metadata, save_metadata
 from strategies.experimental_strategy import CombinedStrategy
 from strategies.buy_hold import BuyAndHoldStrategy
+from workflows.backtest.backtest_report_generator import create_backtest_report
 
 def valid_date(s):
     """Convert string to date for argparse"""
@@ -88,9 +109,6 @@ def run_backtest(args):
     public_dir = os.path.join(script_dir, 'public')
     results_base_dir = os.path.join(public_dir, 'results')
     os.makedirs(results_base_dir, exist_ok=True)
-    
-    # Import the backtest report generator at the beginning of the function
-    from utils.backtest_report_generator import create_backtest_report
     
     # Create data fetcher
     data_fetcher = BacktestDataFetcher(force_refresh=args.force_refresh)

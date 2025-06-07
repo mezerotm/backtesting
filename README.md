@@ -116,65 +116,82 @@ A mean-reversion strategy that combines Bollinger Bands with RSI confirmation:
 
 ## Project Workflows
 
-The project follows a consistent pattern for different types of analysis:
+The project is organized into four main workflows, each with its own CLI entry point and supporting modules:
 
-### Common Pattern
-Each workflow follows a CLI > Generator > HTML Template pattern:
-```
-CLI Script > Report Generator > HTML Template (extends base_layout.html)
-```
-
-### Market Check Workflow
-Generates daily market snapshots with indices, rates, and economic indicators.
+### Market Analysis Workflow
+Analyzes market conditions, indices, and economic indicators.
 
 ```
-market_check.py > market_report_generator.py > market_check.html
-└── utils/data_fetchers/market_data.py (data fetching)
+market_workflow_cli.py (CLI) > workflows/market/
+├── market_data.py (data fetching)
+├── market_report_generator.py (report generation)
+├── market_chart_generator.py (visualization)
+└── market_check.html (template)
 ```
 
 Usage:
 ```bash
-python market_check.py [--force-refresh] [--output-dir path/to/dir]
+python market_workflow_cli.py [--force-refresh] [--output-dir path/to/dir]
 ```
 
 ### Financial Analysis Workflow
 Analyzes company financials and metrics.
 
 ```
-financial_analysis.py > financial_report_generator.py > financial_report.html
-└── utils/data_fetchers/financial_data.py (data fetching)
+financial_workflow_cli.py (CLI) > workflows/financial/
+├── financial_data.py (data fetching)
+├── financial_report_generator.py (report generation)
+└── financial_report.html (template)
 ```
 
 Usage:
 ```bash
-python financial_analysis.py --symbols AAPL MSFT [--years 5] [--output-dir path/to/dir]
+python financial_workflow_cli.py --symbols AAPL MSFT [--years 5] [--output-dir path/to/dir]
 ```
 
-### Backtest Comparison Workflow
-Compares different trading strategies.
+### Backtest Strategy Workflow
+Executes and analyzes individual trading strategies.
 
 ```
-backtest_comparisons.py > backtest_report_generator.py > backtest_report.html
-└── utils/data_fetchers/backtest_data.py (data fetching)
+backtest_workflow_cli.py (CLI) > workflows/backtest/
+├── backtest_data.py (data fetching)
+├── backtest_report_generator.py (report generation)
+├── strategy_utils.py (strategy utilities)
+├── ai_explanations.py (AI-powered analysis)
+└── backtest_report.html (template)
 ```
 
 Usage:
 ```bash
-python backtest_comparisons.py --symbol AAPL [--strategies sma ema macd bb] [--initial-capital 10000]
+python backtest_workflow_cli.py --symbol AAPL --strategy sma [--initial-capital 10000]
 ```
+
+### Strategy Comparison Workflow
+Compares multiple trading strategies side by side.
+
+```
+comparison_workflow_cli.py (CLI) > workflows/comparison/
+├── compare_strategies.py (comparison logic)
+└── strategy_comparison_report.py (report generation)
+```
+
+Usage:
+```bash
+python comparison_workflow_cli.py --symbol AAPL [--strategies sma ema macd bb] [--initial-capital 10000]
+```
+
+### Common Components
+All workflows share common components:
+
+- `workflows/base_fetcher.py`: Base class for data fetching with caching
+- `templates/base_layout.html`: Common HTML template structure
+- `templates/dashboard.html`: Central dashboard for all reports
 
 ### Data Fetching
-Each workflow has its own dedicated data fetcher in `utils/data_fetchers/`:
-- `base_fetcher.py`: Base class with caching functionality
-- `market_data.py`: Market indices, rates, economic data
-- `financial_data.py`: Company financials and metrics
-- `backtest_data.py`: Historical price data for backtesting
-
-### Caching
-All data fetchers support caching with force-refresh capability:
-- Cache location: `cache/data/`
-- Cache duration: Configurable per data type
-- Force refresh: Use `--force-refresh` flag to bypass cache
+Each workflow has its own dedicated data fetcher that extends the base fetcher:
+- `workflows/market/market_data.py`: Market indices, rates, economic data
+- `workflows/financial/financial_data.py`: Company financials and metrics
+- `workflows/backtest/backtest_data.py`: Historical price data for backtesting
 
 ### Report Generation
 Reports are generated in `public/results/` with:
@@ -187,7 +204,7 @@ Reports are generated in `public/results/` with:
 All reports are integrated into a central dashboard:
 - Generated reports appear in the dashboard automatically
 - Access via http://localhost:8000/ when server is running
-- Run `python -m utils.dashboard_generator` to start server
+- Run `make server` to start the report server
 
 ### Configuration
 Environment variables in `.env`:
@@ -200,26 +217,37 @@ ENV=development    # or production
 
 ### Project Structure
 ```
-├── public/
-│   └── results/     # Generated reports
-├── templates/       # HTML templates
-│   ├── base_layout.html
-│   ├── market_check.html
-│   ├── financial_report.html
-│   └── backtest_report.html
-├── utils/
-│   ├── data_fetchers/
-│   │   ├── base_fetcher.py
+├── workflows/
+│   ├── market/
 │   │   ├── market_data.py
+│   │   ├── market_report_generator.py
+│   │   ├── market_chart_generator.py
+│   │   └── market_check.html
+│   ├── financial/
 │   │   ├── financial_data.py
-│   │   └── backtest_data.py
-│   ├── market_report_generator.py
-│   ├── financial_report_generator.py
-│   ├── backtest_report_generator.py
-│   └── dashboard_generator.py
-├── market_check.py
-├── financial_analysis.py
-└── backtest_comparisons.py
+│   │   ├── financial_report_generator.py
+│   │   └── financial_report.html
+│   ├── backtest/
+│   │   ├── backtest_data.py
+│   │   ├── backtest_report_generator.py
+│   │   ├── strategy_utils.py
+│   │   ├── ai_explanations.py
+│   │   └── backtest_report.html
+│   ├── comparison/
+│   │   ├── compare_strategies.py
+│   │   └── strategy_comparison_report.py
+│   └── base_fetcher.py
+├── server/
+│   └── report_server.py    # Core server for serving reports
+├── templates/
+│   ├── base_layout.html
+│   └── dashboard.html
+├── public/
+│   └── results/
+├── market_workflow_cli.py
+├── financial_workflow_cli.py
+├── backtest_workflow_cli.py
+└── comparison_workflow_cli.py
 ```
 
 ## License

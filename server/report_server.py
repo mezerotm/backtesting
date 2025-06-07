@@ -124,7 +124,7 @@ def generate_dashboard(refresh_interval=1000):
         reports.sort(key=lambda x: x.get('created', ''), reverse=True)
         
         # Set up Jinja environment
-        env = Environment(loader=FileSystemLoader('templates'))
+        env = Environment(loader=FileSystemLoader('server'))
         template = env.get_template('dashboard.html')
         
         # Render dashboard with reports data
