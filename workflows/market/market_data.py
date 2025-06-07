@@ -19,79 +19,76 @@ class MarketDataFetcher(BaseFetcher):
         self.fred_api_key = FRED_API_KEY
     
     def fetch_market_indices(self) -> Dict:
-        """Fetch major market indices data"""
-        # Use minute-level cache during market hours, hour-level otherwise
+        """Fetch major market indices data from FRED"""
         now = datetime.now()
         et_time = datetime.now(pytz.timezone('US/Eastern'))
         is_market_hours = 9 <= et_time.hour < 16
-        
         cache_key = (f"market_indices_{now.strftime('%Y-%m-%d_%H_%M')}" if is_market_hours 
                     else f"market_indices_{now.strftime('%Y-%m-%d_%H')}")
-        
         if not self.force_refresh:
-            max_age = 5/60 if is_market_hours else 1  # 5 minutes during market hours, 1 hour otherwise
+            max_age = 5/60 if is_market_hours else 1
             cached_data = self._load_from_cache(cache_key, max_age_hours=max_age)
             if cached_data:
                 return cached_data
-        
         try:
-            indices = {
-                'S&P 500': 'SPY',
-                'Dow Jones': 'DIA',
-                'Nasdaq': 'QQQ',
-                'Russell 2000': 'IWM',
-                'VIX': 'VIX'
+            if not self.fred_api_key:
+                logger.warning("FRED API key not found")
+                return {
+                    'S&P 500': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
+                    'Dow Jones': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
+                    'Nasdaq': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
+                    'Russell 2000': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
+                    'VIX': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
+                }
+            series = {
+                'S&P 500': 'SP500',
+                'Dow Jones': 'DJIA',
+                'Nasdaq': 'NASDAQCOM',
+                'Russell 2000': 'RUT',
+                'VIX': 'VIXCLS'
             }
-            
             results = {}
-            for name, ticker in indices.items():
+            for name, series_id in series.items():
                 try:
-                    # Get previous day's data
-                    aggs = self.client.get_aggs(
-                        ticker=ticker,
-                        multiplier=1,
-                        timespan="day",
-                        from_=datetime.now().strftime('%Y-%m-%d'),
-                        to=datetime.now().strftime('%Y-%m-%d'),
-                        adjusted=True
-                    )
-                    
-                    if aggs:
-                        current = aggs[0].close
-                        # Get previous day for comparison
-                        prev_aggs = self.client.get_aggs(
-                            ticker=ticker,
-                            multiplier=1,
-                            timespan="day",
-                            from_=(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
-                            to=(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
-                            adjusted=True
-                        )
-                        previous = prev_aggs[0].close if prev_aggs else current
-                        
-                        change = ((current - previous) / previous) * 100
-                        results[name] = {
-                            'value': f"{current:.2f}",
-                            'change': f"{change:.2f}%",
-                            'direction': 'up' if change >= 0 else 'down'
+                    response = requests.get(
+                        "https://api.stlouisfed.org/fred/series/observations",
+                        params={
+                            'series_id': series_id,
+                            'api_key': self.fred_api_key,
+                            'file_type': 'json',
+                            'sort_order': 'desc',
+                            'limit': 2
                         }
+                    )
+                    data = response.json()
+                    if 'observations' in data and len(data['observations']) >= 2:
+                        current = float(data['observations'][0]['value']) if data['observations'][0]['value'] != '.' else None
+                        previous = float(data['observations'][1]['value']) if data['observations'][1]['value'] != '.' else None
+                        if current is not None and previous is not None:
+                            change = ((current - previous) / previous) * 100 if previous != 0 else 0
+                            results[name] = {
+                                'value': f"{current:.2f}",
+                                'change': f"{change:+.2f}%",
+                                'direction': 'up' if change > 0 else 'down' if change < 0 else 'neutral'
+                            }
+                        else:
+                            results[name] = {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
                     else:
                         results[name] = {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
                         if name == 'VIX':
                             logger.warning(f"VIX data missing or N/A for {datetime.now().strftime('%Y-%m-%d')}")
                 except Exception as e:
-                    logger.error(f"Error processing {name}: {e}")
+                    logger.error(f"Error processing {name}: {e}", exc_info=True)
                     results[name] = {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
                     if name == 'VIX':
                         logger.error(f"VIX error: {e}")
-            
+            logger.info(f"Market Indices Results: {results}")
             self._save_to_cache(cache_key, results)
             return results
-            
         except Exception as e:
             logger.error(f"Error fetching market indices: {e}")
             return {name: {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'} 
-                    for name in indices.keys()}
+                    for name in ['S&P 500', 'Dow Jones', 'Nasdaq', 'Russell 2000', 'VIX']}
     
     def fetch_interest_rates(self) -> Dict:
         """Fetch interest rate data"""
