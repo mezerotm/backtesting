@@ -229,28 +229,19 @@
             <h3 class="text-lg font-semibold mb-3 text-slate-200">Market Sentiment</h3>
             <ul class="space-y-2">
                 <li class="flex items-center justify-between text-slate-300">
-                    <span>
-                        VIX Index:
-                        {% if indices.VIX.value == 'N/A' %}
-                            <span title="VIX data not available or API error">N/A</span>
-                        {% else %}
-                            <span class="font-semibold {% if indices.VIX.direction == 'up' %}text-red-400{% elif indices.VIX.direction == 'down' %}text-green-400{% endif %}">
-                                {{ indices.VIX.value }}
-                                {% if indices.VIX.direction == 'up' %}
-                                    <i class="fas fa-arrow-up ml-1"></i>
-                                {% elif indices.VIX.direction == 'down' %}
-                                    <i class="fas fa-arrow-down ml-1"></i>
-                                {% endif %}
-                            </span>
-                        {% endif %}
-                    </span>
-                    <span class="text-xs text-slate-500 ml-2" title="VIX measures market volatility. Higher values indicate more fear/uncertainty.">
-                        <i class="fas fa-info-circle"></i>
-                    </span>
-                </li>
-                <li class="flex items-center justify-between text-slate-300">
                     <span>Fed Funds Rate:</span>
                     <span class="font-semibold">{{ interest_rates['Federal Funds Rate']|default('N/A') }}</span>
+                </li>
+                <li class="flex items-center justify-between text-slate-300">
+                    <span>VIX Index:</span>
+                    <span class="font-semibold {% if indices.VIX.direction == 'up' %}text-red-400{% elif indices.VIX.direction == 'down' %}text-green-400{% endif %}">
+                        {{ indices.VIX.value }}
+                        {% if indices.VIX.direction == 'up' %}
+                            <i class="fas fa-arrow-up ml-1"></i>
+                        {% elif indices.VIX.direction == 'down' %}
+                            <i class="fas fa-arrow-down ml-1"></i>
+                        {% endif %}
+                    </span>
                 </li>
             </ul>
             <div class="text-xs text-slate-500 mt-2">
