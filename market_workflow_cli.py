@@ -156,14 +156,6 @@ def create_market_report(args):
     # Save metadata
     save_metadata(metadata, report_dir)
     
-    # Update dashboard
-    try:
-        from utils.dashboard_generator import generate_dashboard_only
-        dashboard_path = generate_dashboard_only()
-        logger.info(f"Dashboard updated at: {dashboard_path}")
-    except Exception as e:
-        logger.warning(f"Could not update dashboard: {e}")
-    
     return report_path
 
 def main():
@@ -172,8 +164,7 @@ def main():
     try:
         report_path = create_market_report(args)
         print(f"Market check report generated at: {report_path}")
-        print(f"To view the report, run: python -m utils.dashboard_generator")
-        print("Or access it via: http://localhost:8000/ (if server is already running)")
+        print("To view the report, run: make server")
     except Exception as e:
         logger.error(f"Failed to generate market report: {e}", exc_info=True)
         exit(1)
