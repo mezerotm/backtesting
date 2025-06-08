@@ -7,19 +7,63 @@ from ..base_fetcher import BaseFetcher
 from utils.config import POLYGON_API_KEY, FRED_API_KEY
 import pandas as pd
 import pytz
+import time
+import yfinance as yf
+from utils.most_recent import with_most_recent_data
 
 logger = logging.getLogger(__name__)
 
 class MarketDataFetcher(BaseFetcher):
     """Fetcher for market check workflow data"""
     
+    _yahoo_last_requests = []  # Class-level rate limiter for Yahoo Finance
+    _yahoo_max_requests = 5
+    _yahoo_window_seconds = 60
+
     def __init__(self, force_refresh: bool = False):
         super().__init__(force_refresh, cache_subdir='market')
         self.client = RESTClient(POLYGON_API_KEY)
         self.fred_api_key = FRED_API_KEY
     
+    def _yahoo_rate_limited(self):
+        now = time.time()
+        # Remove requests older than window
+        self._yahoo_last_requests = [t for t in self._yahoo_last_requests if now - t < self._yahoo_window_seconds]
+        if len(self._yahoo_last_requests) >= self._yahoo_max_requests:
+            return True
+        self._yahoo_last_requests.append(now)
+        return False
+
+    def _get_yahoo_price(self, ticker):
+        if self._yahoo_rate_limited():
+            logger.warning(f"Yahoo Finance rate limit reached, skipping {ticker}")
+            return 'N/A', 'N/A', 'neutral'
+        try:
+            data = yf.Ticker(ticker)
+            hist = data.history(period="2d")
+            if len(hist) >= 2:
+                current = hist['Close'][-1]
+                previous = hist['Close'][-2]
+                change = ((current - previous) / previous) * 100 if previous != 0 else 0
+                return f"{current:.2f}", f"{change:+.2f}%", 'up' if change > 0 else 'down' if change < 0 else 'neutral'
+        except Exception as e:
+            logger.error(f"Yahoo Finance error for {ticker}: {e}")
+        return 'N/A', 'N/A', 'neutral'
+
+    @with_most_recent_data(max_days=7)
+    def get_polygon_agg(self, ticker, date=None):
+        aggs = self.client.get_aggs(
+            ticker=ticker,
+            multiplier=1,
+            timespan="day",
+            from_=date,
+            to=date,
+            adjusted=True
+        )
+        return aggs[0] if aggs else None
+
     def fetch_market_indices(self) -> Dict:
-        """Fetch major market indices data from FRED"""
+        """Fetch major market indices data: Polygon first, then FRED, then Yahoo Finance (rate-limited)."""
         now = datetime.now()
         et_time = datetime.now(pytz.timezone('US/Eastern'))
         is_market_hours = 9 <= et_time.hour < 16
@@ -33,62 +77,71 @@ class MarketDataFetcher(BaseFetcher):
         try:
             if not self.fred_api_key:
                 logger.warning("FRED API key not found")
-                return {
-                    'S&P 500': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
-                    'Dow Jones': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
-                    'Nasdaq': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
-                    'Russell 2000': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'},
-                    'VIX': {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
-                }
-            series = {
-                'S&P 500': 'SP500',
-                'Dow Jones': 'DJIA',
-                'Nasdaq': 'NASDAQCOM',
-                'Russell 2000': 'RUTCLS',
-                'VIX': 'VIXCLS'
-            }
+                return {}
+            # Index definitions: (Display Name, Polygon ticker, Description, Group)
+            indices = [
+                ("S&P 500", "SPY", "SPDR S&P 500 ETF", "Large Cap"),
+                ("Dow Jones", "DIA", "SPDR Dow Jones Industrial Avg", "Large Cap"),
+                ("Nasdaq-100", "QQQ", "Invesco QQQ ETF", "Large Cap"),
+                ("Russell 2000", "IWM", "iShares Russell 2000 ETF", "Small Cap"),
+                ("S&P 400 MidCap", "MDY", "SPDR S&P MidCap 400 ETF", "Mid Cap"),
+                ("S&P 500 Growth", "IVW", "iShares S&P 500 Growth ETF", "Growth"),
+                ("S&P 500 Value", "IVE", "iShares S&P 500 Value ETF", "Value"),
+                ("VIX", "VIXY", "Short-term VIX futures ETF", "Volatility"),
+            ]
             results = {}
-            for name, series_id in series.items():
+            for name, polygon_ticker, description, group in indices:
+                value, change, direction = None, None, 'neutral'
                 try:
-                    response = requests.get(
-                        "https://api.stlouisfed.org/fred/series/observations",
-                        params={
-                            'series_id': series_id,
-                            'api_key': self.fred_api_key,
-                            'file_type': 'json',
-                            'sort_order': 'desc',
-                            'limit': 2
-                        }
-                    )
-                    data = response.json()
-                    if 'observations' in data and len(data['observations']) >= 2:
-                        current = float(data['observations'][0]['value']) if data['observations'][0]['value'] != '.' else None
-                        previous = float(data['observations'][1]['value']) if data['observations'][1]['value'] != '.' else None
-                        if current is not None and previous is not None:
-                            change = ((current - previous) / previous) * 100 if previous != 0 else 0
-                            results[name] = {
-                                'value': f"{current:.2f}",
-                                'change': f"{change:+.2f}%",
-                                'direction': 'up' if change > 0 else 'down' if change < 0 else 'neutral'
-                            }
-                        else:
-                            results[name] = {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
+                    # Get most recent close (up to 7 days back)
+                    current_agg, current_date = self.get_polygon_agg(polygon_ticker)
+                    # Get previous close (the most recent day before current_date)
+                    if current_date:
+                        prev_date_dt = datetime.strptime(current_date, '%Y-%m-%d') - timedelta(days=1)
+                        skip_days = (datetime.now() - prev_date_dt).days
+                        prev_agg, prev_date = self.get_polygon_agg(polygon_ticker, date=prev_date_dt.strftime('%Y-%m-%d'))
                     else:
-                        results[name] = {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
-                        if name == 'VIX':
-                            logger.warning(f"VIX data missing or N/A for {datetime.now().strftime('%Y-%m-%d')}")
+                        prev_agg, prev_date = None, None
+                    if current_agg:
+                        current = current_agg.close
+                        previous = prev_agg.close if prev_agg else current
+                        logger.debug(f"Current close for {polygon_ticker} ({current_date}): {current}")
+                        logger.debug(f"Previous close for {polygon_ticker} ({prev_date}): {previous}")
+                        change_val = ((current - previous) / previous) * 100 if previous != 0 else 0
+                        value = f"{current:.2f}"
+                        change = f"{change_val:+.2f}%"
+                        direction = 'up' if change_val > 0 else 'down' if change_val < 0 else 'neutral'
+                    else:
+                        logger.warning(f"No aggregation data returned for {polygon_ticker} in last 7 days")
                 except Exception as e:
-                    logger.error(f"Error processing {name}: {e}", exc_info=True)
-                    results[name] = {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
-                    if name == 'VIX':
-                        logger.error(f"VIX error: {e}")
+                    logger.error(f"Polygon error for {name} ({polygon_ticker}): {e}", exc_info=True)
+                    value = 'N/A'
+                    change = 'N/A'
+                    direction = 'neutral'
+                if value is None:
+                    logger.warning(f"Setting value to 'N/A' for {name} ({polygon_ticker}) due to missing data.")
+                    value = 'N/A'
+                    change = 'N/A'
+                    direction = 'neutral'
+
+                # Group results
+                if group not in results:
+                    results[group] = []
+                results[group].append({
+                    'name': name,
+                    'value': value,
+                    'change': change,
+                    'direction': direction,
+                    'description': description,
+                    'date': current_date,
+                    'previous_date': prev_date
+                })
             logger.info(f"Market Indices Results: {results}")
             self._save_to_cache(cache_key, results)
             return results
         except Exception as e:
             logger.error(f"Error fetching market indices: {e}")
-            return {name: {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'} 
-                    for name in ['S&P 500', 'Dow Jones', 'Nasdaq', 'Russell 2000', 'VIX']}
+            return {}
     
     def fetch_interest_rates(self) -> Dict:
         """Fetch interest rate data"""
