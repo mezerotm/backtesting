@@ -11,6 +11,7 @@ from workflows.market.market_chart_generator import (
     generate_bond_chart
 )
 from typing import Dict
+from workflows.market.market_data import MarketDataFetcher
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -54,6 +55,18 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
         # Add custom filter for JSON serialization
         env.filters['safe_tojson'] = lambda obj: json.dumps(obj, cls=CustomEncoder)
         
+        # --- Fetch top movers and news ---
+        fetcher = MarketDataFetcher()
+        market_movers = fetcher.fetch_top_movers_and_news()
+
+        # --- Extract VIX value from indices ---
+        vix_value = None
+        indices = data.get('indices', {})
+        for group in indices.values():
+            for idx in group:
+                if idx.get('name') == 'VIX':
+                    vix_value = idx.get('value')
+
         # Prepare template data
         template_data = {
             'date': datetime.now().strftime('%B %d, %Y'),
@@ -74,6 +87,8 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
             'inflation_data': data.get('inflation_history', {}),
             'unemployment_data': data.get('unemployment_history', {}),
             'bond_data': data.get('bond_history', {}),
+            'market_movers': market_movers,
+            'vix_value': vix_value,
         }
         
         # Generate charts if data is available

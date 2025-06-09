@@ -752,4 +752,40 @@ class MarketDataFetcher(BaseFetcher):
                 return data
         except Exception as e:
             print(f"ERROR - Failed to get bond data: {e}")
-        return {'labels': [], 'values': [], 'values_2y': []} 
+        return {'labels': [], 'values': [], 'values_2y': []}
+    
+    def fetch_top_movers_and_news(self, limit: int = 5) -> list:
+        """Fetch top market movers and their latest news from Polygon."""
+        movers = []
+        try:
+            url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/most_active?apiKey={POLYGON_API_KEY}"
+            resp = requests.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+            tickers = data.get('tickers', [])[:limit]
+            for item in tickers:
+                ticker = item.get('ticker')
+                name = item.get('name', ticker)
+                # Fetch latest news for this ticker
+                news_url = f"https://api.polygon.io/v2/reference/news?ticker={ticker}&limit=1&apiKey={POLYGON_API_KEY}"
+                news_resp = requests.get(news_url)
+                news_data = news_resp.json()
+                if news_data.get('results'):
+                    news = news_data['results'][0]
+                    headline = news.get('title', '')
+                    url = news.get('article_url', '')
+                    published_utc = news.get('published_utc', '')
+                else:
+                    headline = ''
+                    url = ''
+                    published_utc = ''
+                movers.append({
+                    'ticker': ticker,
+                    'name': name,
+                    'headline': headline,
+                    'url': url,
+                    'published_utc': published_utc
+                })
+        except Exception as e:
+            print(f"Error fetching top movers and news: {e}")
+        return movers 
