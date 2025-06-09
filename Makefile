@@ -56,7 +56,7 @@ dev: results-dir
 
 # NVDA CRWD COIN MSTR NAKA CRWV NBIS
 financial-analysis: results-dir
-	$(PYTHON) financial_workflow_cli.py --symbols SRPT 
+	$(PYTHON) financial_workflow_cli.py --symbols WMT 
 
 # market check with all indicators
 market-check: results-dir
