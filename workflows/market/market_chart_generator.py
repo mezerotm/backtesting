@@ -138,23 +138,26 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
         return None
 
 def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
-    """Generate inflation chart using Plotly."""
+    """Generate inflation chart as a bar chart using Plotly."""
     try:
-        # Create the line chart
+        labels = data['labels']
+        values = data['values']
+        # Color coding: green for target (2-2.5%), yellow for below target, red for above target
+        colors = [
+            'rgb(34, 197, 94)' if 2.0 <= v <= 2.5 else ('rgb(234, 179, 8)' if v < 2.0 else 'rgb(239, 68, 68)')
+            for v in values
+        ]
         fig = go.Figure(data=[
-            go.Scatter(
-                x=data['labels'],
-                y=data['values'],
-                mode='lines+markers',
-                line=dict(color='rgb(59, 130, 246)', width=2),
-                marker=dict(size=8, color='rgb(59, 130, 246)'),
-                hovertemplate="<b>%{x}</b><br>" +
-                            "Inflation: %{y:.1f}%<br>" +
-                            "<extra></extra>"
+            go.Bar(
+                x=labels,
+                y=values,
+                marker_color=colors,
+                text=[f"{v:.1f}%" for v in values],
+                textposition='outside',
+                textfont={'size': 14, 'color': '#94a3b8'},
+                hovertemplate="<b>%{x}</b><br>Inflation: %{y:.1f}%<extra></extra>"
             )
         ])
-
-        # Update layout
         fig.update_layout(
             title={
                 'text': 'Inflation Rate',
@@ -166,7 +169,7 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
             },
             plot_bgcolor='rgb(13, 18, 30)',
             paper_bgcolor='rgb(13, 18, 30)',
-            font={'color': 'rgb(148, 163, 184)', 'size': 14},
+            font={'color': 'rgb(148, 163, 184)', 'size': 14, 'family': 'system-ui'},
             showlegend=False,
             margin=dict(t=60, l=50, r=30, b=80),
             xaxis=dict(
@@ -185,14 +188,13 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
                 ticksuffix='%',
                 tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
                 title={'text': 'Inflation Rate', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}},
-                range=[min(data['values']) - 0.5, max(data['values']) + 0.5],
+                range=[min(values) - 0.5, max(values) + 0.5],
                 tickformat='.1f'
             ),
             height=400,
             width=None,
             autosize=True
         )
-
         # Add target inflation line
         fig.add_hline(
             y=2,
@@ -200,12 +202,15 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
             line_width=1,
             line_dash='dash'
         )
-
-        # Save the chart
+        # Add target range shadow
+        fig.add_hrect(
+            y0=2.0, y1=2.5,
+            fillcolor="rgba(34, 197, 94, 0.08)",
+            line_width=0
+        )
         charts_dir = os.path.join(output_dir, 'charts')
         os.makedirs(charts_dir, exist_ok=True)
         chart_path = os.path.join(charts_dir, 'inflation_chart.html')
-        
         fig.write_html(
             chart_path,
             include_plotlyjs=True,
@@ -217,31 +222,32 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
                 'fillFrame': True
             }
         )
-        
         return os.path.relpath(chart_path, output_dir)
-        
     except Exception as e:
         print(f"ERROR - Failed to generate inflation chart: {e}")
         return None
 
 def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
-    """Generate unemployment chart using Plotly."""
+    """Generate unemployment chart as a bar chart using Plotly."""
     try:
-        # Create the line chart
+        labels = data['labels']
+        values = data['values']
+        # Color coding: green for <=4.0, yellow for <=4.4, red for >4.4
+        colors = [
+            'rgb(34, 197, 94)' if v <= 4.0 else ('rgb(234, 179, 8)' if v <= 4.4 else 'rgb(239, 68, 68)')
+            for v in values
+        ]
         fig = go.Figure(data=[
-            go.Scatter(
-                x=data['labels'],
-                y=data['values'],
-                mode='lines+markers',
-                line=dict(color='rgb(239, 68, 68)', width=2),
-                marker=dict(size=8, color='rgb(239, 68, 68)'),
-                hovertemplate="<b>%{x}</b><br>" +
-                            "Unemployment: %{y:.1f}%<br>" +
-                            "<extra></extra>"
+            go.Bar(
+                x=labels,
+                y=values,
+                marker_color=colors,
+                text=[f"{v:.1f}%" for v in values],
+                textposition='outside',
+                textfont={'size': 14, 'color': '#94a3b8'},
+                hovertemplate="<b>%{x}</b><br>Unemployment: %{y:.1f}%<extra></extra>"
             )
         ])
-
-        # Update layout
         fig.update_layout(
             title={
                 'text': 'Unemployment Rate',
@@ -253,7 +259,7 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
             },
             plot_bgcolor='rgb(13, 18, 30)',
             paper_bgcolor='rgb(13, 18, 30)',
-            font={'color': 'rgb(148, 163, 184)', 'size': 14},
+            font={'color': 'rgb(148, 163, 184)', 'size': 14, 'family': 'system-ui'},
             showlegend=False,
             margin=dict(t=60, l=50, r=30, b=80),
             xaxis=dict(
@@ -272,14 +278,13 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
                 ticksuffix='%',
                 tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
                 title={'text': 'Unemployment Rate', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}},
-                range=[min(data['values']) - 0.5, max(data['values']) + 0.5],
+                range=[min(values) - 0.5, max(values) + 0.5],
                 tickformat='.1f'
             ),
             height=400,
             width=None,
             autosize=True
         )
-
         # Add full employment line
         fig.add_hline(
             y=4,
@@ -287,12 +292,15 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
             line_width=1,
             line_dash='dash'
         )
-
-        # Save the chart
+        # Add optimal range shadow
+        fig.add_hrect(
+            y0=3.5, y1=4.0,
+            fillcolor="rgba(34, 197, 94, 0.08)",
+            line_width=0
+        )
         charts_dir = os.path.join(output_dir, 'charts')
         os.makedirs(charts_dir, exist_ok=True)
         chart_path = os.path.join(charts_dir, 'unemployment_chart.html')
-        
         fig.write_html(
             chart_path,
             include_plotlyjs=True,
@@ -304,47 +312,78 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
                 'fillFrame': True
             }
         )
-        
         return os.path.relpath(chart_path, output_dir)
-        
     except Exception as e:
         print(f"ERROR - Failed to generate unemployment chart: {e}")
         return None
 
 def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
-    """Generate bond yield chart using Plotly."""
+    """Generate bond yield chart as a line chart using Plotly, highlighting yield curve inversion, with debugging and robust length handling."""
     try:
-        # Create the line chart with both 10Y and 2Y yields
+        labels = data['labels']
+        values_10y = data['values']
+        values_2y = data.get('values_2y')
+        # Ensure all lists are the same length
+        n = len(labels)
+        if values_2y:
+            n = min(n, len(values_10y), len(values_2y))
+            if not (len(labels) == len(values_10y) == len(values_2y)):
+                print(f"[DEBUG] Mismatched lengths: labels={len(labels)}, 10Y={len(values_10y)}, 2Y={len(values_2y)}. Trimming to {n}.")
+            labels = labels[:n]
+            values_10y = values_10y[:n]
+            values_2y = values_2y[:n]
+        else:
+            n = min(n, len(values_10y))
+            if not (len(labels) == len(values_10y)):
+                print(f"[DEBUG] Mismatched lengths: labels={len(labels)}, 10Y={len(values_10y)}. Trimming to {n}.")
+            labels = labels[:n]
+            values_10y = values_10y[:n]
+        print(f"[DEBUG] Chart labels: {labels}")
+        print(f"[DEBUG] 10Y values: {values_10y}")
+        print(f"[DEBUG] 2Y values: {values_2y}")
         fig = go.Figure()
-
-        # Add 10Y yield line
         fig.add_trace(go.Scatter(
-            x=data['labels'],
-            y=data['values'],
+            x=labels,
+            y=values_10y,
             mode='lines+markers',
             name='10Y Treasury',
             line=dict(color='rgb(59, 130, 246)', width=2),
             marker=dict(size=8, color='rgb(59, 130, 246)'),
-            hovertemplate="<b>%{x}</b><br>" +
-                        "10Y Yield: %{y:.2f}%<br>" +
-                        "<extra></extra>"
+            hovertemplate="<b>%{x}</b><br>10Y Yield: %{y:.2f}%<extra></extra>"
         ))
-
-        # Add 2Y yield line if available
-        if 'values_2y' in data:
+        if values_2y:
             fig.add_trace(go.Scatter(
-                x=data['labels'],
-                y=data['values_2y'],
+                x=labels,
+                y=values_2y,
                 mode='lines+markers',
                 name='2Y Treasury',
                 line=dict(color='rgb(239, 68, 68)', width=2),
                 marker=dict(size=8, color='rgb(239, 68, 68)'),
-                hovertemplate="<b>%{x}</b><br>" +
-                            "2Y Yield: %{y:.2f}%<br>" +
-                            "<extra></extra>"
+                hovertemplate="<b>%{x}</b><br>2Y Yield: %{y:.2f}%<extra></extra>"
             ))
-
-        # Update layout
+            # Highlight contiguous inversion regions (2Y > 10Y)
+            inversion_regions = []
+            in_inversion = False
+            start_idx = None
+            for i in range(n):
+                if values_2y[i] > values_10y[i]:
+                    if not in_inversion:
+                        in_inversion = True
+                        start_idx = i
+                else:
+                    if in_inversion:
+                        in_inversion = False
+                        inversion_regions.append((start_idx, i-1))
+            if in_inversion:
+                inversion_regions.append((start_idx, n-1))
+            for start, end in inversion_regions:
+                fig.add_vrect(
+                    x0=labels[start],
+                    x1=labels[end],
+                    fillcolor="rgba(239, 68, 68, 0.15)",
+                    line_width=0,
+                    layer="below"
+                )
         fig.update_layout(
             title={
                 'text': 'Treasury Yields',
@@ -356,7 +395,7 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
             },
             plot_bgcolor='rgb(13, 18, 30)',
             paper_bgcolor='rgb(13, 18, 30)',
-            font={'color': 'rgb(148, 163, 184)', 'size': 14},
+            font={'color': 'rgb(148, 163, 184)', 'size': 14, 'family': 'system-ui'},
             showlegend=True,
             legend=dict(
                 yanchor="top",
@@ -385,19 +424,19 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
                 ticksuffix='%',
                 tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
                 title={'text': 'Yield', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}},
-                range=[min(data['values']) - 0.5, max(data['values']) + 0.5],
+                range=[
+                    min(values_10y + (values_2y if values_2y else [])) - 0.5,
+                    max(values_10y + (values_2y if values_2y else [])) + 0.5
+                ],
                 tickformat='.2f'
             ),
             height=400,
             width=None,
             autosize=True
         )
-
-        # Save the chart
         charts_dir = os.path.join(output_dir, 'charts')
         os.makedirs(charts_dir, exist_ok=True)
         chart_path = os.path.join(charts_dir, 'bond_chart.html')
-        
         fig.write_html(
             chart_path,
             include_plotlyjs=True,
@@ -409,9 +448,7 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
                 'fillFrame': True
             }
         )
-        
         return os.path.relpath(chart_path, output_dir)
-        
     except Exception as e:
         print(f"ERROR - Failed to generate bond chart: {e}")
         return None 

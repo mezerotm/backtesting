@@ -1,7 +1,3 @@
-"""
-Market report generator for economic indicators and market data.
-"""
-
 import os
 from datetime import datetime
 import logging
@@ -14,7 +10,7 @@ from workflows.market.market_chart_generator import (
     generate_unemployment_chart,
     generate_bond_chart
 )
-from typing import Dict, Optional
+from typing import Dict
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -30,81 +26,80 @@ class CustomEncoder(json.JSONEncoder):
         except TypeError:
             return str(obj)
 
-def generate_market_report(data: Dict, output_dir: str) -> Optional[str]:
-    """Generate market analysis report.
+def generate_market_report(data: dict, report_dir: str, force_refresh: bool = False) -> str:
+    """Generate market analysis report
     
     Args:
-        data (Dict): Dictionary containing all market data and chart paths
-        output_dir (str): Directory to save the report
+        data (dict): Market data dictionary containing indices, rates, etc.
+        report_dir (str): Directory to save the report
+        force_refresh (bool): Whether to force refresh cached data
         
     Returns:
-        Optional[str]: Path to generated report or None if failed
+        str: Path to generated report
     """
     try:
         logger.info("Starting market report generation")
         logger.info(f"Received data keys: {data.keys()}")
         
-        # Setup Jinja2 environment
-        template_dir = os.path.join(os.path.dirname(__file__), '..')
-        env = Environment(loader=FileSystemLoader(template_dir))
+        # Create output directory if it doesn't exist
+        os.makedirs(report_dir, exist_ok=True)
+        
+        # Get the templates directory relative to this file
+        template_dirs = [
+            os.path.dirname(__file__),  # current dir
+            os.path.dirname(os.path.dirname(__file__)),  # parent dir
+        ]
+        env = Environment(loader=FileSystemLoader(template_dirs))
         
         # Add custom filter for JSON serialization
         env.filters['safe_tojson'] = lambda obj: json.dumps(obj, cls=CustomEncoder)
         
-        # Prepare template data with proper data structures
+        # Prepare template data
         template_data = {
-            'generated_at': data.get('generated_at'),
-            'date': data.get('date'),
-            'current_year': data.get('current_year'),
-            'now': data.get('now'),
-            'market_status': data.get('market_status', {}),
-            'economic_events': data.get('economic_events', {}),
+            'date': datetime.now().strftime('%B %d, %Y'),
+            'generated_at': datetime.now().strftime('%I:%M %p'),
+            'market_status': data.get('market_status', {
+                'status': 'Unknown',
+                'hours': 'Status Unavailable'
+            }),
+            'economic_events': data.get('economic_events', {}).get('events', []),
             'indices': data.get('indices', {}),
             'interest_rates': data.get('interest_rates', {}),
             'economic_indicators': data.get('economic_indicators', {}),
-            'gdp_data': {
-                'labels': data.get('gdp_data', {}).get('labels', []),
-                'values': data.get('gdp_data', {}).get('values', [])
-            },
-            'inflation_data': {
-                'labels': data.get('inflation_data', {}).get('labels', []),
-                'values': data.get('inflation_data', {}).get('values', [])
-            },
-            'unemployment_data': {
-                'labels': data.get('unemployment_data', {}).get('labels', []),
-                'values': data.get('unemployment_data', {}).get('values', [])
-            },
-            'bond_data': {
-                'labels': data.get('bond_data', {}).get('labels', []),
-                'values': data.get('bond_data', {}).get('values', []),
-                'values_2y': data.get('bond_data', {}).get('values_2y', [])
-            }
+            'gdp_history': data.get('gdp_history', {}),
+            'inflation_history': data.get('inflation_history', {}),
+            'unemployment_history': data.get('unemployment_history', {}),
+            'bond_history': data.get('bond_history', {}),
+            'gdp_data': data.get('gdp_history', {}),
+            'inflation_data': data.get('inflation_history', {}),
+            'unemployment_data': data.get('unemployment_history', {}),
+            'bond_data': data.get('bond_history', {}),
         }
         
         # Generate charts if data is available
-        if template_data['gdp_data']['values']:
-            template_data['gdp_chart_path'] = generate_gdp_chart(template_data['gdp_data'], output_dir)
+        if 'gdp_history' in data and data['gdp_history'].get('values'):
+            template_data['gdp_chart_path'] = generate_gdp_chart(data['gdp_history'], report_dir)
             
-        if template_data['inflation_data']['values']:
-            template_data['inflation_chart_path'] = generate_inflation_chart(template_data['inflation_data'], output_dir)
+        if 'inflation_history' in data and data['inflation_history'].get('values'):
+            template_data['inflation_chart_path'] = generate_inflation_chart(data['inflation_history'], report_dir)
             
-        if template_data['unemployment_data']['values']:
-            template_data['unemployment_chart_path'] = generate_unemployment_chart(template_data['unemployment_data'], output_dir)
+        if 'unemployment_history' in data and data['unemployment_history'].get('values'):
+            template_data['unemployment_chart_path'] = generate_unemployment_chart(data['unemployment_history'], report_dir)
             
-        if template_data['bond_data']['values']:
-            template_data['bond_chart_path'] = generate_bond_chart(template_data['bond_data'], output_dir)
+        if 'bond_history' in data and data['bond_history'].get('values'):
+            template_data['bond_chart_path'] = generate_bond_chart(data['bond_history'], report_dir)
         
-        # Load and render the template
-        template = env.get_template('market/market_report.html')
+        # Load and render the template (use market_report.html)
+        template = env.get_template('market_report.html')
         report_html = template.render(**template_data)
         
         # Save the report
-        report_path = os.path.join(output_dir, "index.html")
+        report_path = os.path.join(report_dir, "index.html")
         with open(report_path, 'w') as f:
             f.write(report_html)
         
         # Save raw data
-        raw_data_path = os.path.join(output_dir, 'raw_data.json')
+        raw_data_path = os.path.join(report_dir, 'raw_data.json')
         with open(raw_data_path, 'w') as f:
             json.dump(data, f, indent=2, cls=CustomEncoder)
             
@@ -113,4 +108,4 @@ def generate_market_report(data: Dict, output_dir: str) -> Optional[str]:
         
     except Exception as e:
         logger.error(f"Error generating market report: {e}", exc_info=True)
-        return None 
+        raise 

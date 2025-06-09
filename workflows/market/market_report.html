@@ -1,136 +1,515 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Market Analysis Report</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-    <style>
-        body {
-            background-color: rgb(13, 18, 30);
-            color: rgb(148, 163, 184);
-        }
-        .chart-container {
-            background-color: rgb(15, 23, 42);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        .chart-title {
-            color: rgb(148, 163, 184);
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-    </style>
-</head>
-<body class="min-h-screen p-8">
-    <div class="max-w-7xl mx-auto">
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-white mb-2">Market Analysis Report</h1>
-            <p class="text-gray-400">Generated on {{ generated_at }}</p>
-        </header>
+{% extends "base_layout.html" %}
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- GDP Chart -->
-            <div class="chart-container">
-                <h2 class="chart-title">GDP Growth</h2>
-                <iframe src="{{ gdp_chart_path }}" class="w-full h-[400px]" frameborder="0"></iframe>
-            </div>
+{% block title %}Daily Market Check - {{ date }}{% endblock %}
 
-            <!-- Inflation Chart -->
-            <div class="chart-container">
-                <h2 class="chart-title">Inflation Rate</h2>
-                <iframe src="{{ inflation_chart_path }}" class="w-full h-[400px]" frameborder="0"></iframe>
-            </div>
+{% block additional_styles %}
+<style>
+    /* Value colors */
+    .positive {
+        color: #4ade80 !important; /* green-400 */
+    }
+    
+    .negative {
+        color: #f87171 !important; /* red-400 */
+    }
+    
+    .neutral {
+        color: #60a5fa !important; /* blue-400 */
+    }
+    
+    .grid-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 16px;
+    }
+    
+    .value-card {
+        background-color: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .value-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .value-title {
+        font-size: 0.9rem;
+        color: #94a3b8;
+        margin-bottom: 8px;
+    }
+    
+    .value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    
+    .value-change {
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .value-change i {
+        margin-right: 5px;
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #334155;
+    }
+    
+    .section-header i {
+        margin-right: 12px;
+        color: #3b82f6;
+        font-size: 1.25rem;
+    }
+    
+    .section-header h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #f8fafc;
+        margin: 0;
+    }
+    
+    .meta-info {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        margin-top: 8px;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .data-table th {
+        background-color: #0f172a;
+        color: #94a3b8;
+        font-weight: 600;
+        text-align: left;
+        padding: 12px 16px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .data-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #334155;
+    }
+    
+    .data-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .data-table tr:hover td {
+        background-color: #1e293b;
+    }
+    
+    .card {
+        background-color: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .section {
+        margin-bottom: 32px;
+    }
+    
+    .chart-container, .chart-container-inflation {
+        position: relative;
+        width: 100%;
+        max-width: 500px;
+        height: 500px;
+        margin: 20px auto;
+        background: transparent;
+        border-radius: 8px;
+        overflow: hidden;
+        aspect-ratio: 1 / 1;
+    }
+    
+    .chart-container iframe, .chart-container-inflation iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: transparent;
+    }
+    
+    .chart-title, .chart-legend {
+        display: none !important;
+    }
+    
+    .chart-description {
+        font-size: 0.92rem;
+        color: #64748b;
+        line-height: 1.5;
+        margin-top: 0.5rem;
+        margin-bottom: 0.1rem;
+        padding-left: 0;
+        border-left: none;
+        background: none;
+        border-radius: 0;
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        letter-spacing: 0.01em;
+    }
+</style>
+{% endblock %}
 
-            <!-- Unemployment Chart -->
-            <div class="chart-container">
-                <h2 class="chart-title">Unemployment Rate</h2>
-                <iframe src="{{ unemployment_chart_path }}" class="w-full h-[400px]" frameborder="0"></iframe>
-            </div>
+{% block header_actions %}
+<a href="/" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border shadow-sm disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600 bg-slate-800 text-white hover:bg-slate-700">
+    <i class="fa-solid fa-arrow-left"></i>
+    Back to Dashboard
+</a>
+{% endblock %}
 
-            <!-- Bond Chart -->
-            <div class="chart-container">
-                <h2 class="chart-title">Treasury Yields</h2>
-                <iframe src="{{ bond_chart_path }}" class="w-full h-[400px]" frameborder="0"></iframe>
-            </div>
+{% block content %}
+<!-- Header -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 shadow-md">
+    <h1 class="text-2xl font-bold mb-1 text-white">Daily Market Check</h1>
+    <p class="text-lg text-slate-300">{{ date }} | Generated at {{ generated_at }}</p>
+</div>
+
+<!-- Market Checklist Section -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm section">
+    <div class="section-header">
+        <i class="fa-solid fa-clipboard-check text-blue-400"></i>
+        <h2>Today's Market Overview</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Market Status -->
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-semibold mb-3 text-slate-200">Market Status</h3>
+            <ul class="space-y-2">
+                <li class="flex items-center text-slate-300">
+                    <i class="fas fa-clock mr-2 text-blue-400"></i>
+                    Market Hours: {{ market_status.hours|default('Regular Trading') }}
+                </li>
+                <li class="flex items-center text-slate-300">
+                    <i class="fas fa-calendar-alt mr-2 text-blue-400"></i>
+                    Trading Day: {{ date }}
+                </li>
+            </ul>
         </div>
-
-        <!-- Market Analysis -->
-        <div class="mt-8 bg-gray-800 rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-white mb-4">Market Analysis</h2>
-            
-            <!-- GDP Analysis -->
-            <div class="mb-6">
-                <h3 class="text-xl font-semibold text-white mb-2">GDP Growth Analysis</h3>
-                <p class="text-gray-400">
-                    {% if gdp_data['values'] and gdp_data['values']|length > 0 %}
-                        {% set latest_gdp = gdp_data['values'][-1] %}
-                        {% if latest_gdp > 0 %}
-                        The economy shows positive growth with a {{ "%.1f"|format(latest_gdp) }}% increase in the latest quarter.
-                        {% else %}
-                        The economy shows negative growth with a {{ "%.1f"|format(latest_gdp) }}% decrease in the latest quarter.
-                        {% endif %}
-                    {% else %}
-                        GDP growth data is not available.
+        
+        <!-- Key Events -->
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-semibold mb-3 text-slate-200">Today's Events</h3>
+            <ul class="space-y-2">
+                {% if economic_events is defined and economic_events %}
+                    {% for event in economic_events %}
+                    <li class="flex items-start text-slate-300">
+                        <div class="flex-shrink-0 mt-1">
+                            {% if event.importance == 'High' %}
+                                <i class="fas fa-circle text-red-400 text-xs mr-2"></i>
+                            {% elif event.importance == 'Medium' %}
+                                <i class="fas fa-circle text-yellow-400 text-xs mr-2"></i>
+                            {% else %}
+                                <i class="fas fa-circle text-blue-400 text-xs mr-2"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-start">
+                                <span class="font-medium">{{ event.time }}</span>
+                                <span class="text-xs text-slate-400">{{ event.country }}</span>
+                            </div>
+                            <div class="text-sm">{{ event.description }}</div>
+                            {% if event.actual is defined and event.actual %}
+                            <div class="text-xs mt-1">
+                                <span class="text-slate-400">Actual: </span>
+                                <span class="font-medium">{{ event.actual }}</span>
+                                {% if event.forecast is defined and event.forecast %}
+                                <span class="text-slate-400 ml-2">Forecast: </span>
+                                <span class="font-medium">{{ event.forecast }}</span>
+                                {% endif %}
+                                {% if event.previous is defined and event.previous %}
+                                <span class="text-slate-400 ml-2">Previous: </span>
+                                <span class="font-medium">{{ event.previous }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                {% else %}
+                <li class="text-slate-400">No major economic events scheduled</li>
+                {% endif %}
+            </ul>
+        </div>
+        
+        <!-- Market Sentiment -->
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-semibold mb-3 text-slate-200">Market Sentiment</h3>
+            <ul class="space-y-2">
+                <li class="flex items-center justify-between text-slate-300">
+                    <span>Fed Funds Rate:</span>
+                    <span class="font-semibold">{{ interest_rates['Federal Funds Rate']|default('N/A') }}</span>
+                </li>
+                <li class="flex items-center justify-between text-slate-300">
+                    <span>VIX Index:</span>
+                    {% set vix = None %}
+                    {% if indices.Volatility is defined %}
+                        {% for idx in indices.Volatility %}
+                            {% if idx.name == 'VIX' %}
+                                {% set vix = idx %}
+                            {% endif %}
+                        {% endfor %}
                     {% endif %}
-                </p>
-            </div>
-
-            <!-- Inflation Analysis -->
-            <div class="mb-6">
-                <h3 class="text-xl font-semibold text-white mb-2">Inflation Analysis</h3>
-                <p class="text-gray-400">
-                    {% if inflation_data['values'] and inflation_data['values']|length > 0 %}
-                        {% set latest_inflation = inflation_data['values'][-1] %}
-                        {% if latest_inflation > 2 %}
-                        Inflation remains elevated at {{ "%.1f"|format(latest_inflation) }}%, above the target rate of 2%.
-                        {% else %}
-                        Inflation is at {{ "%.1f"|format(latest_inflation) }}%, below the target rate of 2%.
+                    <span class="font-semibold {% if vix and vix.direction == 'up' %}text-red-400{% elif vix and vix.direction == 'down' %}text-green-400{% endif %}">
+                        {{ vix.value if vix else 'N/A' }}
+                        {% if vix and vix.direction == 'up' %}
+                            <i class="fas fa-arrow-up ml-1"></i>
+                        {% elif vix and vix.direction == 'down' %}
+                            <i class="fas fa-arrow-down ml-1"></i>
                         {% endif %}
-                    {% else %}
-                        Inflation data is not available.
-                    {% endif %}
-                </p>
-            </div>
-
-            <!-- Unemployment Analysis -->
-            <div class="mb-6">
-                <h3 class="text-xl font-semibold text-white mb-2">Unemployment Analysis</h3>
-                <p class="text-gray-400">
-                    {% if unemployment_data['values'] and unemployment_data['values']|length > 0 %}
-                        {% set latest_unemployment = unemployment_data['values'][-1] %}
-                        The unemployment rate stands at {{ "%.1f"|format(latest_unemployment) }}%, 
-                        {% if latest_unemployment < 4 %}
-                        indicating a tight labor market.
-                        {% else %}
-                        suggesting some slack in the labor market.
-                        {% endif %}
-                    {% else %}
-                        Unemployment data is not available.
-                    {% endif %}
-                </p>
-            </div>
-
-            <!-- Bond Analysis -->
-            <div class="mb-6">
-                <h3 class="text-xl font-semibold text-white mb-2">Bond Market Analysis</h3>
-                <p class="text-gray-400">
-                    {% if bond_data['values'] and bond_data['values']|length > 0 %}
-                        {% set latest_bond = bond_data['values'][-1] %}
-                        The 10-year Treasury yield is at {{ "%.2f"|format(latest_bond) }}%, 
-                        {% if latest_bond > 4 %}
-                        reflecting higher long-term interest rates.
-                        {% else %}
-                        indicating relatively low long-term interest rates.
-                        {% endif %}
-                    {% else %}
-                        Bond yield data is not available.
-                    {% endif %}
-                </p>
+                    </span>
+                </li>
+            </ul>
+            <div class="text-xs text-slate-500 mt-2">
+                Last updated: {{ generated_at }}
             </div>
         </div>
     </div>
-</body>
-</html> 
+</div>
+
+<!-- Economic Indicators Section -->
+{% if economic_indicators is defined %}
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm section">
+    <div class="section-header">
+        <i class="fa-solid fa-chart-bar text-blue-400"></i>
+        <h2>Economic Indicators</h2>
+    </div>
+    
+    <div class="grid-cards">
+        {% for name, data in economic_indicators.items() %}
+            {% if name != 'Last Updated' %}
+            <div class="value-card">
+                <div class="value-title">{{ name }}</div>
+                <div class="text-2xl font-bold mb-2">{{ data.value }}</div>
+                
+                <!-- Historical Values -->
+                <div class="space-y-2 mb-3">
+                    {% if data.history is defined %}
+                        {% for entry in data.history %}
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>{{ entry.date }}:</span>
+                            <span class="font-medium">{{ entry.value }}</span>
+                            <span class="{% if entry.change.startswith('+') %}text-green-400{% elif entry.change.startswith('-') %}text-red-400{% else %}text-blue-400{% endif %}">
+                                {{ entry.change }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <!-- Change Rate with Trend Indicator -->
+                <div class="flex items-center gap-2">
+                    {% if data.trend == 'accelerating_up' %}
+                        <i class="fas fa-angles-up text-green-400"></i>
+                        <span class="text-green-400">{{ data.change_rate }} (Accelerating)</span>
+                    {% elif data.trend == 'up' %}
+                        <i class="fas fa-arrow-up text-green-400"></i>
+                        <span class="text-green-400">{{ data.change_rate }}</span>
+                    {% elif data.trend == 'accelerating_down' %}
+                        <i class="fas fa-angles-down text-red-400"></i>
+                        <span class="text-red-400">{{ data.change_rate }} (Accelerating)</span>
+                    {% elif data.trend == 'down' %}
+                        <i class="fas fa-arrow-down text-red-400"></i>
+                        <span class="text-red-400">{{ data.change_rate }}</span>
+                    {% elif data.trend == 'stable' %}
+                        <i class="fas fa-minus text-blue-400"></i>
+                        <span class="text-blue-400">Stable ({{ data.change_rate }})</span>
+                    {% else %}
+                        <i class="fas fa-minus text-slate-400"></i>
+                        <span class="text-slate-400">{{ data.change_rate }}</span>
+                    {% endif %}
+                </div>
+                
+                <!-- Last Updated Date -->
+                <div class="text-xs text-slate-500 mt-2">
+                    As of {{ data.last_updated }}
+                </div>
+                
+                <!-- Indicator Description -->
+                <div class="text-xs text-slate-400 mt-2">
+                    {% if name == 'GDP' %}
+                        Gross Domestic Product measures the total value of goods and services produced
+                    {% elif name == 'CPI' %}
+                        Consumer Price Index (CPI) measures the average change in prices over time
+                    {% elif name == 'Inflation YoY' %}
+                        Year-over-Year change in consumer prices compared to the same month last year
+                    {% elif name == 'Unemployment' %}
+                        Percentage of the labor force that is actively seeking employment
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    
+    <div class="meta-info">Last updated: {{ economic_indicators['Last Updated'] }}</div>
+</div>
+
+<!-- Economic Charts Section -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm section">
+    <div class="section-header">
+        <i class="fa-solid fa-chart-line text-blue-400"></i>
+        <h2>Economic Trends</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+        <!-- GDP Chart -->
+        {% if gdp_history is defined %}
+        <div class="bg-slate-900 p-4 rounded-lg">
+            <div class="chart-container">
+                <iframe src="{{ gdp_chart_path }}" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Bar color: green (positive growth), red (negative growth)</li>
+                    <li>Blue shadow: healthy range (2-3%)</li>
+                    <li>Green shadow: optimal range (3.5-4.5%)</li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Inflation Chart -->
+        {% if inflation_history is defined %}
+        <div class="bg-slate-900 p-4 rounded-lg">
+            <div class="chart-container">
+                <iframe src="{{ inflation_chart_path }}" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Bar color: green (target 2.0-2.5%), yellow (below 2.0%), red (above 2.5%)</li>
+                    <li>Green shadow: Fed target range (2.0-2.5%)</li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Unemployment Chart -->
+        {% if unemployment_history is defined %}
+        <div class="bg-slate-900 p-4 rounded-lg">
+            <div class="chart-container">
+                <iframe src="{{ unemployment_chart_path }}" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Bar color: green (≤4.0%), yellow (4.0-4.4%), red (>4.4%)</li>
+                    <li>Green shadow: optimal range (3.5-4.0%)</li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Bond Chart -->
+        {% if bond_history is defined %}
+        <div class="bg-slate-900 p-4 rounded-lg">
+            <div class="chart-container">
+                <iframe src="{{ bond_chart_path }}" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Lines: blue (10Y yield), red (2Y yield)</li>
+                    <li>Red shadow: yield curve inversion (2Y > 10Y), a recession signal</li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Market Indices Section -->
+{% if indices is defined %}
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm section">
+    <div class="section-header">
+        <i class="fa-solid fa-chart-line text-blue-400"></i>
+        <h2>Market Indices</h2>
+    </div>
+    {% for group, group_indices in indices.items() %}
+    <div class="mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">{{ group }}</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {% for idx in group_indices %}
+            <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    {{ idx.name }}
+                    <span class="ml-1" title="{{ idx.description }}">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-2 text-white">{{ idx.value }}</div>
+                <div class="flex items-center {{ idx.direction }}">
+                    {% if idx.direction == 'up' %}
+                        <i class="fas fa-arrow-up mr-1"></i>
+                    {% elif idx.direction == 'down' %}
+                        <i class="fas fa-arrow-down mr-1"></i>
+                    {% else %}
+                        <i class="fas fa-minus mr-1"></i>
+                    {% endif %}
+                    <span class="font-medium">{{ idx.change }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Interest Rates Section -->
+{% if interest_rates is defined %}
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm section">
+    <div class="section-header">
+        <i class="fa-solid fa-percent text-blue-400"></i>
+        <h2>Interest Rates & Yields</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for name, value in interest_rates.items() %}
+            {% if name != 'Last Updated' %}
+            <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                <div class="text-sm text-slate-400 mb-1">{{ name }}</div>
+                <div class="text-2xl font-bold text-white">{{ value }}</div>
+                <div class="text-xs text-slate-500 mt-2">
+                    {% if name == 'Federal Funds Rate' %}
+                        Target rate set by the Federal Reserve
+                    {% elif name == '10-Year Treasury' %}
+                        Benchmark government bond yield
+                    {% elif name == '30-Year Fixed Mortgage' %}
+                        Average 30-year fixed mortgage rate
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    
+    <div class="text-xs text-slate-500 mt-4">Last updated: {{ interest_rates['Last Updated'] }}</div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block generation_date %}{{ generated_at }}{% endblock %}
+
+{% block scripts %}
+<!-- You can add custom scripts here if needed -->
+{% endblock %} 

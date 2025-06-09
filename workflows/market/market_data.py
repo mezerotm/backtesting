@@ -14,13 +14,13 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 from polygon import RESTClient
 from polygon.rest.models import Timeframe, Sort, Order
-from ..base_fetcher import BaseFetcher
+from workflows.base_fetcher import BaseFetcher
 from utils.config import POLYGON_API_KEY, FRED_API_KEY, TRADING_ECON_API_KEY
 from utils.most_recent import with_most_recent_data
 
 logger = logging.getLogger(__name__)
 
-class MarketDataFetcher:
+class MarketDataFetcher(BaseFetcher):
     """Fetches market data from various sources."""
     
     def __init__(self, force_refresh: bool = False):
@@ -29,10 +29,9 @@ class MarketDataFetcher:
         Args:
             force_refresh (bool): Whether to force refresh data from source
         """
+        super().__init__(force_refresh=force_refresh, cache_subdir='market')
         self.force_refresh = force_refresh
         self.client = RESTClient(POLYGON_API_KEY)  # Initialize Polygon client with API key
-        self.cache_dir = os.path.join('cache', 'market')
-        os.makedirs(self.cache_dir, exist_ok=True)
         self.fred_api_key = FRED_API_KEY
     
     def _yahoo_rate_limited(self):
@@ -699,51 +698,58 @@ class MarketDataFetcher:
             print(f"ERROR - Failed to get unemployment data: {e}")
         return {'labels': [], 'values': []}
     
-    def get_bond_data(self, periods: int = 8) -> Dict:
-        """Get bond yield data from FRED."""
+    def get_bond_data(self, periods: int = 24, frequency: str = 'monthly') -> Dict:
+        """Get bond yield data from FRED, with debugging and frequency control."""
         try:
+            # Set FRED frequency
+            freq_map = {'monthly': 'm', 'yearly': 'a'}
+            freq_param = freq_map.get(frequency, 'm')
+            print(f"[DEBUG] Fetching bond data: periods={periods}, frequency={frequency}, freq_param={freq_param}")
             # Get 10Y Treasury yield
+            params_10y = {
+                'series_id': 'DGS10',
+                'api_key': self.fred_api_key,
+                'file_type': 'json',
+                'sort_order': 'desc',
+                'limit': periods,
+                'frequency': freq_param
+            }
             response_10y = requests.get(
                 "https://api.stlouisfed.org/fred/series/observations",
-                params={
-                    'series_id': 'DGS10',  # 10-Year Treasury Constant Maturity Rate
-                    'api_key': self.fred_api_key,
-                    'file_type': 'json',
-                    'sort_order': 'desc',
-                    'limit': periods
-                }
+                params=params_10y
             )
             data_10y = response_10y.json()
-            
             # Get 2Y Treasury yield
+            params_2y = {
+                'series_id': 'DGS2',
+                'api_key': self.fred_api_key,
+                'file_type': 'json',
+                'sort_order': 'desc',
+                'limit': periods,
+                'frequency': freq_param
+            }
             response_2y = requests.get(
                 "https://api.stlouisfed.org/fred/series/observations",
-                params={
-                    'series_id': 'DGS2',  # 2-Year Treasury Constant Maturity Rate
-                    'api_key': self.fred_api_key,
-                    'file_type': 'json',
-                    'sort_order': 'desc',
-                    'limit': periods
-                }
+                params=params_2y
             )
             data_2y = response_2y.json()
-            
             if ('observations' in data_10y and len(data_10y['observations']) > 0 and
                 'observations' in data_2y and len(data_2y['observations']) > 0):
-                
                 dates = [datetime.strptime(obs['date'], '%Y-%m-%d') for obs in data_10y['observations']]
                 values_10y = [float(obs['value']) for obs in data_10y['observations'] if obs['value'] != '.']
                 values_2y = [float(obs['value']) for obs in data_2y['observations'] if obs['value'] != '.']
-                
+                print(f"[DEBUG] 10Y count: {len(values_10y)}, 2Y count: {len(values_2y)}")
+                print(f"[DEBUG] 10Y dates: {dates}")
+                print(f"[DEBUG] 10Y values: {values_10y}")
+                print(f"[DEBUG] 2Y values: {values_2y}")
                 # Format for chart
                 data = {
-                    'labels': [d.strftime('%Y-%m') for d in dates],
+                    'labels': [d.strftime('%Y') if frequency == 'yearly' else d.strftime('%Y-%m') for d in dates],
                     'values': values_10y,
                     'values_2y': values_2y
                 }
-                print(f"[DEBUG] Raw bond data: {data}")
+                print(f"[DEBUG] Final bond chart labels: {data['labels']}")
                 return data
-                
         except Exception as e:
             print(f"ERROR - Failed to get bond data: {e}")
         return {'labels': [], 'values': [], 'values_2y': []} 
