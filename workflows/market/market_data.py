@@ -4,7 +4,7 @@ import logging
 from polygon import RESTClient
 import requests
 from ..base_fetcher import BaseFetcher
-from utils.config import POLYGON_API_KEY, FRED_API_KEY
+from utils.config import POLYGON_API_KEY, FRED_API_KEY, TRADING_ECON_API_KEY
 import pandas as pd
 import pytz
 import time
@@ -573,57 +573,47 @@ class MarketDataFetcher(BaseFetcher):
             }
     
     def fetch_economic_events(self) -> Dict:
-        """Fetch economic calendar events for today"""
-        cache_key = f"economic_events_{datetime.now().strftime('%Y-%m-%d')}"
-        
-        if not self.force_refresh:
-            cached_data = self._load_from_cache(cache_key)
-            if cached_data:
-                return cached_data
-        
+        """Fetch top 5 most active tickers and their latest news as events for the dashboard."""
+        logger.info("Fetching Polygon market movers and news for events section")
+        events = []
         try:
-            # For now, return placeholder data
-            # In a real implementation, this would fetch from an economic calendar API
-            events = []
-            
-            # Add Fed events if available
-            if self.fred_api_key:
-                try:
-                    response = requests.get(
-                        "https://api.stlouisfed.org/fred/releases/dates",
-                        params={
-                            'api_key': self.fred_api_key,
-                            'file_type': 'json',
-                            'limit': 5,
-                            'realtime_start': datetime.now().strftime('%Y-%m-%d')
-                        }
-                    )
-                    data = response.json()
-                    
-                    if 'release_dates' in data:
-                        for release in data['release_dates']:
-                            events.append({
-                                'time': release.get('hour', '00:00'),
-                                'description': f"Fed: {release.get('name', 'Economic Release')}",
-                                'importance': 'high'
-                            })
-                except Exception as e:
-                    logger.error(f"Error fetching Fed events: {e}")
-            
-            result = {
-                'events': events,
-                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            }
-            
-            self._save_to_cache(cache_key, result)
-            return result
-            
+            # 1. Get top 5 most active tickers using requests
+            url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/most_active?apiKey={POLYGON_API_KEY}"
+            resp = requests.get(url)
+            resp.raise_for_status()
+            movers = resp.json().get('tickers', [])[:5]
+            tickers = [item['ticker'] for item in movers]
+
+            for ticker in tickers:
+                # 2. Get latest news for each ticker using the client
+                news_items = self.client.list_ticker_news(ticker, limit=1)
+                if news_items:
+                    news = news_items[0]
+                    event = {
+                        'time': news.published_utc[11:16] if hasattr(news, 'published_utc') else '',
+                        'country': 'US',
+                        'description': f"{ticker}: {news.title}",
+                        'importance': 'High',
+                        'actual': None,
+                        'forecast': None,
+                        'previous': None,
+                        'url': getattr(news, 'article_url', None)
+                    }
+                    events.append(event)
+                    logger.debug(f"Added event for {ticker}: {news.title}")
         except Exception as e:
-            logger.error(f"Error fetching economic events: {e}")
-            return {
-                'events': [],
-                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            }
+            logger.error(f"Error fetching Polygon events: {e}")
+
+        if not events:
+            logger.warning("No Polygon events found for today.")
+            return None
+
+        result = {
+            'events': events,
+            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        logger.info(f"Returning {len(events)} Polygon events for today")
+        return result
     
     def fetch_inflation_yoy_history(self, limit: int = 24) -> Dict:
         """Fetch YoY inflation rates (CPI) for the last N months."""

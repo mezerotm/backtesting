@@ -18,6 +18,11 @@ FRED_API_KEY = os.getenv('FRED_API_KEY')
 if not FRED_API_KEY:
     print("Warning: FRED_API_KEY environment variable is not set. Interest rate data will use fallback values.")
 
+# Trading Economics API configuration
+TRADING_ECON_API_KEY = os.getenv('TRADING_ECON_API_KEY')
+if not TRADING_ECON_API_KEY:
+    print("Warning: TRADING_ECON_API_KEY environment variable is not set. Economic calendar data will not be available.")
+
 # OpenAI API configuration
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 if not OPENAI_API_KEY:
