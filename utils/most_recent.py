@@ -1,9 +1,6 @@
 import functools
 from datetime import datetime, timedelta
-import logging
 from typing import Any, Callable, Optional, Tuple, TypeVar
-
-logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
 
@@ -33,13 +30,9 @@ def with_most_recent_data(max_days: int = 7) -> Callable[[Callable[..., T]], Cal
                     kwargs['date'] = date
                     result = func(*args, **kwargs)
                     if result:
-                        logger.debug(f"Found data for {func.__name__} on {date}")
                         return result, date
-                    logger.debug(f"No data for {func.__name__} on {date}, trying previous day.")
                 except Exception as e:
-                    logger.error(f"Error fetching data for {func.__name__} on {date}: {str(e)}")
                     continue
-            logger.warning(f"No data found for {func.__name__} in the last {max_days} days.")
             return None, None
         return wrapper
     return decorator 

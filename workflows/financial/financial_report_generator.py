@@ -4,47 +4,10 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 import numpy as np
 from jinja2 import Environment, FileSystemLoader
-from ..metadata_generator import generate_metadata, save_metadata
-import logging
+from workflows.metadata_generator import generate_metadata, save_metadata
 import json
 import math
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Standardized descriptions for financial metrics
-METRIC_DESCRIPTIONS = {
-    # Company Information
-    'Sector': 'Industry sector classification',
-    
-    # Valuation Metrics
-    'Market Cap': 'Total market value of outstanding shares',
-    'Enterprise Value': 'Market Cap + Total Debt - Cash and Equivalents',
-    'EV/EBITDA': 'Enterprise Value divided by EBITDA (valuation multiple)',
-    'EV/Revenue': 'Enterprise Value divided by Revenue (valuation multiple)',
-    
-    # Financial Performance
-    'Net Margin': 'Net Income as a percentage of Revenue (measures profitability)',
-    'Operating Income': 'Revenue minus operating expenses (quarterly)',
-    'Revenue': 'Total sales/income from business operations (quarterly)',
-    
-    # Share Information
-    'Weighted Shares': 'Time-weighted average of outstanding shares',
-    'Float': 'Number of shares available for public trading',
-    
-    # Company Size
-    'Employees': 'Total number of full-time employees',
-    
-    # Additional Metrics (for future use)
-    'Operating Margin': 'Operating Income divided by Revenue',
-    'Gross Margin': 'Gross Profit divided by Revenue',
-    'ROE': 'Return on Equity - Net Income divided by Shareholders Equity',
-    'ROA': 'Return on Assets - Net Income divided by Total Assets',
-    'Current Ratio': 'Current Assets divided by Current Liabilities',
-    'Debt/Equity': 'Total Debt divided by Shareholders Equity',
-    'Asset Turnover': 'Revenue divided by Average Total Assets'
-}
+from workflows.financial.metric_descriptions import METRIC_DESCRIPTIONS
 
 def validate_percentage(value: float) -> Optional[float]:
     """Validate percentage is within acceptable range (-100% to +500%)"""
@@ -104,7 +67,6 @@ def calculate_financial_metrics(data: Dict) -> Dict:
         return metrics
         
     except Exception as e:
-        logger.error(f"Error calculating financial metrics: {e}", exc_info=True)
         return {
             'Quarterly Metrics': {},
             'Annual Metrics': {},
@@ -216,7 +178,6 @@ def calculate_period_metrics(data: pd.Series, period: str) -> Dict:
         return metrics
         
     except Exception as e:
-        logger.error(f"Error calculating {period} metrics: {e}", exc_info=True)
         return {}
 
 def generate_calculation_details(data: pd.Series, period: str) -> Dict:
@@ -302,7 +263,6 @@ def calculate_financial_ratios(fundamentals: Dict, data: Dict) -> Dict:
         }
         return result
     except Exception as e:
-        logger.error(f"Error calculating financial ratios: {e}", exc_info=True)
         return {
             'enterprise_value': None,
             'ev_ebitda': None,
@@ -333,7 +293,6 @@ def calculate_peg_ratio(fundamentals: Dict, data: Dict) -> Optional[float]:
                     
         return None
     except Exception as e:
-        logger.error(f"Error calculating PEG ratio: {e}")
         return None
 
 def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optional[str]:
@@ -348,13 +307,13 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         Optional[str]: Path to generated report or None if failed
     """
     try:
-        logger.info(f"Starting financial report generation for {symbol}")
-        logger.info(f"Received data keys: {data.keys()}")
-        logger.info(f"Received metrics: {metrics}")
+        print(f"[DEBUG] Starting financial report generation for {symbol}")
+        print(f"[DEBUG] Received data keys: {data.keys()}")
+        print(f"[DEBUG] Received metrics: {metrics}")
         
         # Get fundamentals data with debug logging
         fundamentals = data.get('fundamentals', {})
-        logger.info(f"Retrieved fundamentals: {fundamentals}")
+        print(f"[DEBUG] Retrieved fundamentals: {fundamentals}")
         
         # Calculate financial ratios
         financial_ratios = calculate_financial_ratios(fundamentals, data)
@@ -371,20 +330,15 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
             'Float': format_large_number(fundamentals.get('float', 0), include_currency=False),
             'Employees': format_large_number(fundamentals.get('employees', 0), include_currency=False)
         }
-        logger.info(f"Formatted market metrics: {market_metrics}")
+        print(f"[DEBUG] Generated market metrics: {market_metrics}")
         
-        # Log the data structure we received
-        logger.info("Received data keys:")
-        for key in data.keys():
-            if isinstance(data[key], pd.DataFrame):
-                logger.info(f"DataFrame '{key}': {len(data[key])} rows")
-                if not data[key].empty:
-                    logger.info(f"DataFrame '{key}' columns: {data[key].columns.tolist()}")
-            else:
-                logger.info(f"Key '{key}': {type(data[key])}")
-
-        report_dir = os.path.join('public', 'results', f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        # Create report directory with daily-based structure
+        today = datetime.now().strftime("%Y%m%d")
+        directory_name = f"financial_{symbol}_{today}"
+        report_dir = os.path.join('public', 'results', directory_name)
+        print(f"[DEBUG] Creating report directory: {report_dir}")
         os.makedirs(report_dir, exist_ok=True)
+        print(f"[DEBUG] Report directory created: {os.path.exists(report_dir)}")
         
         # Get company info including sector
         company_info = {
@@ -392,12 +346,13 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
             'description': metrics.get('description', 'N/A'),
             'sector': metrics.get('sector', 'N/A')
         }
+        print(f"[DEBUG] Company info: {company_info}")
         
         # Create common metadata
         common_metadata = {
             "symbol": symbol,
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "company_info": company_info  # Include company info in metadata
+            "company_info": company_info
         }
         
         # Calculate all metrics first
@@ -413,206 +368,27 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
             'metrics': calculated_metrics
         }
         
+        print(f"[DEBUG] Saving metrics to: {metrics_file}")
         with open(metrics_file, 'w') as f:
             json.dump(metrics_data, f, indent=2)
-        logger.info("Successfully saved metrics.json")
+        print(f"[DEBUG] Metrics saved: {os.path.exists(metrics_file)}")
         
         # Get latest date from data
         formatted_date = datetime.now().strftime('%Y-%m-%d')
         fiscal_quarter_date = formatted_date
         fiscal_year_date = formatted_date
         
-        # Update statement_types dictionary to ensure proper data mapping
-        statement_types = {
-            'quarterly_income': data.get('quarterly_financials', pd.DataFrame()),
-            'annual_income': data.get('annual_financials', pd.DataFrame()),
-            'quarterly_balance': pd.DataFrame(),
-            'annual_balance': pd.DataFrame(),
-            'quarterly_cash_flow': pd.DataFrame(),
-            'annual_cash_flow': pd.DataFrame()
-        }
-
-        # Create balance sheet and cash flow files from the consolidated data
-        if isinstance(data.get('quarterly_financials'), pd.DataFrame) and not data['quarterly_financials'].empty:
-            try:
-                # Create quarterly balance sheet
-                required_columns = ['date', 'fiscal_period', 'fiscal_year', 'total_assets', 
-                                 'current_assets', 'current_liabilities', 'inventory', 'liabilities']
-                available_columns = data['quarterly_financials'].columns.tolist()
-                logger.info(f"Available columns for quarterly financials: {available_columns}")
-                
-                if all(col in available_columns for col in required_columns):
-                    quarterly_balance = data['quarterly_financials'][required_columns]
-                    statement_types['quarterly_balance'] = quarterly_balance
-                    logger.info("Successfully created quarterly balance sheet")
-                else:
-                    missing_columns = [col for col in required_columns if col not in available_columns]
-                    logger.warning(f"Missing columns for quarterly balance sheet: {missing_columns}")
-
-                # Create quarterly cash flow
-                cash_flow_columns = ['date', 'fiscal_period', 'fiscal_year', 'operating_cash_flow', 
-                                   'capital_expenditure', 'financing_cash_flow']
-                if all(col in available_columns for col in cash_flow_columns):
-                    quarterly_cash_flow = data['quarterly_financials'][cash_flow_columns]
-                    statement_types['quarterly_cash_flow'] = quarterly_cash_flow
-                    logger.info("Successfully created quarterly cash flow")
-                else:
-                    missing_columns = [col for col in cash_flow_columns if col not in available_columns]
-                    logger.warning(f"Missing columns for quarterly cash flow: {missing_columns}")
-
-            except Exception as e:
-                logger.error(f"Error creating quarterly statements: {e}", exc_info=True)
-
-        if isinstance(data.get('annual_financials'), pd.DataFrame) and not data['annual_financials'].empty:
-            try:
-                # Create annual balance sheet
-                required_columns = ['date', 'fiscal_period', 'fiscal_year', 'total_assets', 
-                                 'current_assets', 'current_liabilities', 'inventory', 'liabilities']
-                available_columns = data['annual_financials'].columns.tolist()
-                logger.info(f"Available columns for annual financials: {available_columns}")
-                
-                if all(col in available_columns for col in required_columns):
-                    annual_balance = data['annual_financials'][required_columns]
-                    statement_types['annual_balance'] = annual_balance
-                    logger.info("Successfully created annual balance sheet")
-                else:
-                    missing_columns = [col for col in required_columns if col not in available_columns]
-                    logger.warning(f"Missing columns for annual balance sheet: {missing_columns}")
-
-                # Create annual cash flow
-                cash_flow_columns = ['date', 'fiscal_period', 'fiscal_year', 'operating_cash_flow', 
-                                   'capital_expenditure', 'financing_cash_flow']
-                if all(col in available_columns for col in cash_flow_columns):
-                    annual_cash_flow = data['annual_financials'][cash_flow_columns]
-                    statement_types['annual_cash_flow'] = annual_cash_flow
-                    logger.info("Successfully created annual cash flow")
-                else:
-                    missing_columns = [col for col in cash_flow_columns if col not in available_columns]
-                    logger.warning(f"Missing columns for annual cash flow: {missing_columns}")
-
-            except Exception as e:
-                logger.error(f"Error creating annual statements: {e}", exc_info=True)
-
-        for name, df in statement_types.items():
-            try:
-                if isinstance(df, pd.DataFrame) and not df.empty:
-                    logger.info(f"Processing {name} with {len(df)} rows")
-                    df_copy = df.copy()
-                    
-                    # Handle date columns safely
-                    date_columns = ['date', 'end_date']
-                    for col in date_columns:
-                        if col in df_copy.columns:
-                            df_copy[col] = df_copy[col].apply(lambda x: 
-                                pd.to_datetime(x, errors='coerce').strftime('%Y-%m-%d') 
-                                if pd.notna(x) and x != 'N/A' 
-                                else 'N/A'
-                            )
-                    
-                    # Create JSON data with metadata
-                    json_data = {
-                        **common_metadata,
-                        'data': df_copy.to_dict('records')
-                    }
-                    
-                    # Save to JSON
-                    file_path = os.path.join(report_dir, f"{name}.json")
-                    with open(file_path, 'w') as f:
-                        json.dump(json_data, f, indent=2)
-                    logger.info(f"Successfully saved {file_path}")
-                    
-                    # Update fiscal dates if available
-                    if name == 'quarterly_income' and 'end_date' in df_copy.columns:
-                        valid_dates = df_copy[df_copy['end_date'] != 'N/A']['end_date']
-                        if not valid_dates.empty:
-                            fiscal_quarter_date = valid_dates.iloc[0]
-                    
-                    if name == 'annual_income' and 'end_date' in df_copy.columns:
-                        valid_dates = df_copy[df_copy['end_date'] != 'N/A']['end_date']
-                        if not valid_dates.empty:
-                            fiscal_year_date = valid_dates.iloc[0]
-                            
-                else:
-                    logger.warning(f"No data available for {name}")
-                    
-            except Exception as e:
-                logger.error(f"Error processing {name}: {str(e)}", exc_info=True)
-                continue
-        
-        # Convert DataFrames to dict format before saving
-        json_safe_data = {}
-        for key, value in data.items():
-            if isinstance(value, pd.DataFrame):
-                json_safe_data[key] = value.to_dict('records')
-            else:
-                json_safe_data[key] = value
-
-        # Save complete raw data including descriptions
-        raw_data = {
-            'symbol': symbol,
-            'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'market_metrics': market_metrics,
-            'metric_descriptions': METRIC_DESCRIPTIONS,
-            'financial_data': json_safe_data,  # Use converted data
-            'calculated_metrics': calculated_metrics
-        }
-        
-        # Save raw data to JSON
-        raw_data_path = os.path.join(report_dir, 'raw_data.json')
-        with open(raw_data_path, 'w') as f:
-            json.dump(raw_data, f, indent=2)
-            
-        # Save metric descriptions separately
-        descriptions_path = os.path.join(report_dir, 'metric_descriptions.json')
-        with open(descriptions_path, 'w') as f:
-            json.dump(METRIC_DESCRIPTIONS, f, indent=2)
-        
-        # Get the templates directory relative to this file
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        templates_dir = os.path.join(current_dir, 'templates')
-        parent_templates_dir = os.path.join(os.path.dirname(current_dir), 'templates')
-        
-        # Create templates directory if it doesn't exist
-        os.makedirs(templates_dir, exist_ok=True)
-        
-        # Copy base layout template if it doesn't exist
-        base_layout_path = os.path.join(templates_dir, 'base_layout.html')
-        if not os.path.exists(base_layout_path):
-            default_base_layout = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Financial Analysis{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css" rel="stylesheet">
-    <style>
-        body { padding: 20px; }
-        .metric-card { margin-bottom: 20px; }
-        .chart-container { margin: 20px 0; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        {% block content %}{% endblock %}
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
-    {% block scripts %}{% endblock %}
-</body>
-</html>"""
-            with open(base_layout_path, 'w') as f:
-                f.write(default_base_layout)
-        
-        # Set up Jinja2 environment with multiple template directories
-        env = Environment(loader=FileSystemLoader([templates_dir, parent_templates_dir]))
-        template = env.get_template('financial_report.html')
+        # Setup Jinja2 environment with the correct template path
+        template_dir = os.path.join(os.path.dirname(__file__), '..')
+        print(f"[DEBUG] Template directory: {template_dir}")
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template('financial/financial_report.html')
         
         # Prepare report data
         report_data = {
             'symbol': symbol,
             'company_info': company_info,
-            'market_metrics': market_metrics,  # Add market metrics
+            'market_metrics': market_metrics,
             'dates': {
                 'latest': formatted_date,
                 'fiscal_quarter': fiscal_quarter_date,
@@ -627,8 +403,10 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         
         # Save report
         report_path = os.path.join(report_dir, 'index.html')
+        print(f"[DEBUG] Saving report to: {report_path}")
         with open(report_path, 'w') as f:
             f.write(html_content)
+        print(f"[DEBUG] Report saved: {os.path.exists(report_path)}")
         
         # Generate and save metadata
         current_date = datetime.now().strftime('%Y-%m-%d')
@@ -640,7 +418,7 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
             initial_capital=0,
             commission=0,
             report_type="financial",
-            directory_name=os.path.basename(report_dir),
+            directory_name=directory_name,
             additional_data={
                 "status": "finished",
                 "title": f"Financial Analysis - {symbol}",
@@ -649,11 +427,14 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
             }
         )
         save_metadata(metadata, report_dir)
+        print(f"[DEBUG] Metadata saved to: {report_dir}")
         
         return report_path
         
     except Exception as e:
-        logger.error(f"Error generating financial report: {e}", exc_info=True)
+        print(f"[ERROR] Error generating financial report: {str(e)}")
+        import traceback
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
         return None
 
 def generate_market_metrics(data: Dict) -> Dict:

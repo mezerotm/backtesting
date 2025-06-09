@@ -1,157 +1,87 @@
-"""
-Market data fetcher for economic indicators and market data.
-"""
-
-import os
-import json
+from typing import Dict
+from datetime import datetime, timedelta
 import logging
+from polygon import RESTClient
 import requests
+from .base_fetcher import BaseFetcher
+from utils.config import POLYGON_API_KEY, FRED_API_KEY
 import pandas as pd
 import pytz
-import time
-import yfinance as yf
-from datetime import datetime, timedelta
-from typing import Dict, Optional
-from polygon import RESTClient
-from polygon.rest.models import Timeframe, Sort, Order
-from ..base_fetcher import BaseFetcher
-from utils.config import POLYGON_API_KEY, FRED_API_KEY, TRADING_ECON_API_KEY
-from utils.most_recent import with_most_recent_data
 
 logger = logging.getLogger(__name__)
 
-class MarketDataFetcher:
-    """Fetches market data from various sources."""
+class MarketDataFetcher(BaseFetcher):
+    """Fetcher for market check workflow data"""
     
     def __init__(self, force_refresh: bool = False):
-        """Initialize the data fetcher.
-        
-        Args:
-            force_refresh (bool): Whether to force refresh data from source
-        """
-        self.force_refresh = force_refresh
-        self.client = RESTClient(POLYGON_API_KEY)  # Initialize Polygon client with API key
-        self.cache_dir = os.path.join('cache', 'market')
-        os.makedirs(self.cache_dir, exist_ok=True)
+        super().__init__(force_refresh, cache_subdir='market')
+        self.client = RESTClient(POLYGON_API_KEY)
         self.fred_api_key = FRED_API_KEY
     
-    def _yahoo_rate_limited(self):
-        now = time.time()
-        # Remove requests older than window
-        self._yahoo_last_requests = [t for t in self._yahoo_last_requests if now - t < self._yahoo_window_seconds]
-        if len(self._yahoo_last_requests) >= self._yahoo_max_requests:
-            return True
-        self._yahoo_last_requests.append(now)
-        return False
-
-    def _get_yahoo_price(self, ticker):
-        if self._yahoo_rate_limited():
-            logger.warning(f"Yahoo Finance rate limit reached, skipping {ticker}")
-            return 'N/A', 'N/A', 'neutral'
-        try:
-            data = yf.Ticker(ticker)
-            hist = data.history(period="2d")
-            if len(hist) >= 2:
-                current = hist['Close'][-1]
-                previous = hist['Close'][-2]
-                change = ((current - previous) / previous) * 100 if previous != 0 else 0
-                return f"{current:.2f}", f"{change:+.2f}%", 'up' if change > 0 else 'down' if change < 0 else 'neutral'
-        except Exception as e:
-            logger.error(f"Yahoo Finance error for {ticker}: {e}")
-        return 'N/A', 'N/A', 'neutral'
-
-    @with_most_recent_data(max_days=7)
-    def get_polygon_agg(self, ticker, date=None):
-        aggs = self.client.get_aggs(
-            ticker=ticker,
-            multiplier=1,
-            timespan="day",
-            from_=date,
-            to=date,
-            adjusted=True
-        )
-        return aggs[0] if aggs else None
-
     def fetch_market_indices(self) -> Dict:
-        """Fetch major market indices data: Polygon first, then FRED, then Yahoo Finance (rate-limited)."""
-        now = datetime.now()
-        et_time = datetime.now(pytz.timezone('US/Eastern'))
-        is_market_hours = 9 <= et_time.hour < 16
-        cache_key = (f"market_indices_{now.strftime('%Y-%m-%d_%H_%M')}" if is_market_hours 
-                    else f"market_indices_{now.strftime('%Y-%m-%d_%H')}")
+        """Fetch major market indices data"""
+        cache_key = f"market_indices_{datetime.now().strftime('%Y-%m-%d_%H')}"
+        
         if not self.force_refresh:
-            max_age = 5/60 if is_market_hours else 1
-            cached_data = self._load_from_cache(cache_key, max_age_hours=max_age)
+            cached_data = self._load_from_cache(cache_key, max_age_hours=1)
             if cached_data:
                 return cached_data
+        
         try:
-            if not self.fred_api_key:
-                logger.warning("FRED API key not found")
-                return {}
-            # Index definitions: (Display Name, Polygon ticker, Description, Group)
-            indices = [
-                ("S&P 500", "SPY", "SPDR S&P 500 ETF", "Large Cap"),
-                ("Dow Jones", "DIA", "SPDR Dow Jones Industrial Avg", "Large Cap"),
-                ("Nasdaq-100", "QQQ", "Invesco QQQ ETF", "Large Cap"),
-                ("Russell 2000", "IWM", "iShares Russell 2000 ETF", "Small Cap"),
-                ("S&P 400 MidCap", "MDY", "SPDR S&P MidCap 400 ETF", "Mid Cap"),
-                ("S&P 500 Growth", "IVW", "iShares S&P 500 Growth ETF", "Growth"),
-                ("S&P 500 Value", "IVE", "iShares S&P 500 Value ETF", "Value"),
-                ("VIX", "VIXY", "Short-term VIX futures ETF", "Volatility"),
-            ]
+            indices = {
+                'S&P 500': 'SPY',
+                'Dow Jones': 'DIA',
+                'Nasdaq': 'QQQ',
+                'Russell 2000': 'IWM',
+                'VIX': 'VIX'
+            }
+            
             results = {}
-            for name, polygon_ticker, description, group in indices:
-                value, change, direction = None, None, 'neutral'
+            for name, ticker in indices.items():
                 try:
-                    # Get most recent close (up to 7 days back)
-                    current_agg, current_date = self.get_polygon_agg(polygon_ticker)
-                    # Get previous close (the most recent day before current_date)
-                    if current_date:
-                        prev_date_dt = datetime.strptime(current_date, '%Y-%m-%d') - timedelta(days=1)
-                        skip_days = (datetime.now() - prev_date_dt).days
-                        prev_agg, prev_date = self.get_polygon_agg(polygon_ticker, date=prev_date_dt.strftime('%Y-%m-%d'))
+                    # Get previous day's data
+                    aggs = self.client.get_aggs(
+                        ticker=ticker,
+                        multiplier=1,
+                        timespan="day",
+                        from_=datetime.now().strftime('%Y-%m-%d'),
+                        to=datetime.now().strftime('%Y-%m-%d'),
+                        adjusted=True
+                    )
+                    
+                    if aggs:
+                        current = aggs[0].close
+                        # Get previous day for comparison
+                        prev_aggs = self.client.get_aggs(
+                            ticker=ticker,
+                            multiplier=1,
+                            timespan="day",
+                            from_=(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
+                            to=(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
+                            adjusted=True
+                        )
+                        previous = prev_aggs[0].close if prev_aggs else current
+                        
+                        change = ((current - previous) / previous) * 100
+                        results[name] = {
+                            'value': f"{current:.2f}",
+                            'change': f"{change:.2f}%",
+                            'direction': 'up' if change >= 0 else 'down'
+                        }
                     else:
-                        prev_agg, prev_date = None, None
-                    if current_agg:
-                        current = current_agg.close
-                        previous = prev_agg.close if prev_agg else current
-                        logger.debug(f"Current close for {polygon_ticker} ({current_date}): {current}")
-                        logger.debug(f"Previous close for {polygon_ticker} ({prev_date}): {previous}")
-                        change_val = ((current - previous) / previous) * 100 if previous != 0 else 0
-                        value = f"{current:.2f}"
-                        change = f"{change_val:+.2f}%"
-                        direction = 'up' if change_val > 0 else 'down' if change_val < 0 else 'neutral'
-                    else:
-                        logger.warning(f"No aggregation data returned for {polygon_ticker} in last 7 days")
+                        results[name] = {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
+                        
                 except Exception as e:
-                    logger.error(f"Polygon error for {name} ({polygon_ticker}): {e}", exc_info=True)
-                    value = 'N/A'
-                    change = 'N/A'
-                    direction = 'neutral'
-                if value is None:
-                    logger.warning(f"Setting value to 'N/A' for {name} ({polygon_ticker}) due to missing data.")
-                    value = 'N/A'
-                    change = 'N/A'
-                    direction = 'neutral'
-
-                # Group results
-                if group not in results:
-                    results[group] = []
-                results[group].append({
-                    'name': name,
-                    'value': value,
-                    'change': change,
-                    'direction': direction,
-                    'description': description,
-                    'date': current_date,
-                    'previous_date': prev_date
-                })
-            logger.info(f"Market Indices Results: {results}")
+                    logger.error(f"Error processing {name}: {e}")
+                    results[name] = {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'}
+            
             self._save_to_cache(cache_key, results)
             return results
+            
         except Exception as e:
             logger.error(f"Error fetching market indices: {e}")
-            return {}
+            return {name: {'value': 'N/A', 'change': 'N/A', 'direction': 'neutral'} 
+                    for name in indices.keys()}
     
     def fetch_interest_rates(self) -> Dict:
         """Fetch interest rate data"""
@@ -214,14 +144,11 @@ class MarketDataFetcher:
     
     def fetch_economic_indicators(self) -> Dict:
         """Fetch economic indicators"""
-        # Include timezone in cache key
-        et_now = datetime.now(pytz.timezone('US/Eastern'))
-        cache_key = f"economic_indicators_{et_now.strftime('%Y-%m-%d')}"
+        cache_key = f"economic_indicators_{datetime.now().strftime('%Y-%m-%d')}"
         
         if not self.force_refresh:
-            cached_data = self._load_from_cache(cache_key, max_age_hours=24)  # Daily refresh
+            cached_data = self._load_from_cache(cache_key)
             if cached_data:
-                logger.info("Using cached economic indicators data")
                 return cached_data
         
         try:
@@ -349,9 +276,13 @@ class MarketDataFetcher:
                                 else:
                                     prev_yoy = ((previous / prev_year_ago) - 1) * 100
                                 
-                                # Calculate historical YoY values with improved precision
+                                logger.info(f"Inflation YoY Calculations:")
+                                logger.info(f"Current YoY: ({current} / {year_ago} - 1) * 100 = {current_yoy:.2f}%")
+                                logger.info(f"Previous YoY: ({previous} / {prev_year_ago} - 1) * 100 = {prev_yoy:.2f}%")
+                                
+                                # Calculate historical YoY values
                                 historical_values = []
-                                for i in range(min(12, len(observations) - 12)):  # Get up to 12 months of history
+                                for i in range(4):  # Get last 4 months
                                     if i + 12 < len(observations):
                                         curr = observations[i]
                                         prev = observations[i + 12]
@@ -367,7 +298,7 @@ class MarketDataFetcher:
                                 current_date = datetime.strptime(data['observations'][0]['date'], '%Y-%m-%d')
                                 prev_date = datetime.strptime(data['observations'][1]['date'], '%Y-%m-%d')
                                 
-                                # Determine trend with more granular thresholds
+                                # Determine trend
                                 if abs(current_yoy - prev_yoy) < 0.1:
                                     trend = 'stable'
                                 elif current_yoy > prev_yoy:
@@ -467,35 +398,62 @@ class MarketDataFetcher:
                 'Last Updated': datetime.now().strftime('%Y-%m-%d')
             }
     
-    def fetch_economic_history(self, series_id: str, periods: int) -> Optional[Dict]:
-        """Fetch economic data history from FRED."""
+    def fetch_economic_history(self, indicator_id: str, limit: int = 20) -> Dict:
+        """Fetch historical economic data"""
+        cache_key = f"economic_history_{indicator_id}_{limit}"
+        
+        if not self.force_refresh:
+            cached_data = self._load_from_cache(cache_key)
+            if cached_data:
+                return cached_data
+        
         try:
-            # TODO: Implement FRED API call
-            # For now, return mock data
-            dates = pd.date_range(end=datetime.now(), periods=periods, freq='ME')
-            values = [2.1, 2.3, 2.0, 1.8, 1.9, 2.2, 2.4, 2.1, 2.0, 1.9, 2.1, 2.3]
-            return {
-                'labels': [d.strftime('%Y-%m') for d in dates],
-                'values': values[:periods]
+            if not self.fred_api_key:
+                logger.warning("FRED API key not found")
+                return {'labels': [], 'values': [], 'title': indicator_id}
+            
+            # For bond yields, use weekly frequency
+            frequency = 'w' if indicator_id in ['DGS10', 'DGS2'] else None
+            params = {
+                'series_id': indicator_id,
+                'api_key': self.fred_api_key,
+                'file_type': 'json',
+                'sort_order': 'desc',
+                'limit': limit * 5 if frequency == 'w' else limit,  # Fetch more data points for weekly aggregation
+                'frequency': frequency
             }
+            
+            response = requests.get(
+                "https://api.stlouisfed.org/fred/series/observations",
+                params=params
+            )
+            data = response.json()
+            
+            if 'observations' in data and data['observations']:
+                observations = list(reversed(data['observations']))
+                valid_observations = [(obs['date'], float(obs['value'])) 
+                                    for obs in observations 
+                                    if obs['value'] != '.' and obs['value'].strip()]
+                
+                if valid_observations:
+                    # For weekly data, take every 5th point to get weekly values
+                    if frequency == 'w':
+                        valid_observations = valid_observations[::5][:limit]
+                    
+                    result = {
+                        'labels': [date for date, _ in valid_observations],
+                        'values': [value for _, value in valid_observations],
+                        'title': 'Treasury Yields and Spread Analysis' if indicator_id in ['DGS10', 'DGS2'] else indicator_id
+                    }
+                    self._save_to_cache(cache_key, result)
+                    return result
+            
+            logger.warning(f"No valid data found for indicator {indicator_id}")
+            return {'labels': [], 'values': [], 'title': indicator_id}
+            
         except Exception as e:
-            print(f"Error fetching economic history for {series_id}: {e}")
-            return None
-    
-    def fetch_inflation_yoy_history(self, periods: int) -> Optional[Dict]:
-        """Fetch year-over-year inflation history."""
-        try:
-            # TODO: Implement FRED API call
-            # For now, return mock data
-            dates = pd.date_range(end=datetime.now(), periods=periods, freq='ME')
-            values = [3.1, 3.2, 3.0, 2.9, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1]
-            return {
-                'labels': [d.strftime('%Y-%m') for d in dates],
-                'values': values[:periods]
-            }
-        except Exception as e:
-            print(f"Error fetching inflation history: {e}")
-            return None
+            logger.error(f"Error fetching economic history for {indicator_id}: {e}")
+            return {'labels': [], 'values': [], 'title': indicator_id}
     
     def fetch_market_status(self) -> Dict:
         """Fetch current market status"""
@@ -554,196 +512,54 @@ class MarketDataFetcher:
             }
     
     def fetch_economic_events(self) -> Dict:
-        """Fetch top 5 most active tickers and their latest news as events for the dashboard."""
-        logger.info("Fetching Polygon market movers and news for events section")
-        events = []
+        """Fetch economic calendar events for today"""
+        cache_key = f"economic_events_{datetime.now().strftime('%Y-%m-%d')}"
+        
+        if not self.force_refresh:
+            cached_data = self._load_from_cache(cache_key)
+            if cached_data:
+                return cached_data
+        
         try:
-            # 1. Get top 5 most active tickers using requests
-            url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/most_active?apiKey={POLYGON_API_KEY}"
-            resp = requests.get(url)
-            resp.raise_for_status()
-            movers = resp.json().get('tickers', [])[:5]
-            tickers = [item['ticker'] for item in movers]
-
-            for ticker in tickers:
-                # 2. Get latest news for each ticker using the client
-                news_items = self.client.list_ticker_news(ticker, limit=1)
-                if news_items:
-                    news = news_items[0]
-                    event = {
-                        'time': news.published_utc[11:16] if hasattr(news, 'published_utc') else '',
-                        'country': 'US',
-                        'description': f"{ticker}: {news.title}",
-                        'importance': 'High',
-                        'actual': None,
-                        'forecast': None,
-                        'previous': None,
-                        'url': getattr(news, 'article_url', None)
-                    }
-                    events.append(event)
-                    logger.debug(f"Added event for {ticker}: {news.title}")
-        except Exception as e:
-            logger.error(f"Error fetching Polygon events: {e}")
-
-        if not events:
-            logger.warning("No Polygon events found for today.")
-            return None
-
-        result = {
-            'events': events,
-            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        }
-        logger.info(f"Returning {len(events)} Polygon events for today")
-        return result
-    
-    def get_gdp_data(self, periods: int = 8) -> Dict:
-        """Get GDP growth rate data from FRED."""
-        try:
-            # Get GDP data from FRED
-            response = requests.get(
-                "https://api.stlouisfed.org/fred/series/observations",
-                params={
-                    'series_id': 'A191RL1Q225SBEA',  # Real GDP Growth Rate
-                    'api_key': self.fred_api_key,
-                    'file_type': 'json',
-                    'sort_order': 'desc',
-                    'limit': periods
-                }
-            )
-            data = response.json()
+            # For now, return placeholder data
+            # In a real implementation, this would fetch from an economic calendar API
+            events = []
             
-            if 'observations' in data and len(data['observations']) > 0:
-                dates = [datetime.strptime(obs['date'], '%Y-%m-%d') for obs in data['observations']]
-                values = [float(obs['value']) for obs in data['observations'] if obs['value'] != '.']
-                
-                # Format for chart
-                data = {
-                    'labels': [f"Q{(i%4)+1} {d.year}" for i, d in enumerate(dates)],
-                    'values': values
-                }
-                print(f"[DEBUG] Raw GDP data: {data}")
-                return data
-                
-        except Exception as e:
-            print(f"ERROR - Failed to get GDP data: {e}")
-        return {'labels': [], 'values': []}
-    
-    def get_inflation_data(self, periods: int = 8) -> Dict:
-        """Get inflation rate data from FRED."""
-        try:
-            # Get inflation data from FRED
-            response = requests.get(
-                "https://api.stlouisfed.org/fred/series/observations",
-                params={
-                    'series_id': 'CPIAUCSL',  # Consumer Price Index
-                    'api_key': self.fred_api_key,
-                    'file_type': 'json',
-                    'sort_order': 'desc',
-                    'limit': periods + 12  # Need extra months for YoY calculation
-                }
-            )
-            data = response.json()
+            # Add Fed events if available
+            if self.fred_api_key:
+                try:
+                    response = requests.get(
+                        "https://api.stlouisfed.org/fred/releases/dates",
+                        params={
+                            'api_key': self.fred_api_key,
+                            'file_type': 'json',
+                            'limit': 5,
+                            'realtime_start': datetime.now().strftime('%Y-%m-%d')
+                        }
+                    )
+                    data = response.json()
+                    
+                    if 'release_dates' in data:
+                        for release in data['release_dates']:
+                            events.append({
+                                'time': release.get('hour', '00:00'),
+                                'description': f"Fed: {release.get('name', 'Economic Release')}",
+                                'importance': 'high'
+                            })
+                except Exception as e:
+                    logger.error(f"Error fetching Fed events: {e}")
             
-            if 'observations' in data and len(data['observations']) > 0:
-                dates = [datetime.strptime(obs['date'], '%Y-%m-%d') for obs in data['observations']]
-                values = [float(obs['value']) for obs in data['observations'] if obs['value'] != '.']
-                
-                # Calculate YoY change
-                yoy_values = []
-                for i in range(len(values)):
-                    if i + 12 < len(values):  # Need 12 months of data for YoY
-                        yoy = ((values[i] - values[i + 12]) / values[i + 12]) * 100
-                        yoy_values.append(yoy)
-                
-                # Format for chart
-                data = {
-                    'labels': [d.strftime('%Y-%m') for d in dates[:len(yoy_values)]],
-                    'values': yoy_values
-                }
-                print(f"[DEBUG] Raw inflation data: {data}")
-                return data
-                
-        except Exception as e:
-            print(f"ERROR - Failed to get inflation data: {e}")
-        return {'labels': [], 'values': []}
-    
-    def get_unemployment_data(self, periods: int = 8) -> Dict:
-        """Get unemployment rate data from FRED."""
-        try:
-            # Get unemployment data from FRED
-            response = requests.get(
-                "https://api.stlouisfed.org/fred/series/observations",
-                params={
-                    'series_id': 'UNRATE',  # Unemployment Rate
-                    'api_key': self.fred_api_key,
-                    'file_type': 'json',
-                    'sort_order': 'desc',
-                    'limit': periods
-                }
-            )
-            data = response.json()
+            result = {
+                'events': events,
+                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
             
-            if 'observations' in data and len(data['observations']) > 0:
-                dates = [datetime.strptime(obs['date'], '%Y-%m-%d') for obs in data['observations']]
-                values = [float(obs['value']) for obs in data['observations'] if obs['value'] != '.']
-                
-                # Format for chart
-                data = {
-                    'labels': [d.strftime('%Y-%m') for d in dates],
-                    'values': values
-                }
-                print(f"[DEBUG] Raw unemployment data: {data}")
-                return data
-                
-        except Exception as e:
-            print(f"ERROR - Failed to get unemployment data: {e}")
-        return {'labels': [], 'values': []}
-    
-    def get_bond_data(self, periods: int = 8) -> Dict:
-        """Get bond yield data from FRED."""
-        try:
-            # Get 10Y Treasury yield
-            response_10y = requests.get(
-                "https://api.stlouisfed.org/fred/series/observations",
-                params={
-                    'series_id': 'DGS10',  # 10-Year Treasury Constant Maturity Rate
-                    'api_key': self.fred_api_key,
-                    'file_type': 'json',
-                    'sort_order': 'desc',
-                    'limit': periods
-                }
-            )
-            data_10y = response_10y.json()
+            self._save_to_cache(cache_key, result)
+            return result
             
-            # Get 2Y Treasury yield
-            response_2y = requests.get(
-                "https://api.stlouisfed.org/fred/series/observations",
-                params={
-                    'series_id': 'DGS2',  # 2-Year Treasury Constant Maturity Rate
-                    'api_key': self.fred_api_key,
-                    'file_type': 'json',
-                    'sort_order': 'desc',
-                    'limit': periods
-                }
-            )
-            data_2y = response_2y.json()
-            
-            if ('observations' in data_10y and len(data_10y['observations']) > 0 and
-                'observations' in data_2y and len(data_2y['observations']) > 0):
-                
-                dates = [datetime.strptime(obs['date'], '%Y-%m-%d') for obs in data_10y['observations']]
-                values_10y = [float(obs['value']) for obs in data_10y['observations'] if obs['value'] != '.']
-                values_2y = [float(obs['value']) for obs in data_2y['observations'] if obs['value'] != '.']
-                
-                # Format for chart
-                data = {
-                    'labels': [d.strftime('%Y-%m') for d in dates],
-                    'values': values_10y,
-                    'values_2y': values_2y
-                }
-                print(f"[DEBUG] Raw bond data: {data}")
-                return data
-                
         except Exception as e:
-            print(f"ERROR - Failed to get bond data: {e}")
-        return {'labels': [], 'values': [], 'values_2y': []} 
+            logger.error(f"Error fetching economic events: {e}")
+            return {
+                'events': [],
+                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            } 

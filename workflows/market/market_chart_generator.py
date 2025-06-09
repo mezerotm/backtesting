@@ -1,10 +1,24 @@
-import plotly.graph_objects as go
+"""
+Market chart generator for economic indicators and market data.
+"""
+
 import os
 import json
+import plotly.graph_objects as go
+import pandas as pd
+from datetime import datetime
+from typing import Dict, Optional
 
-def generate_gdp_chart(data, output_dir):
+# Remove the debug print
+# print("[DEBUG] market_chart_generator.py loaded, go is:", 'go' in globals())
+
+def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
     """Generate GDP chart using Plotly."""
     try:
+        # Check if data is empty
+        if not data.get('labels') or not data.get('values'):
+            print("ERROR - GDP data is empty or missing labels/values")
+            return None
         # Convert data for plotly
         chart_data = []
         labels = []
@@ -123,241 +137,86 @@ def generate_gdp_chart(data, output_dir):
         print(f"ERROR - Failed to generate GDP chart: {e}")
         return None
 
-def generate_inflation_chart(data, output_dir):
-    """Generate inflation chart using Lightweight Charts."""
+def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
+    """Generate inflation chart using Plotly."""
     try:
-        # Limit to the most recent 8 data points
-        labels = data['labels'][-8:]
-        values = data['values'][-8:]
-        chart_data = []
-        for i, (label, value) in enumerate(zip(labels, values)):
-            try:
-                if label and value is not None:
-                    time_str = f"{label}-01" if len(label.split('-')) == 2 else label
-                    value = float(value)
-                    # Color coding based on Fed target range
-                    color = ('rgba(34, 197, 94, 0.7)' if 1.5 <= value <= 2.5 else  # Green for target range
-                            'rgba(234, 179, 8, 0.7)' if 0 <= value < 1.5 else      # Yellow for low inflation
-                            'rgba(239, 68, 68, 0.7)')                              # Red for high inflation
-                    chart_data.append({
-                        'time': time_str,
-                        'value': value,
-                        'color': color
-                    })
-            except Exception as e:
-                print(f"Error processing inflation data point {i}: {e}")
-        chart_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Inflation Rate</title>
-            <script src=\"https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js\"></script>
-            <style>
-                body {{
-                    margin: 0;
-                    padding: 0;
-                    width: 500px;
-                    height: 500px;
-                    background-color: rgb(13, 18, 30);
-                }}
-                #container {{
-                    position: absolute;
-                    width: 500px;
-                    height: 500px;
-                    background-color: rgb(13, 18, 30);
-                }}
-            </style>
-        </head>
-        <body>
-            <div id=\"container\"></div>
-            <script>
-                const container = document.getElementById('container');
-                const chart = LightweightCharts.createChart(container, {{
-                    width: container.clientWidth,
-                    height: container.clientHeight,
-                    layout: {{
-                        background: {{ type: 'solid', color: 'rgb(13, 18, 30)' }},
-                        textColor: '#94a3b8',
-                        fontFamily: 'system-ui',
-                        fontSize: 12,
-                    }},
-                    grid: {{
-                        vertLines: {{ color: 'rgba(148, 163, 184, 0.1)' }},
-                        horzLines: {{ color: 'rgba(148, 163, 184, 0.1)' }},
-                    }},
-                    rightPriceScale: {{
-                        borderColor: 'rgba(148, 163, 184, 0.2)',
-                        borderVisible: true,
-                        scaleMargins: {{
-                            top: 0.2,
-                            bottom: 0.2,
-                        }},
-                        autoScale: false,
-                        minimum: -1.0,
-                        maximum: 4.0,
-                        ticksVisible: true,
-                        entireTextOnly: false,
-                    }},
-                    timeScale: {{
-                        borderColor: 'rgba(148, 163, 184, 0.2)',
-                        borderVisible: true,
-                        timeVisible: true,
-                        fixLeftEdge: true,
-                        fixRightEdge: true,
-                        tickMarkFormatter: (time, tickIndex) => {{
-                            // Show only every 4th label for clarity
-                            const chartData = {json.dumps(chart_data)};
-                            const idx = chartData.findIndex(d => d.time === time);
-                            if (idx % 4 === 0) {{
-                                const date = new Date(time);
-                                return date.toLocaleDateString('en-US', {{ month: 'short', year: '2-digit' }});
-                            }}
-                            return '';
-                        }},
-                        tickLabelOrientation: 0, // horizontal
-                        tickLength: 6,
-                        borderColor: 'rgba(148, 163, 184, 0.2)',
-                        borderVisible: true,
-                        timeVisible: true,
-                        secondsVisible: false,
-                        fixLeftEdge: true,
-                        fixRightEdge: true,
-                        lockVisibleTimeRangeOnResize: true,
-                        rightOffset: 12,
-                        barSpacing: 6,
-                        minBarSpacing: 6,
-                    }},
-                    crosshair: {{
-                        vertLine: {{
-                            color: '#94A3B8',
-                            width: 0.5,
-                            style: 1,
-                            visible: true,
-                            labelVisible: true,
-                        }},
-                        horzLine: {{
-                            color: '#94A3B8',
-                            width: 0.5,
-                            style: 1,
-                            visible: true,
-                            labelVisible: true,
-                        }},
-                    }},
-                }});
+        # Create the line chart
+        fig = go.Figure(data=[
+            go.Scatter(
+                x=data['labels'],
+                y=data['values'],
+                mode='lines+markers',
+                line=dict(color='rgb(59, 130, 246)', width=2),
+                marker=dict(size=8, color='rgb(59, 130, 246)'),
+                hovertemplate="<b>%{x}</b><br>" +
+                            "Inflation: %{y:.1f}%<br>" +
+                            "<extra></extra>"
+            )
+        ])
 
-                // Add the main histogram series
-                const mainSeries = chart.addHistogramSeries({{
-                    color: '#2563eb',
-                    priceFormat: {{
-                        type: 'price',
-                        precision: 1,
-                        minMove: 0.1,
-                    }},
-                }});
+        # Update layout
+        fig.update_layout(
+            title={
+                'text': 'Inflation Rate',
+                'y': 0.95,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {'color': 'rgb(148, 163, 184)', 'size': 28}
+            },
+            plot_bgcolor='rgb(13, 18, 30)',
+            paper_bgcolor='rgb(13, 18, 30)',
+            font={'color': 'rgb(148, 163, 184)', 'size': 14},
+            showlegend=False,
+            margin=dict(t=60, l=50, r=30, b=80),
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(148, 163, 184, 0.1)',
+                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
+                title=None,
+                tickangle=45
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(148, 163, 184, 0.1)',
+                zeroline=True,
+                zerolinecolor='rgba(148, 163, 184, 0.5)',
+                zerolinewidth=1,
+                ticksuffix='%',
+                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
+                title={'text': 'Inflation Rate', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}},
+                range=[min(data['values']) - 0.5, max(data['values']) + 0.5],
+                tickformat='.1f'
+            ),
+            height=400,
+            width=None,
+            autosize=True
+        )
 
-                // Add data with custom colors
-                mainSeries.setData(
-                    {json.dumps(chart_data)}.map(d => ({{
-                        time: d.time,
-                        value: d.value,
-                        color: d.color
-                    }}))
-                );
+        # Add target inflation line
+        fig.add_hline(
+            y=2,
+            line_color='rgba(148, 163, 184, 0.5)',
+            line_width=1,
+            line_dash='dash'
+        )
 
-                // Add Fed target line (2%)
-                const targetLine = chart.addBaselineSeries({{
-                    baseValue: {{ type: 'price', price: 2.0 }},
-                    topLineColor: 'rgba(34, 197, 94, 0.8)',
-                    bottomLineColor: 'rgba(34, 197, 94, 0.8)',
-                    lineWidth: 2,
-                    lineStyle: 2,  // Dashed line
-                }});
-
-                // Add target range area (1.5-2.5%)
-                const rangeArea = chart.addAreaSeries({{
-                    topLineColor: 'rgba(34, 197, 94, 0.3)',
-                    bottomLineColor: 'rgba(34, 197, 94, 0.3)',
-                    lineWidth: 1,
-                    lastValueVisible: false,
-                    crosshairMarkerVisible: false,
-                    priceLineVisible: false,
-                }});
-
-                // Set data for the target range area
-                rangeArea.setData({json.dumps(chart_data)}.map(d => ({{
-                    time: d.time,
-                    high: 2.5,
-                    low: 1.5
-                }})));
-
-                // Add trend line
-                const trendSeries = chart.addLineSeries({{
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    lineWidth: 2,
-                    lineStyle: 2,  // Dashed line
-                }});
-
-                // Calculate and set trend line data
-                const trendData = {json.dumps(chart_data)}.map(d => ({{
-                    time: d.time,
-                    value: d.value
-                }}));
-                trendSeries.setData(trendData);
-
-                // Add legend
-                const legend = document.createElement('div');
-                legend.style.position = 'absolute';
-                legend.style.right = '10px';
-                legend.style.top = '10px';
-                legend.style.display = 'flex';
-                legend.style.flexDirection = 'column';
-                legend.style.gap = '5px';
-                legend.style.padding = '8px';
-                legend.style.backgroundColor = 'rgba(13, 18, 30, 0.8)';
-                legend.style.borderRadius = '4px';
-                legend.style.color = '#94a3b8';
-                legend.style.fontSize = '12px';
-                legend.style.fontFamily = 'system-ui';
-                legend.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span style="color: rgba(34, 197, 94, 0.8);">―</span>
-                        <span>Fed Target (2.0%)</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span style="color: rgba(34, 197, 94, 0.7);">■</span>
-                        <span>Target Range (1.5-2.5%)</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span style="color: rgba(234, 179, 8, 0.7);">■</span>
-                        <span>Below Target (<1.5%)</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span style="color: rgba(239, 68, 68, 0.7);">■</span>
-                        <span>Above Target (>2.5%)</span>
-                    </div>
-                `;
-                container.appendChild(legend);
-
-                // Fit content and handle resize
-                chart.timeScale().fitContent();
-
-                window.addEventListener('resize', () => {{
-                    chart.applyOptions({{
-                        width: container.clientWidth,
-                        height: container.clientHeight,
-                    }});
-                }});
-            </script>
-        </body>
-        </html>
-        """
-
+        # Save the chart
         charts_dir = os.path.join(output_dir, 'charts')
         os.makedirs(charts_dir, exist_ok=True)
         chart_path = os.path.join(charts_dir, 'inflation_chart.html')
         
-        with open(chart_path, 'w') as f:
-            f.write(chart_html)
+        fig.write_html(
+            chart_path,
+            include_plotlyjs=True,
+            full_html=True,
+            config={
+                'displayModeBar': False,
+                'responsive': True,
+                'autosizable': True,
+                'fillFrame': True
+            }
+        )
         
         return os.path.relpath(chart_path, output_dir)
         
@@ -365,169 +224,86 @@ def generate_inflation_chart(data, output_dir):
         print(f"ERROR - Failed to generate inflation chart: {e}")
         return None
 
-def generate_unemployment_chart(data, output_dir):
-    """Generate unemployment chart using Lightweight Charts."""
+def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
+    """Generate unemployment chart using Plotly."""
     try:
-        # Limit to the most recent 8 data points
-        labels = data['labels'][-8:]
-        values = data['values'][-8:]
-        chart_data = []
-        for i, (label, value) in enumerate(zip(labels, values)):
-            try:
-                if label and value is not None:
-                    time_str = f"{label}-01" if len(label.split('-')) == 2 else label
-                    def get_unemployment_color(value):
-                        if value <= 4.0:
-                            return 'rgba(34, 197, 94, 0.7)'
-                        elif value <= 4.4:
-                            return 'rgba(234, 179, 8, 0.7)'
-                        else:
-                            return 'rgba(239, 68, 68, 0.7)'
-                    chart_data.append({
-                        'time': time_str,
-                        'value': float(value),
-                        'color': get_unemployment_color(float(value))
-                    })
-            except Exception as e:
-                print(f"Error processing unemployment data point {i}: {e}")
-        # Calculate min/max for a tighter y-axis
-        min_val = min([d['value'] for d in chart_data])
-        max_val = max([d['value'] for d in chart_data])
-        y_min = min_val - 0.15 if min_val > 0.2 else 0
-        y_max = max_val + 0.15
-        chart_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Unemployment Rate</title>
-            <script src=\"https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js\"></script>
-            <style>
-                body {{
-                    margin: 0;
-                    padding: 0;
-                    width: 100vw;
-                    height: 100vh;
-                    background-color: rgb(13, 18, 30);
-                }}
-                #container {{
-                    position: absolute;
-                    width: 100%;
-                    height: 100%;
-                }}
-            </style>
-        </head>
-        <body>
-            <div id=\"container\"></div>
-            <script>
-                const container = document.getElementById('container');
-                const chart = LightweightCharts.createChart(container, {{
-                    width: container.clientWidth,
-                    height: container.clientHeight,
-                    layout: {{
-                        background: {{ type: 'solid', color: 'rgb(13, 18, 30)' }},
-                        textColor: '#94a3b8',
-                        fontFamily: 'system-ui',
-                    }},
-                    grid: {{
-                        vertLines: {{ color: 'rgba(148, 163, 184, 0.1)' }},
-                        horzLines: {{ color: 'rgba(148, 163, 184, 0.1)' }},
-                    }},
-                    rightPriceScale: {{
-                        borderColor: 'rgba(148, 163, 184, 0.2)',
-                        borderVisible: true,
-                        scaleMargins: {{
-                            top: 0.25,
-                            bottom: 0.15,
-                        }},
-                        autoScale: false,
-                        minimum: {y_min},
-                        maximum: {y_max},
-                        ticksVisible: true,
-                        entireTextOnly: false,
-                        tickMarkFormatter: (price) => price.toFixed(2) + '%',
-                    }},
-                    timeScale: {{
-                        borderColor: 'rgba(148, 163, 184, 0.2)',
-                        borderVisible: true,
-                        timeVisible: true,
-                    }},
-                    handleScroll: {{
-                        mouseWheel: true,
-                        pressedMouseMove: true,
-                    }},
-                    handleScale: {{
-                        mouseWheel: true,
-                        pinch: true,
-                    }},
-                    crosshair: {{
-                        mode: LightweightCharts.CrosshairMode.Normal,
-                        vertLine: {{
-                            color: '#94A3B8',
-                            width: 0.5,
-                            style: 1,
-                            visible: true,
-                            labelVisible: true,
-                        }},
-                        horzLine: {{
-                            color: '#94A3B8',
-                            width: 0.5,
-                            style: 1,
-                            visible: true,
-                            labelVisible: true,
-                        }},
-                    }},
-                }});
+        # Create the line chart
+        fig = go.Figure(data=[
+            go.Scatter(
+                x=data['labels'],
+                y=data['values'],
+                mode='lines+markers',
+                line=dict(color='rgb(239, 68, 68)', width=2),
+                marker=dict(size=8, color='rgb(239, 68, 68)'),
+                hovertemplate="<b>%{x}</b><br>" +
+                            "Unemployment: %{y:.1f}%<br>" +
+                            "<extra></extra>"
+            )
+        ])
 
-                const series = chart.addHistogramSeries({{
-                    priceFormat: {{
-                        type: 'price',
-                        precision: 2,
-                        minMove: 0.01,
-                    }},
-                }});
+        # Update layout
+        fig.update_layout(
+            title={
+                'text': 'Unemployment Rate',
+                'y': 0.95,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {'color': 'rgb(148, 163, 184)', 'size': 28}
+            },
+            plot_bgcolor='rgb(13, 18, 30)',
+            paper_bgcolor='rgb(13, 18, 30)',
+            font={'color': 'rgb(148, 163, 184)', 'size': 14},
+            showlegend=False,
+            margin=dict(t=60, l=50, r=30, b=80),
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(148, 163, 184, 0.1)',
+                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
+                title=None,
+                tickangle=45
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(148, 163, 184, 0.1)',
+                zeroline=True,
+                zerolinecolor='rgba(148, 163, 184, 0.5)',
+                zerolinewidth=1,
+                ticksuffix='%',
+                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
+                title={'text': 'Unemployment Rate', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}},
+                range=[min(data['values']) - 0.5, max(data['values']) + 0.5],
+                tickformat='.1f'
+            ),
+            height=400,
+            width=None,
+            autosize=True
+        )
 
-                const chartData = {json.dumps(chart_data)};
-                series.setData(chartData);
+        # Add full employment line
+        fig.add_hline(
+            y=4,
+            line_color='rgba(148, 163, 184, 0.5)',
+            line_width=1,
+            line_dash='dash'
+        )
 
-                const baseline = chart.addBaselineSeries({{
-                    baseValue: {{ type: 'price', price: 4.4 }},
-                    topLineColor: 'rgba(148, 163, 184, 0.2)',
-                    bottomLineColor: 'rgba(148, 163, 184, 0.2)',
-                }});
-
-                // Add value labels above bars with delay to ensure rendering
-                setTimeout(() => {{
-                    chartData.forEach(dataPoint => {{
-                        chart.addCustomPriceLabel({{
-                            price: dataPoint.value + 0.01,
-                            time: dataPoint.time,
-                            color: '#94a3b8',
-                            text: `${{dataPoint.value.toFixed(2)}}%`,
-                            fontSize: 11,
-                            borderColor: 'transparent',
-                        }});
-                    }});
-                }}, 100);
-
-                chart.timeScale().fitContent();
-
-                window.addEventListener('resize', () => {{
-                    chart.applyOptions({{
-                        width: container.clientWidth,
-                        height: container.clientHeight,
-                    }});
-                }});
-            </script>
-        </body>
-        </html>
-        """
-
+        # Save the chart
         charts_dir = os.path.join(output_dir, 'charts')
         os.makedirs(charts_dir, exist_ok=True)
         chart_path = os.path.join(charts_dir, 'unemployment_chart.html')
         
-        with open(chart_path, 'w') as f:
-            f.write(chart_html)
+        fig.write_html(
+            chart_path,
+            include_plotlyjs=True,
+            full_html=True,
+            config={
+                'displayModeBar': False,
+                'responsive': True,
+                'autosizable': True,
+                'fillFrame': True
+            }
+        )
         
         return os.path.relpath(chart_path, output_dir)
         
@@ -535,136 +311,104 @@ def generate_unemployment_chart(data, output_dir):
         print(f"ERROR - Failed to generate unemployment chart: {e}")
         return None
 
-def generate_bond_chart(data, output_dir):
-    """Generate bond chart using Lightweight Charts."""
+def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
+    """Generate bond yield chart using Plotly."""
     try:
-        # Convert data for lightweight-charts
-        chart_data = []
-        for i, (label, value) in enumerate(zip(data['labels'], data['values'])):
-            try:
-                if label and value is not None:
-                    time_str = label if len(label.split('-')) == 3 else f"{label}-01"
-                    
-                    chart_data.append({
-                        'time': time_str,
-                        'value': float(value)
-                    })
-            except Exception as e:
-                print(f"Error processing bond data point {i}: {e}")
+        # Create the line chart with both 10Y and 2Y yields
+        fig = go.Figure()
 
-        print(f"DEBUG - Bond Chart data: {chart_data}")
+        # Add 10Y yield line
+        fig.add_trace(go.Scatter(
+            x=data['labels'],
+            y=data['values'],
+            mode='lines+markers',
+            name='10Y Treasury',
+            line=dict(color='rgb(59, 130, 246)', width=2),
+            marker=dict(size=8, color='rgb(59, 130, 246)'),
+            hovertemplate="<b>%{x}</b><br>" +
+                        "10Y Yield: %{y:.2f}%<br>" +
+                        "<extra></extra>"
+        ))
 
-        chart_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>US 10Y Bond Yield</title>
-            <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-            <style>
-                body {{
-                    margin: 0;
-                    padding: 0;
-                    width: 100vw;
-                    height: 100vh;
-                    background-color: rgb(13, 18, 30);
-                }}
-                #container {{
-                    position: absolute;
-                    width: 100%;
-                    height: 100%;
-                }}
-            </style>
-        </head>
-        <body>
-            <div id="container"></div>
-            <script>
-                const container = document.getElementById('container');
-                const chart = LightweightCharts.createChart(container, {{
-                    width: container.clientWidth,
-                    height: container.clientHeight,
-                    layout: {{
-                        background: {{ type: 'solid', color: 'rgb(13, 18, 30)' }},
-                        textColor: '#94a3b8',
-                        fontFamily: 'system-ui',
-                    }},
-                    grid: {{
-                        vertLines: {{ color: 'rgba(148, 163, 184, 0.1)' }},
-                        horzLines: {{ color: 'rgba(148, 163, 184, 0.1)' }},
-                    }},
-                    rightPriceScale: {{
-                        borderColor: 'rgba(148, 163, 184, 0.2)',
-                        borderVisible: true,
-                        scaleMargins: {{
-                            top: 0.2,
-                            bottom: 0.2,
-                        }},
-                    }},
-                    timeScale: {{
-                        borderColor: 'rgba(148, 163, 184, 0.2)',
-                        borderVisible: true,
-                        timeVisible: true,
-                    }},
-                }});
+        # Add 2Y yield line if available
+        if 'values_2y' in data:
+            fig.add_trace(go.Scatter(
+                x=data['labels'],
+                y=data['values_2y'],
+                mode='lines+markers',
+                name='2Y Treasury',
+                line=dict(color='rgb(239, 68, 68)', width=2),
+                marker=dict(size=8, color='rgb(239, 68, 68)'),
+                hovertemplate="<b>%{x}</b><br>" +
+                            "2Y Yield: %{y:.2f}%<br>" +
+                            "<extra></extra>"
+            ))
 
-                const series = chart.addLineSeries({{
-                    color: 'rgba(41, 98, 255, 0.9)',
-                    lineWidth: 2,
-                    priceFormat: {{
-                        type: 'price',
-                        precision: 2,
-                        minMove: 0.01,
-                    }},
-                }});
+        # Update layout
+        fig.update_layout(
+            title={
+                'text': 'Treasury Yields',
+                'y': 0.95,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {'color': 'rgb(148, 163, 184)', 'size': 28}
+            },
+            plot_bgcolor='rgb(13, 18, 30)',
+            paper_bgcolor='rgb(13, 18, 30)',
+            font={'color': 'rgb(148, 163, 184)', 'size': 14},
+            showlegend=True,
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor='rgba(0,0,0,0)',
+                bordercolor='rgba(0,0,0,0)',
+                borderwidth=0,
+                font={'color': 'rgb(148, 163, 184)', 'size': 12}
+            ),
+            margin=dict(t=60, l=50, r=30, b=80),
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(148, 163, 184, 0.1)',
+                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
+                title=None,
+                tickangle=45
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(148, 163, 184, 0.1)',
+                zeroline=True,
+                zerolinecolor='rgba(148, 163, 184, 0.5)',
+                zerolinewidth=1,
+                ticksuffix='%',
+                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
+                title={'text': 'Yield', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}},
+                range=[min(data['values']) - 0.5, max(data['values']) + 0.5],
+                tickformat='.2f'
+            ),
+            height=400,
+            width=None,
+            autosize=True
+        )
 
-                const chartData = {json.dumps(chart_data)};
-                series.setData(chartData);
-
-                // Add area under the line
-                const areaSeries = chart.addAreaSeries({{
-                    lineWidth: 0,
-                    topColor: 'rgba(41, 98, 255, 0.1)',
-                    bottomColor: 'rgba(41, 98, 255, 0.01)',
-                    priceFormat: {{
-                        type: 'price',
-                        precision: 2,
-                        minMove: 0.01,
-                    }},
-                }});
-                areaSeries.setData(chartData);
-
-                // Add value labels with delay to ensure rendering
-                setTimeout(() => {{
-                    chartData.forEach(dataPoint => {{
-                        chart.addCustomPriceLabel({{
-                            price: dataPoint.value + 0.1,
-                            time: dataPoint.time,
-                            color: '#94a3b8',
-                            text: `${{dataPoint.value.toFixed(2)}}%`,
-                            fontSize: 11,
-                            borderColor: 'transparent',
-                        }});
-                    }});
-                }}, 100);
-
-                chart.timeScale().fitContent();
-
-                window.addEventListener('resize', () => {{
-                    chart.applyOptions({{
-                        width: container.clientWidth,
-                        height: container.clientHeight,
-                    }});
-                }});
-            </script>
-        </body>
-        </html>
-        """
-
+        # Save the chart
         charts_dir = os.path.join(output_dir, 'charts')
         os.makedirs(charts_dir, exist_ok=True)
         chart_path = os.path.join(charts_dir, 'bond_chart.html')
         
-        with open(chart_path, 'w') as f:
-            f.write(chart_html)
+        fig.write_html(
+            chart_path,
+            include_plotlyjs=True,
+            full_html=True,
+            config={
+                'displayModeBar': False,
+                'responsive': True,
+                'autosizable': True,
+                'fillFrame': True
+            }
+        )
         
         return os.path.relpath(chart_path, output_dir)
         
