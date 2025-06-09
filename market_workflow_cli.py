@@ -24,7 +24,13 @@ import os
 from datetime import datetime
 import logging
 from workflows.market.market_data import MarketDataFetcher
-from workflows.market.market_report_generator import generate_market_report
+from workflows.market.market_report_generator import (
+    generate_market_report,
+    generate_gdp_chart,
+    generate_inflation_chart,
+    generate_unemployment_chart,
+    generate_bond_chart
+)
 from workflows.metadata_generator import generate_metadata, save_metadata
 
 # Set up logging
@@ -65,50 +71,52 @@ def create_market_report(args) -> str:
         'date': datetime.now().strftime('%B %d, %Y'),
         'current_year': datetime.now().year,
         'now': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'market_status': {
-            'status': 'Open',
-            'hours': '9:30 AM - 4:00 PM ET'
-        },
-        'economic_events': {
-            'events': []
-        },
-        'indices': {},
-        'interest_rates': {},
-        'economic_indicators': {},
-        'gdp_data': None,
-        'inflation_data': None,
-        'unemployment_data': None,
-        'bond_data': None
+        'gdp_chart_path': None,
+        'inflation_chart_path': None,
+        'unemployment_chart_path': None,
+        'bond_chart_path': None
     }
     
+    # Fetch additional data if your fetcher supports it
+    if hasattr(data_fetcher, "fetch_interest_rates"):
+        data['interest_rates'] = data_fetcher.fetch_interest_rates()
+    if hasattr(data_fetcher, "fetch_market_indices"):
+        data['indices'] = data_fetcher.fetch_market_indices()
+    if hasattr(data_fetcher, "fetch_economic_indicators"):
+        data['economic_indicators'] = data_fetcher.fetch_economic_indicators()
+    
     try:
-        # Fetch market data
-        logger.info("Fetching market data...")
-        
-        # Get GDP data
-        gdp_data = data_fetcher.get_gdp_data()
-        logger.info(f"[DEBUG] Raw GDP data: {gdp_data}")
-        
-        # Get inflation data
+        # Fetch historical data
+        gdp_growth_data = data_fetcher.get_gdp_data()
         inflation_data = data_fetcher.get_inflation_data()
-        logger.info(f"[DEBUG] Raw inflation data: {inflation_data}")
-        
-        # Get unemployment data
         unemployment_data = data_fetcher.get_unemployment_data()
-        logger.info(f"[DEBUG] Raw unemployment data: {unemployment_data}")
+        bond_10y_data = data_fetcher.get_bond_data()
+        bond_2y_data = bond_10y_data.get('values_2y', []) if bond_10y_data else []
         
-        # Get bond data
-        bond_data = data_fetcher.get_bond_data()
-        logger.info(f"[DEBUG] Raw bond data: {bond_data}")
+        # Combine bond data if 2Y is available
+        if bond_10y_data and bond_2y_data:
+            bond_data = {
+                'labels': bond_10y_data['labels'],
+                'values': bond_10y_data['values'],
+                'values_2y': bond_2y_data,
+                'title': 'Treasury Yields'
+            }
+        else:
+            bond_data = bond_10y_data
         
-        # Store data in the format expected by the template
+        # Only generate charts if we have data
+        if gdp_growth_data and gdp_growth_data.get('values'):
+            data['gdp_chart_path'] = generate_gdp_chart(gdp_growth_data, report_dir)
+        if inflation_data and inflation_data.get('values'):
+            data['inflation_chart_path'] = generate_inflation_chart(inflation_data, report_dir)
+        if unemployment_data and unemployment_data.get('values'):
+            data['unemployment_chart_path'] = generate_unemployment_chart(unemployment_data, report_dir)
+        if bond_data and bond_data.get('values'):
+            data['bond_chart_path'] = generate_bond_chart(bond_data, report_dir)
+        
+        # Store historical data
         data.update({
-            'gdp_data': gdp_data,
-            'inflation_data': inflation_data,
-            'unemployment_data': unemployment_data,
-            'bond_data': bond_data,
-            # Also store as history for backward compatibility
-            'gdp_history': gdp_data,
+            'gdp_history': gdp_growth_data,
             'inflation_history': inflation_data,
             'unemployment_history': unemployment_data,
             'bond_history': bond_data
