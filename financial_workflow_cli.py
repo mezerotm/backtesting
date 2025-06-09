@@ -23,7 +23,7 @@ import logging
 import json
 import pandas as pd
 from typing import Dict, List
-from workflows.market.data_fetchers.market_data import MarketDataFetcher
+from workflows.financial.financial_data import FinancialDataFetcher
 from workflows.financial.financial_report_generator import generate_financial_report
 
 # Update logging configuration
@@ -57,24 +57,21 @@ def main():
         logger.info(f"Analyzing {symbol}...")
         
         try:
-            # Initialize market data fetcher
-            market_data = MarketDataFetcher()
+            # Initialize financial data fetcher
+            financial_fetcher = FinancialDataFetcher()
             
             # Fetch financial statements
-            financial_data = {
-                'quarterly_financials': market_data.fetch_polygon_financials(symbol, "quarterly", args.years * 4),
-                'annual_financials': market_data.fetch_polygon_financials(symbol, "annual", args.years)
-            }
+            financial_data = financial_fetcher.fetch_financial_statements(symbol, args.years)
             logger.info(f"Fetched financial data keys: {financial_data.keys()}")
             
             # Fetch company metrics
-            company_metrics = market_data.fetch_polygon_fundamentals(symbol)
+            company_metrics = financial_fetcher.fetch_key_metrics(symbol)
             logger.info(f"Fetched company metrics: {company_metrics}")
             
             # Add fundamentals data to the report data
             report_data = {
                 **financial_data,
-                'fundamentals': company_metrics,
+                'fundamentals': company_metrics.get('fundamentals', {}),
                 **{'name': company_metrics.get('name', symbol),
                    'sector': company_metrics.get('sector', 'N/A'),
                    'description': company_metrics.get('description', 'N/A'),
@@ -87,7 +84,7 @@ def main():
             report_path = generate_financial_report(
                 symbol=symbol,
                 data=report_data,
-                metrics=company_metrics
+                metrics=company_metrics.get('fundamentals', {})
             )
             
             if report_path:

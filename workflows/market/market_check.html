@@ -213,9 +213,37 @@
             <ul class="space-y-2">
                 {% if economic_events is defined and economic_events %}
                     {% for event in economic_events %}
-                    <li class="flex items-center text-slate-300">
-                        <i class="fas fa-bell mr-2 text-yellow-400"></i>
-                        {{ event.time }} - {{ event.description }}
+                    <li class="flex items-start text-slate-300">
+                        <div class="flex-shrink-0 mt-1">
+                            {% if event.importance == 'High' %}
+                                <i class="fas fa-circle text-red-400 text-xs mr-2"></i>
+                            {% elif event.importance == 'Medium' %}
+                                <i class="fas fa-circle text-yellow-400 text-xs mr-2"></i>
+                            {% else %}
+                                <i class="fas fa-circle text-blue-400 text-xs mr-2"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-start">
+                                <span class="font-medium">{{ event.time }}</span>
+                                <span class="text-xs text-slate-400">{{ event.country }}</span>
+                            </div>
+                            <div class="text-sm">{{ event.description }}</div>
+                            {% if event.actual is defined and event.actual %}
+                            <div class="text-xs mt-1">
+                                <span class="text-slate-400">Actual: </span>
+                                <span class="font-medium">{{ event.actual }}</span>
+                                {% if event.forecast is defined and event.forecast %}
+                                <span class="text-slate-400 ml-2">Forecast: </span>
+                                <span class="font-medium">{{ event.forecast }}</span>
+                                {% endif %}
+                                {% if event.previous is defined and event.previous %}
+                                <span class="text-slate-400 ml-2">Previous: </span>
+                                <span class="font-medium">{{ event.previous }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
                     </li>
                     {% endfor %}
                 {% else %}

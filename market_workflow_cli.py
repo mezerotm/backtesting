@@ -90,6 +90,11 @@ def create_market_report(args):
     logger.info("Fetched market indices data")
     
     data['economic_indicators'] = data_fetcher.fetch_economic_indicators()
+    logger.info("Fetched economic indicators data")
+    
+    # Fetch economic calendar events
+    data['economic_events'] = data_fetcher.fetch_economic_events()
+    logger.info("Fetched economic calendar events")
     
     try:
         # Fetch historical data

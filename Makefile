@@ -54,8 +54,9 @@ compare-experimental: results-dir
 dev: results-dir
 	$(PYTHON) backtest_workflow_cli.py --symbol SMCI --strategies sma
 
+# NVDA CRWD COIN MSTR NAKA CRWV NBIS
 financial-analysis: results-dir
-	$(PYTHON) financial_workflow_cli.py --symbols COST
+	$(PYTHON) financial_workflow_cli.py --symbols SRPT 
 
 # market check with all indicators
 market-check: results-dir
@@ -68,11 +69,6 @@ clean:
 # Create results directory if it doesn't exist
 results-dir:
 	mkdir -p public/results
-
-test:
-	make market-check
-	make financial-analysis
-	make backtest-nvda
 	
 
 # Start report server

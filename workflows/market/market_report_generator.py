@@ -75,7 +75,7 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
                 'status': 'Unknown',
                 'hours': 'Status Unavailable'
             }),
-            'economic_events': data.get('economic_events', {}).get('events', []),
+            'economic_events': data.get('economic_events', {}).get('events', []) if isinstance(data.get('economic_events'), dict) else [],
             'indices': data.get('indices', {}),
             'interest_rates': data.get('interest_rates', {}),
             'economic_indicators': data.get('economic_indicators', {}),

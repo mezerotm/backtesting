@@ -378,6 +378,8 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         for key in data.keys():
             if isinstance(data[key], pd.DataFrame):
                 logger.info(f"DataFrame '{key}': {len(data[key])} rows")
+                if not data[key].empty:
+                    logger.info(f"DataFrame '{key}' columns: {data[key].columns.tolist()}")
             else:
                 logger.info(f"Key '{key}': {type(data[key])}")
 
@@ -424,48 +426,72 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         statement_types = {
             'quarterly_income': data.get('quarterly_financials', pd.DataFrame()),
             'annual_income': data.get('annual_financials', pd.DataFrame()),
-            'quarterly_balance': data.get('quarterly_balance_sheet', pd.DataFrame()),
-            'annual_balance': data.get('annual_balance_sheet', pd.DataFrame()),
-            'quarterly_cash_flow': data.get('quarterly_cash_flow', pd.DataFrame()),
-            'annual_cash_flow': data.get('annual_cash_flow', pd.DataFrame())
+            'quarterly_balance': pd.DataFrame(),
+            'annual_balance': pd.DataFrame(),
+            'quarterly_cash_flow': pd.DataFrame(),
+            'annual_cash_flow': pd.DataFrame()
         }
-
-        # Try alternative keys if primary ones aren't found
-        alternative_keys = {
-            'annual_balance': ['annual_balance_sheet', 'annual_balance', 'balance_sheet_annual'],
-            'annual_cash_flow': ['annual_cash_flow', 'cash_flow_annual', 'annual_cashflow']
-        }
-
-        for statement_key, alt_keys in alternative_keys.items():
-            if statement_types[statement_key].empty:
-                for alt_key in alt_keys:
-                    if alt_key in data and isinstance(data[alt_key], pd.DataFrame) and not data[alt_key].empty:
-                        logger.info(f"Found alternative key {alt_key} for {statement_key}")
-                        statement_types[statement_key] = data[alt_key]
-                        break
 
         # Create balance sheet and cash flow files from the consolidated data
-        if isinstance(data.get('quarterly_financials'), pd.DataFrame):
-            # Create quarterly balance sheet
-            quarterly_balance = data['quarterly_financials'][['date', 'fiscal_period', 'fiscal_year', 
-                'total_assets', 'current_assets', 'current_liabilities', 'inventory', 'liabilities']]
-            statement_types['quarterly_balance'] = quarterly_balance
+        if isinstance(data.get('quarterly_financials'), pd.DataFrame) and not data['quarterly_financials'].empty:
+            try:
+                # Create quarterly balance sheet
+                required_columns = ['date', 'fiscal_period', 'fiscal_year', 'total_assets', 
+                                 'current_assets', 'current_liabilities', 'inventory', 'liabilities']
+                available_columns = data['quarterly_financials'].columns.tolist()
+                logger.info(f"Available columns for quarterly financials: {available_columns}")
+                
+                if all(col in available_columns for col in required_columns):
+                    quarterly_balance = data['quarterly_financials'][required_columns]
+                    statement_types['quarterly_balance'] = quarterly_balance
+                    logger.info("Successfully created quarterly balance sheet")
+                else:
+                    missing_columns = [col for col in required_columns if col not in available_columns]
+                    logger.warning(f"Missing columns for quarterly balance sheet: {missing_columns}")
 
-            # Create quarterly cash flow
-            quarterly_cash_flow = data['quarterly_financials'][['date', 'fiscal_period', 'fiscal_year',
-                'operating_cash_flow', 'capital_expenditure', 'financing_cash_flow']]
-            statement_types['quarterly_cash_flow'] = quarterly_cash_flow
+                # Create quarterly cash flow
+                cash_flow_columns = ['date', 'fiscal_period', 'fiscal_year', 'operating_cash_flow', 
+                                   'capital_expenditure', 'financing_cash_flow']
+                if all(col in available_columns for col in cash_flow_columns):
+                    quarterly_cash_flow = data['quarterly_financials'][cash_flow_columns]
+                    statement_types['quarterly_cash_flow'] = quarterly_cash_flow
+                    logger.info("Successfully created quarterly cash flow")
+                else:
+                    missing_columns = [col for col in cash_flow_columns if col not in available_columns]
+                    logger.warning(f"Missing columns for quarterly cash flow: {missing_columns}")
 
-        if isinstance(data.get('annual_financials'), pd.DataFrame):
-            # Create annual balance sheet
-            annual_balance = data['annual_financials'][['date', 'fiscal_period', 'fiscal_year',
-                'total_assets', 'current_assets', 'current_liabilities', 'inventory', 'liabilities']]
-            statement_types['annual_balance'] = annual_balance
+            except Exception as e:
+                logger.error(f"Error creating quarterly statements: {e}", exc_info=True)
 
-            # Create annual cash flow
-            annual_cash_flow = data['annual_financials'][['date', 'fiscal_period', 'fiscal_year',
-                'operating_cash_flow', 'capital_expenditure', 'financing_cash_flow']]
-            statement_types['annual_cash_flow'] = annual_cash_flow
+        if isinstance(data.get('annual_financials'), pd.DataFrame) and not data['annual_financials'].empty:
+            try:
+                # Create annual balance sheet
+                required_columns = ['date', 'fiscal_period', 'fiscal_year', 'total_assets', 
+                                 'current_assets', 'current_liabilities', 'inventory', 'liabilities']
+                available_columns = data['annual_financials'].columns.tolist()
+                logger.info(f"Available columns for annual financials: {available_columns}")
+                
+                if all(col in available_columns for col in required_columns):
+                    annual_balance = data['annual_financials'][required_columns]
+                    statement_types['annual_balance'] = annual_balance
+                    logger.info("Successfully created annual balance sheet")
+                else:
+                    missing_columns = [col for col in required_columns if col not in available_columns]
+                    logger.warning(f"Missing columns for annual balance sheet: {missing_columns}")
+
+                # Create annual cash flow
+                cash_flow_columns = ['date', 'fiscal_period', 'fiscal_year', 'operating_cash_flow', 
+                                   'capital_expenditure', 'financing_cash_flow']
+                if all(col in available_columns for col in cash_flow_columns):
+                    annual_cash_flow = data['annual_financials'][cash_flow_columns]
+                    statement_types['annual_cash_flow'] = annual_cash_flow
+                    logger.info("Successfully created annual cash flow")
+                else:
+                    missing_columns = [col for col in cash_flow_columns if col not in available_columns]
+                    logger.warning(f"Missing columns for annual cash flow: {missing_columns}")
+
+            except Exception as e:
+                logger.error(f"Error creating annual statements: {e}", exc_info=True)
 
         for name, df in statement_types.items():
             try:
@@ -542,9 +568,44 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
             json.dump(METRIC_DESCRIPTIONS, f, indent=2)
         
         # Get the templates directory relative to this file
-        templates_dir = os.path.dirname(__file__)
-        parent_dir = os.path.dirname(templates_dir)
-        env = Environment(loader=FileSystemLoader([templates_dir, parent_dir]))
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        templates_dir = os.path.join(current_dir, 'templates')
+        parent_templates_dir = os.path.join(os.path.dirname(current_dir), 'templates')
+        
+        # Create templates directory if it doesn't exist
+        os.makedirs(templates_dir, exist_ok=True)
+        
+        # Copy base layout template if it doesn't exist
+        base_layout_path = os.path.join(templates_dir, 'base_layout.html')
+        if not os.path.exists(base_layout_path):
+            default_base_layout = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Financial Analysis{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css" rel="stylesheet">
+    <style>
+        body { padding: 20px; }
+        .metric-card { margin-bottom: 20px; }
+        .chart-container { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>"""
+            with open(base_layout_path, 'w') as f:
+                f.write(default_base_layout)
+        
+        # Set up Jinja2 environment with multiple template directories
+        env = Environment(loader=FileSystemLoader([templates_dir, parent_templates_dir]))
         template = env.get_template('financial_report.html')
         
         # Prepare report data
