@@ -59,6 +59,9 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
         fetcher = MarketDataFetcher()
         market_movers = fetcher.fetch_top_movers_and_news()
 
+        # --- Fetch today's events (top movers + news) ---
+        todays_events = fetcher.fetch_todays_events()
+
         # --- Extract VIX value from indices ---
         vix_value = None
         indices = data.get('indices', {})
@@ -66,6 +69,32 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
             for idx in group:
                 if idx.get('name') == 'VIX':
                     vix_value = idx.get('value')
+
+        # --- Extract Market Sentiment Data ---
+        sentiment_data = {}
+        # Helper to find by name in all groups
+        def find_index(name):
+            for group in indices.values():
+                for idx in group:
+                    if idx.get('name') == name:
+                        return idx
+            return None
+        for key, label in [
+            ('dxy', 'Dollar Index'),
+            ('oil', 'Oil (WTI)'),
+            ('spy', 'S&P 500'),
+            ('vix', 'VIX'),
+            ('ten_year', '10Y Treasury'),
+            ('two_year', '2Y Treasury'),
+        ]:
+            idx = find_index(label)
+            if idx:
+                sentiment_data[key] = {
+                    'name': label,
+                    'value': idx.get('value'),
+                    'change': idx.get('change'),
+                    'direction': idx.get('direction'),
+                }
 
         # Prepare template data
         template_data = {
@@ -87,8 +116,9 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
             'inflation_data': data.get('inflation_history', {}),
             'unemployment_data': data.get('unemployment_history', {}),
             'bond_data': data.get('bond_history', {}),
-            'market_movers': market_movers,
-            'vix_value': vix_value,
+            'todays_events': todays_events,
+            'sentiment_data': sentiment_data,
+            'vix_value': sentiment_data.get('vix', {}).get('value'),
         }
         
         # Generate charts if data is available

@@ -92,48 +92,39 @@ class MarketDataFetcher(BaseFetcher):
                 ("S&P 500", "SPY", "SPDR S&P 500 ETF", "Large Cap"),
                 ("Dow Jones", "DIA", "SPDR Dow Jones Industrial Avg", "Large Cap"),
                 ("Nasdaq-100", "QQQ", "Invesco QQQ ETF", "Large Cap"),
-                ("Russell 2000", "IWM", "iShares Russell 2000 ETF", "Small Cap"),
                 ("S&P 400 MidCap", "MDY", "SPDR S&P MidCap 400 ETF", "Mid Cap"),
+                ("Russell 2000", "IWM", "iShares Russell 2000 ETF", "Small Cap"),
                 ("S&P 500 Growth", "IVW", "iShares S&P 500 Growth ETF", "Growth"),
                 ("S&P 500 Value", "IVE", "iShares S&P 500 Value ETF", "Value"),
+                ("Dollar Index", "UUP", "US Dollar Index ETF (UUP)", "FX"),
+                ("Oil (WTI)", "USO", "US Oil Fund ETF (USO)", "Commodities"),
                 ("VIX", "VIXY", "Short-term VIX futures ETF", "Volatility"),
             ]
             results = {}
             for name, polygon_ticker, description, group in indices:
                 value, change, direction = None, None, 'neutral'
                 try:
-                    # Get most recent close (up to 7 days back)
                     current_agg, current_date = self.get_polygon_agg(polygon_ticker)
-                    # Get previous close (the most recent day before current_date)
                     if current_date:
                         prev_date_dt = datetime.strptime(current_date, '%Y-%m-%d') - timedelta(days=1)
-                        skip_days = (datetime.now() - prev_date_dt).days
                         prev_agg, prev_date = self.get_polygon_agg(polygon_ticker, date=prev_date_dt.strftime('%Y-%m-%d'))
                     else:
                         prev_agg, prev_date = None, None
                     if current_agg:
                         current = current_agg.close
                         previous = prev_agg.close if prev_agg else current
-                        logger.debug(f"Current close for {polygon_ticker} ({current_date}): {current}")
-                        logger.debug(f"Previous close for {polygon_ticker} ({prev_date}): {previous}")
                         change_val = ((current - previous) / previous) * 100 if previous != 0 else 0
                         value = f"{current:.2f}"
                         change = f"{change_val:+.2f}%"
                         direction = 'up' if change_val > 0 else 'down' if change_val < 0 else 'neutral'
                     else:
-                        logger.warning(f"No aggregation data returned for {polygon_ticker} in last 7 days")
+                        value = 'N/A'
+                        change = 'N/A'
+                        direction = 'neutral'
                 except Exception as e:
-                    logger.error(f"Polygon error for {name} ({polygon_ticker}): {e}", exc_info=True)
                     value = 'N/A'
                     change = 'N/A'
                     direction = 'neutral'
-                if value is None:
-                    logger.warning(f"Setting value to 'N/A' for {name} ({polygon_ticker}) due to missing data.")
-                    value = 'N/A'
-                    change = 'N/A'
-                    direction = 'neutral'
-
-                # Group results
                 if group not in results:
                     results[group] = []
                 results[group].append({
@@ -142,10 +133,45 @@ class MarketDataFetcher(BaseFetcher):
                     'change': change,
                     'direction': direction,
                     'description': description,
-                    'date': current_date,
-                    'previous_date': prev_date
+                    'date': current_date if current_agg else None,
+                    'previous_date': prev_date if prev_agg else None
                 })
-            logger.info(f"Market Indices Results: {results}")
+            # Add 10Y and 2Y Treasury yields from FRED
+            try:
+                for label, series_id in [("10Y Treasury", "DGS10"), ("2Y Treasury", "DGS2")]:
+                    fred_url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={self.fred_api_key}&file_type=json&sort_order=desc&limit=2"
+                    fred_resp = requests.get(fred_url)
+                    fred_data = fred_resp.json()
+                    obs = fred_data.get('observations', [])
+                    if len(obs) >= 2:
+                        current = float(obs[0]['value']) if obs[0]['value'] != '.' else None
+                        previous = float(obs[1]['value']) if obs[1]['value'] != '.' else None
+                        if current is not None and previous is not None:
+                            change_val = current - previous
+                            direction = 'up' if change_val > 0 else 'down' if change_val < 0 else 'neutral'
+                            value = f"{current:.2f}%"
+                            change = f"{change_val:+.2f}%"
+                        else:
+                            value = 'N/A'
+                            change = 'N/A'
+                            direction = 'neutral'
+                    else:
+                        value = 'N/A'
+                        change = 'N/A'
+                        direction = 'neutral'
+                    if 'Rates' not in results:
+                        results['Rates'] = []
+                    results['Rates'].append({
+                        'name': label,
+                        'value': value,
+                        'change': change,
+                        'direction': direction,
+                        'description': label,
+                        'date': obs[0]['date'] if obs else None,
+                        'previous_date': obs[1]['date'] if len(obs) > 1 else None
+                    })
+            except Exception as e:
+                pass
             self._save_to_cache(cache_key, results)
             return results
         except Exception as e:
@@ -788,4 +814,43 @@ class MarketDataFetcher(BaseFetcher):
                 })
         except Exception as e:
             print(f"Error fetching top movers and news: {e}")
+        return movers
+    
+    def fetch_todays_events(self, limit=5):
+        movers = []
+        seen = set()
+        try:
+            # Get top gainers and losers
+            for direction in ['gainers', 'losers']:
+                url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/{direction}?apiKey={POLYGON_API_KEY}"
+                resp = requests.get(url)
+                resp.raise_for_status()
+                data = resp.json()
+                for item in data.get('tickers', []):
+                    ticker = item.get('ticker')
+                    if ticker and ticker not in seen:
+                        seen.add(ticker)
+                        movers.append({
+                            'ticker': ticker,
+                            'name': item.get('name', ticker),
+                            'change': item.get('todaysChangePerc', 0)
+                        })
+            # Sort by absolute % change, descending
+            movers = sorted(movers, key=lambda x: abs(x['change']), reverse=True)[:limit]
+            # Fetch news for each
+            for mover in movers:
+                news_url = f"https://api.polygon.io/v2/reference/news?ticker={mover['ticker']}&limit=1&apiKey={POLYGON_API_KEY}"
+                news_resp = requests.get(news_url)
+                news_data = news_resp.json()
+                if news_data.get('results'):
+                    news = news_data['results'][0]
+                    mover['headline'] = news.get('title', '')
+                    mover['url'] = news.get('article_url', '')
+                    mover['published_utc'] = news.get('published_utc', '')
+                else:
+                    mover['headline'] = ''
+                    mover['url'] = ''
+                    mover['published_utc'] = ''
+        except Exception as e:
+            print(f"Error fetching today's events: {e}")
         return movers 
