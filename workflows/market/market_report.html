@@ -208,28 +208,31 @@
         </div>
         
         <!-- Key Events -->
-        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700" style="max-height: 320px; overflow-y: auto;">
             <h3 class="text-lg font-semibold mb-3 text-slate-200">Today's Events</h3>
             <ul class="space-y-2">
-                {% if market_movers is defined and market_movers %}
-                    {% for mover in market_movers %}
+                {% if todays_events is defined and todays_events %}
+                    {% for event in todays_events %}
                     <li class="flex flex-col text-slate-300 mb-2">
                         <div class="flex items-center gap-2">
-                            <span class="font-mono text-blue-400">{{ mover.ticker }}</span>
-                            <span class="font-semibold">{{ mover.name }}</span>
+                            <span class="font-mono text-blue-400">{{ event.ticker }}</span>
+                            <span class="font-semibold">{{ event.name }}</span>
+                            <span class="text-xs {% if event.change > 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                                {{ event.change|round(2) }}%
+                            </span>
                         </div>
-                        {% if mover.headline %}
+                        {% if event.headline %}
                         <div class="ml-6 text-sm">
-                            <a href="{{ mover.url }}" target="_blank" class="text-blue-300 hover:underline">{{ mover.headline }}</a>
-                            {% if mover.published_utc %}
-                                <span class="text-xs text-slate-500 ml-2">({{ mover.published_utc[:10] }})</span>
+                            <a href="{{ event.url }}" target="_blank" class="text-blue-300 hover:underline">{{ event.headline }}</a>
+                            {% if event.published_utc %}
+                                <span class="text-xs text-slate-500 ml-2">({{ event.published_utc[:10] }})</span>
                             {% endif %}
                         </div>
                         {% endif %}
                     </li>
                     {% endfor %}
                 {% else %}
-                <li class="text-slate-400">No major economic events scheduled</li>
+                <li class="text-slate-400">No major market movers or news found.</li>
                 {% endif %}
             </ul>
         </div>
@@ -238,14 +241,30 @@
         <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
             <h3 class="text-lg font-semibold mb-3 text-slate-200">Market Sentiment</h3>
             <ul class="space-y-2">
+                {% for key, label in [
+                    ('dxy', 'Dollar Index'),
+                    ('oil', 'Oil (WTI)'),
+                    ('spy', 'S&P 500'),
+                    ('ten_year', '10Y Treasury'),
+                    ('two_year', '2Y Treasury'),
+                    ('vix', 'VIX'),
+                ] %}
+                {% set item = sentiment_data.get(key) %}
                 <li class="flex items-center justify-between text-slate-300">
-                    <span>Fed Funds Rate:</span>
-                    <span class="font-semibold">{{ interest_rates['Federal Funds Rate']|default('N/A') }}</span>
+                    <span>{{ item.name if item else label }}:</span>
+                    <span class="font-semibold flex items-center gap-1">
+                        {{ item.value if item else 'N/A' }}
+                        {% if item and item.direction == 'up' %}
+                            <i class="fas fa-arrow-up text-green-400"></i>
+                        {% elif item and item.direction == 'down' %}
+                            <i class="fas fa-arrow-down text-red-400"></i>
+                        {% elif item and item.direction == 'neutral' %}
+                            <i class="fas fa-minus text-blue-400"></i>
+                        {% endif %}
+                        <span class="text-xs text-slate-400 ml-1">{{ item.change if item else '' }}</span>
+                    </span>
                 </li>
-                <li class="flex items-center justify-between text-slate-300">
-                    <span>VIX Index:</span>
-                    <span class="font-semibold">{{ vix_value|default('N/A') }}</span>
-                </li>
+                {% endfor %}
             </ul>
             <div class="text-xs text-slate-500 mt-2">
                 Last updated: {{ generated_at }}
