@@ -211,39 +211,21 @@
         <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
             <h3 class="text-lg font-semibold mb-3 text-slate-200">Today's Events</h3>
             <ul class="space-y-2">
-                {% if economic_events is defined and economic_events %}
-                    {% for event in economic_events %}
-                    <li class="flex items-start text-slate-300">
-                        <div class="flex-shrink-0 mt-1">
-                            {% if event.importance == 'High' %}
-                                <i class="fas fa-circle text-red-400 text-xs mr-2"></i>
-                            {% elif event.importance == 'Medium' %}
-                                <i class="fas fa-circle text-yellow-400 text-xs mr-2"></i>
-                            {% else %}
-                                <i class="fas fa-circle text-blue-400 text-xs mr-2"></i>
+                {% if market_movers is defined and market_movers %}
+                    {% for mover in market_movers %}
+                    <li class="flex flex-col text-slate-300 mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-blue-400">{{ mover.ticker }}</span>
+                            <span class="font-semibold">{{ mover.name }}</span>
+                        </div>
+                        {% if mover.headline %}
+                        <div class="ml-6 text-sm">
+                            <a href="{{ mover.url }}" target="_blank" class="text-blue-300 hover:underline">{{ mover.headline }}</a>
+                            {% if mover.published_utc %}
+                                <span class="text-xs text-slate-500 ml-2">({{ mover.published_utc[:10] }})</span>
                             {% endif %}
                         </div>
-                        <div class="flex-grow">
-                            <div class="flex justify-between items-start">
-                                <span class="font-medium">{{ event.time }}</span>
-                                <span class="text-xs text-slate-400">{{ event.country }}</span>
-                            </div>
-                            <div class="text-sm">{{ event.description }}</div>
-                            {% if event.actual is defined and event.actual %}
-                            <div class="text-xs mt-1">
-                                <span class="text-slate-400">Actual: </span>
-                                <span class="font-medium">{{ event.actual }}</span>
-                                {% if event.forecast is defined and event.forecast %}
-                                <span class="text-slate-400 ml-2">Forecast: </span>
-                                <span class="font-medium">{{ event.forecast }}</span>
-                                {% endif %}
-                                {% if event.previous is defined and event.previous %}
-                                <span class="text-slate-400 ml-2">Previous: </span>
-                                <span class="font-medium">{{ event.previous }}</span>
-                                {% endif %}
-                            </div>
-                            {% endif %}
-                        </div>
+                        {% endif %}
                     </li>
                     {% endfor %}
                 {% else %}
@@ -262,22 +244,7 @@
                 </li>
                 <li class="flex items-center justify-between text-slate-300">
                     <span>VIX Index:</span>
-                    {% set vix = None %}
-                    {% if indices.Volatility is defined %}
-                        {% for idx in indices.Volatility %}
-                            {% if idx.name == 'VIX' %}
-                                {% set vix = idx %}
-                            {% endif %}
-                        {% endfor %}
-                    {% endif %}
-                    <span class="font-semibold {% if vix and vix.direction == 'up' %}text-red-400{% elif vix and vix.direction == 'down' %}text-green-400{% endif %}">
-                        {{ vix.value if vix else 'N/A' }}
-                        {% if vix and vix.direction == 'up' %}
-                            <i class="fas fa-arrow-up ml-1"></i>
-                        {% elif vix and vix.direction == 'down' %}
-                            <i class="fas fa-arrow-down ml-1"></i>
-                        {% endif %}
-                    </span>
+                    <span class="font-semibold">{{ vix_value|default('N/A') }}</span>
                 </li>
             </ul>
             <div class="text-xs text-slate-500 mt-2">
@@ -430,6 +397,9 @@
                     <li>Lines: blue (10Y yield), red (2Y yield)</li>
                     <li>Red shadow: yield curve inversion (2Y > 10Y), a recession signal</li>
                 </ul>
+                <div style="margin-top: 0.5em; color: #94a3b8; font-size: 0.95em;">
+                    <strong>What is yield curve inversion?</strong> Normally, long-term bonds (10Y) yield more than short-term bonds (2Y). When the 2Y yield rises above the 10Y yield (an inversion), it signals that investors expect weaker growth or recession ahead. Historically, such inversions have often preceded recessions in the U.S. economy.
+                </div>
             </div>
         </div>
         {% endif %}
