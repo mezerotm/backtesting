@@ -311,8 +311,8 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         print(f"[DEBUG] Received data keys: {data.keys()}")
         print(f"[DEBUG] Received metrics: {metrics}")
         
-        # Get fundamentals data with debug logging
-        fundamentals = data.get('fundamentals', {})
+        # Use fundamentals from metrics, not data
+        fundamentals = metrics.get('fundamentals', {})
         print(f"[DEBUG] Retrieved fundamentals: {fundamentals}")
         
         # Calculate financial ratios
@@ -325,7 +325,7 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
             'Enterprise Value': format_large_number(financial_ratios.get('enterprise_value')),
             'EV/EBITDA': format_decimal(financial_ratios.get('ev_ebitda')),
             'EV/Revenue': format_decimal(financial_ratios.get('ev_revenue')),
-            'PEG Ratio': format_decimal(financial_ratios.get('peg_ratio')),
+            'PEG Ratio': format_decimal(fundamentals.get('peg_ratio', financial_ratios.get('peg_ratio'))),
             'Weighted Shares': format_large_number(fundamentals.get('weighted_shares', 0), include_currency=False),
             'Float': format_large_number(fundamentals.get('float', 0), include_currency=False),
             'Employees': format_large_number(fundamentals.get('employees', 0), include_currency=False)
@@ -340,11 +340,15 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         os.makedirs(report_dir, exist_ok=True)
         print(f"[DEBUG] Report directory created: {os.path.exists(report_dir)}")
         
-        # Get company info including sector
+        # Get company info including all relevant fields
         company_info = {
             'name': metrics.get('name', 'N/A'),
             'description': metrics.get('description', 'N/A'),
-            'sector': metrics.get('sector', 'N/A')
+            'sector': metrics.get('sector', 'N/A'),
+            'logo_url': metrics.get('logo_url', None),
+            'employees': fundamentals.get('employees', 'N/A'),
+            'weighted_shares': fundamentals.get('weighted_shares', 'N/A'),
+            'float': fundamentals.get('float', 'N/A'),
         }
         print(f"[DEBUG] Company info: {company_info}")
         
@@ -361,10 +365,11 @@ def generate_financial_report(symbol: str, data: Dict, metrics: Dict) -> Optiona
         # Add descriptions to metrics dictionary
         calculated_metrics['Descriptions'] = METRIC_DESCRIPTIONS
         
-        # Save metrics with metadata
+        # Save metrics with metadata (raw data output)
         metrics_file = os.path.join(report_dir, 'metrics.json')
         metrics_data = {
             **common_metadata,
+            'market_metrics': market_metrics,
             'metrics': calculated_metrics
         }
         

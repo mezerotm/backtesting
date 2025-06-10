@@ -134,50 +134,27 @@ class FinancialDataFetcher(BaseFetcher):
     def fetch_key_metrics(self, symbol: str) -> Dict:
         """Fetch key company metrics"""
         try:
-            print(f"[DEBUG] Fetching ticker details for {symbol}")
             # Get company details using the correct API method
             details = self.client.get_ticker_details(symbol)
-            print(f"[DEBUG] Ticker details: {details}")
-            print(f"[DEBUG] Ticker details sector: {getattr(details, 'sector', None)}")
-            print(f"[DEBUG] Ticker details sic_description: {getattr(details, 'sic_description', None)}")
-            
-            print(f"[DEBUG] Fetching fundamentals for {symbol}")
-            # Get fundamentals using the correct API method
-            fundamentals_data = self.client.get_ticker_financials_v2(symbol)  # Changed to v2
-            print(f"[DEBUG] Fundamentals data: {fundamentals_data}")
-            
+            # Debug: print float value from details
+            print(f"[DEBUG] Fetched float (share_class_shares_outstanding) for {symbol}: {getattr(details, 'share_class_shares_outstanding', None)}")
             # Get latest financials for PEG calculation
-            print(f"[DEBUG] Fetching financial statements for {symbol}")
             financials = self.fetch_financial_statements(symbol, 2)  # We need 2 years for growth calc
             annual_financials = financials.get('annual_financials', pd.DataFrame())
-            
-            # Get market cap from ticker details
             market_cap = getattr(details, 'market_cap', None)
-            print(f"[DEBUG] Market cap: {market_cap}")
-            
-            # Use sector from details, fallback to sic_description, then DataFrame, then 'N/A'
             sector = getattr(details, 'sector', None) or getattr(details, 'sic_description', None)
-            print(f"[DEBUG] Initial sector from details: {sector}")
-            
             if not sector or sector == 'N/A':
                 for df in [financials.get('quarterly_financials'), financials.get('annual_financials')]:
                     if isinstance(df, pd.DataFrame) and not df.empty:
                         sector = df['sector'].dropna().iloc[0] if 'sector' in df.columns and df['sector'].notna().any() else sector
-                        print(f"[DEBUG] Sector from DataFrame: {sector}")
                         break
             if not sector:
                 sector = 'N/A'
-            print(f"[DEBUG] Final sector value: {sector}")
-            
-            # Get float from ticker details
             float_val = getattr(details, 'share_class_shares_outstanding', None)
-            print(f"[DEBUG] Final float value: {float_val}")
-            
-            # Calculate PEG ratio
+            print(f"[DEBUG] float_val used in fundamentals for {symbol}: {float_val}")
             peg_ratio = None
             if market_cap and not annual_financials.empty:
                 peg_ratio = self.calculate_peg_ratio(market_cap, annual_financials)
-            
             fundamentals = {
                 'market_cap': market_cap,
                 'weighted_shares': getattr(details, 'weighted_shares_outstanding', None),
@@ -186,25 +163,25 @@ class FinancialDataFetcher(BaseFetcher):
                 'sector': sector,
                 'peg_ratio': peg_ratio
             }
-            print(f"[DEBUG] Final fundamentals dict: {fundamentals}")
-            
+            print(f"[DEBUG] fundamentals dict for {symbol}: {fundamentals}")
+            # Safely extract logo_url from Branding object
+            logo_url = None
+            if hasattr(details, 'branding') and hasattr(details.branding, 'logo_url'):
+                logo_url = details.branding.logo_url
             result = {
                 'name': getattr(details, 'name', 'N/A'),
                 'sector': sector,
                 'description': getattr(details, 'description', 'N/A'),
                 'exchange': getattr(details, 'primary_exchange', 'N/A'),
-                'logo_url': getattr(details, 'branding', {}).get('logo_url') if hasattr(details, 'branding') else None,
+                'logo_url': logo_url,
                 'employees': getattr(details, 'total_employees', None),
                 'fundamentals': fundamentals
             }
-            print(f"[DEBUG] Final result dict: {result}")
-            
-            # Cache the data
+            print(f"[DEBUG] Final result dict for {symbol}: {result}")
             self._save_to_cache(f"key_metrics_{symbol}", result)
             return result
-            
         except Exception as e:
-            print(f"[ERROR] Error fetching key metrics: {str(e)}")
+            print(f"[ERROR] Error fetching key metrics for {symbol}: {str(e)}")
             import traceback
             print(f"[ERROR] Traceback: {traceback.format_exc()}")
             return {
