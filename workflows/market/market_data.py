@@ -136,42 +136,6 @@ class MarketDataFetcher(BaseFetcher):
                     'date': current_date if current_agg else None,
                     'previous_date': prev_date if prev_agg else None
                 })
-            # Add 10Y and 2Y Treasury yields from FRED
-            try:
-                for label, series_id in [("10Y Treasury", "DGS10"), ("2Y Treasury", "DGS2")]:
-                    fred_url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={self.fred_api_key}&file_type=json&sort_order=desc&limit=2"
-                    fred_resp = requests.get(fred_url)
-                    fred_data = fred_resp.json()
-                    obs = fred_data.get('observations', [])
-                    if len(obs) >= 2:
-                        current = float(obs[0]['value']) if obs[0]['value'] != '.' else None
-                        previous = float(obs[1]['value']) if obs[1]['value'] != '.' else None
-                        if current is not None and previous is not None:
-                            change_val = current - previous
-                            direction = 'up' if change_val > 0 else 'down' if change_val < 0 else 'neutral'
-                            value = f"{current:.2f}%"
-                            change = f"{change_val:+.2f}%"
-                        else:
-                            value = 'N/A'
-                            change = 'N/A'
-                            direction = 'neutral'
-                    else:
-                        value = 'N/A'
-                        change = 'N/A'
-                        direction = 'neutral'
-                    if 'Rates' not in results:
-                        results['Rates'] = []
-                    results['Rates'].append({
-                        'name': label,
-                        'value': value,
-                        'change': change,
-                        'direction': direction,
-                        'description': label,
-                        'date': obs[0]['date'] if obs else None,
-                        'previous_date': obs[1]['date'] if len(obs) > 1 else None
-                    })
-            except Exception as e:
-                pass
             self._save_to_cache(cache_key, results)
             return results
         except Exception as e:
@@ -853,4 +817,51 @@ class MarketDataFetcher(BaseFetcher):
                     mover['published_utc'] = ''
         except Exception as e:
             print(f"Error fetching today's events: {e}")
-        return movers 
+        return movers
+    
+    def fetch_index_history(self, ticker: str, periods: int = 60, interval: str = 'day') -> Optional[Dict]:
+        """Fetch historical OHLC prices for a given index ticker using Polygon."""
+        from datetime import datetime, timedelta
+        try:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=periods * 2)  # buffer for weekends/holidays
+            aggs = self.client.get_aggs(
+                ticker=ticker,
+                multiplier=1,
+                timespan=interval,
+                from_=start_date.strftime('%Y-%m-%d'),
+                to=end_date.strftime('%Y-%m-%d'),
+                adjusted=True
+            )
+            logger.debug(f"Polygon aggs type: {type(aggs)}; length: {len(aggs) if hasattr(aggs, '__len__') else 'N/A'}")
+            if aggs and len(aggs) > 0:
+                logger.debug(f"First agg: {aggs[0]}")
+                logger.debug(f"First agg.timestamp type: {type(getattr(aggs[0], 'timestamp', None))}")
+                for i, agg in enumerate(aggs[:3]):
+                    logger.debug(f"Agg {i}: {agg}")
+                    logger.debug(f"Agg {i} timestamp: {getattr(agg, 'timestamp', None)} type: {type(getattr(agg, 'timestamp', None))}")
+                aggs = aggs[-periods:]  # Only keep the most recent 'periods' data points
+                labels = []
+                for agg in aggs:
+                    ts = getattr(agg, 'timestamp', None)
+                    if hasattr(ts, 'strftime'):
+                        labels.append(ts.strftime('%Y-%m-%d'))
+                    elif isinstance(ts, (int, float)):
+                        labels.append(datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d'))
+                    else:
+                        labels.append(str(ts))
+                values = [agg.close for agg in aggs]
+                ohlc = {
+                    'open': [agg.open for agg in aggs],
+                    'high': [agg.high for agg in aggs],
+                    'low': [agg.low for agg in aggs],
+                    'close': [agg.close for agg in aggs],
+                }
+                logger.info(f"Fetched {len(values)} data points for {ticker} from Polygon.")
+                return {'labels': labels, 'values': values, 'ohlc': ohlc}
+            else:
+                logger.warning(f"No historical data returned for {ticker} from Polygon.")
+                return {'labels': [], 'values': []}
+        except Exception as e:
+            logger.error(f"Error fetching index history for {ticker} from Polygon: {e}")
+            return {'labels': [], 'values': []} 

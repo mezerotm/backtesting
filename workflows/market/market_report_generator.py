@@ -8,7 +8,8 @@ from workflows.market.market_chart_generator import (
     generate_gdp_chart,
     generate_inflation_chart,
     generate_unemployment_chart,
-    generate_bond_chart
+    generate_bond_chart,
+    generate_market_index_chart
 )
 from typing import Dict
 from workflows.market.market_data import MarketDataFetcher
@@ -96,6 +97,34 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
                     'direction': idx.get('direction'),
                 }
 
+        # --- Generate market index charts ---
+        market_index_charts = {}
+        # Map display names to tickers
+        index_tickers = {
+            'S&P 500': 'SPY',
+            'Dow Jones': 'DIA',
+            'Nasdaq-100': 'QQQ',
+            'S&P 400 MidCap': 'MDY',
+            'Russell 2000': 'IWM',
+            'S&P 500 Growth': 'IVW',
+            'S&P 500 Value': 'IVE',
+            'Dollar Index': 'UUP',
+            'Oil (WTI)': 'USO',
+            'VIX': 'VIXY',
+        }
+        for group, group_indices in indices.items():
+            for idx in group_indices:
+                name = idx.get('name')
+                ticker = index_tickers.get(name)
+                if ticker:
+                    hist_data = fetcher.fetch_index_history(ticker, periods=60)
+                    chart_path = generate_market_index_chart(hist_data, report_dir, name)
+                    market_index_charts[name] = chart_path
+
+        # Remove 10Y and 2Y Treasury from the 'Rates' group in indices to avoid duplicate rendering
+        if 'Rates' in indices:
+            indices['Rates'] = [idx for idx in indices['Rates'] if idx.get('name') not in ['10Y Treasury', '2Y Treasury']]
+
         # Prepare template data
         template_data = {
             'date': datetime.now().strftime('%B %d, %Y'),
@@ -105,7 +134,7 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
                 'hours': 'Status Unavailable'
             }),
             'economic_events': data.get('economic_events', {}).get('events', []),
-            'indices': data.get('indices', {}),
+            'indices': indices,
             'interest_rates': data.get('interest_rates', {}),
             'economic_indicators': data.get('economic_indicators', {}),
             'gdp_history': data.get('gdp_history', {}),
@@ -119,6 +148,9 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
             'todays_events': todays_events,
             'sentiment_data': sentiment_data,
             'vix_value': sentiment_data.get('vix', {}).get('value'),
+            'market_index_charts': market_index_charts,
+            'ten_year_chart_path': data.get('ten_year_chart_path'),
+            'two_year_chart_path': data.get('two_year_chart_path'),
         }
         
         # Generate charts if data is available
