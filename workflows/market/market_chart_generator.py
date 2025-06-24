@@ -60,24 +60,24 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
         # Update layout
         fig.update_layout(
             title={
-                'text': 'Real GDP Growth',  # Simplified title
+                'text': 'Real GDP Growth',
                 'y': 0.95,
                 'x': 0.5,
                 'xanchor': 'center',
                 'yanchor': 'top',
-                'font': {'color': 'rgb(148, 163, 184)', 'size': 28}  # Brighter, larger title
+                'font': {'color': 'rgb(148, 163, 184)', 'size': 28}
             },
             plot_bgcolor='rgb(13, 18, 30)',
             paper_bgcolor='rgb(13, 18, 30)',
-            font={'color': 'rgb(148, 163, 184)', 'size': 14},  # Brighter text
+            font={'color': 'rgb(148, 163, 184)', 'size': 14},
             showlegend=False,
-            margin=dict(t=60, l=50, r=30, b=80),  # Increased bottom margin for dates
+            margin=dict(t=60, l=50, r=30, b=80),
             xaxis=dict(
                 showgrid=True,
                 gridcolor='rgba(148, 163, 184, 0.1)',
-                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},  # Adjusted text size
+                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
                 title=None,
-                tickangle=45,  # Angled labels for better readability
+                tickangle=45,
                 tickmode='array',
                 ticktext=labels,
                 tickvals=list(range(len(labels))),
@@ -94,9 +94,7 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
                 range=[min(values) - 1, max(values) + 1],
                 tickformat='.1f'
             ),
-            height=400,  # Reduced height for better embedding
-            width=None,  # Remove fixed width to allow responsive scaling
-            autosize=True,  # Enable autosize
+            autosize=True
         )
 
         # Add a horizontal line at y=0
@@ -131,9 +129,7 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
             full_html=True,
             config={
                 'displayModeBar': False,
-                'responsive': True,
-                'autosizable': True,
-                'fillFrame': True
+                'responsive': True
             }
         )
         
@@ -197,8 +193,6 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
                 range=[min(values) - 0.5, max(values) + 0.5],
                 tickformat='.1f'
             ),
-            height=400,
-            width=None,
             autosize=True
         )
         # Add target inflation line
@@ -223,9 +217,7 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
             full_html=True,
             config={
                 'displayModeBar': False,
-                'responsive': True,
-                'autosizable': True,
-                'fillFrame': True
+                'responsive': True
             }
         )
         return os.path.relpath(chart_path, output_dir)
@@ -287,8 +279,6 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
                 range=[min(values) - 0.5, max(values) + 0.5],
                 tickformat='.1f'
             ),
-            height=400,
-            width=None,
             autosize=True
         )
         # Add full employment line
@@ -313,9 +303,7 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
             full_html=True,
             config={
                 'displayModeBar': False,
-                'responsive': True,
-                'autosizable': True,
-                'fillFrame': True
+                'responsive': True
             }
         )
         return os.path.relpath(chart_path, output_dir)
@@ -436,8 +424,6 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
                 ],
                 tickformat='.2f'
             ),
-            height=400,
-            width=None,
             autosize=True
         )
         charts_dir = os.path.join(output_dir, 'charts')
@@ -449,9 +435,7 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
             full_html=True,
             config={
                 'displayModeBar': False,
-                'responsive': True,
-                'autosizable': True,
-                'fillFrame': True
+                'responsive': True
             }
         )
         return os.path.relpath(chart_path, output_dir)
@@ -462,31 +446,48 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
 def generate_market_index_chart(data: Dict, output_dir: str, index_name: str) -> Optional[str]:
     """Generate a chart HTML file for a market index ETF. Use Plotly for Dollar Index, TradingView for others."""
     # Special case for Dollar Index
-    if index_name == 'Dollar Index' and data and data.get('labels') and data.get('values'):
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=data['labels'],
-            y=data['values'],
-            mode='lines+markers',
-            name='Dollar Index',
-            line=dict(color='rgb(59, 130, 246)', width=2),
-            marker=dict(size=8, color='rgb(59, 130, 246)'),
-            hovertemplate="<b>%{x}</b><br>Dollar Index: %{y:.2f}<extra></extra>"
-        ))
+    if index_name == 'Dollar Index' and data and data.get('labels'):
+        charts_dir = os.path.join(output_dir, 'charts')
+        os.makedirs(charts_dir, exist_ok=True)
+        chart_path = os.path.join(charts_dir, 'dollar_index_chart.html')
+        # Use OHLC data if available
+        if 'ohlc' in data and all(k in data['ohlc'] for k in ['open', 'high', 'low', 'close']):
+            df = pd.DataFrame({
+                'date': data['labels'],
+                'open': data['ohlc']['open'],
+                'high': data['ohlc']['high'],
+                'low': data['ohlc']['low'],
+                'close': data['ohlc']['close'],
+            })
+        else:
+            df = pd.DataFrame({
+                'date': data['labels'],
+                'open': data['values'],
+                'high': data['values'],
+                'low': data['values'],
+                'close': data['values'],
+            })
+        fig = go.Figure(data=[go.Candlestick(
+            x=df['date'],
+            open=df['open'],
+            high=df['high'],
+            low=df['low'],
+            close=df['close'],
+            increasing_line_color='rgb(34, 197, 94)',
+            decreasing_line_color='rgb(239, 68, 68)'
+        )])
         fig.update_layout(
             title={'text': 'Dollar Index (DXY)', 'y': 0.95, 'x': 0.5, 'xanchor': 'center', 'yanchor': 'top', 'font': {'color': 'rgb(148, 163, 184)', 'size': 28}},
             plot_bgcolor='rgba(15,23,42,1)',
             paper_bgcolor='rgba(15,23,42,1)',
             font=dict(color='rgb(226,232,240)', size=16),
             margin=dict(l=30, r=30, t=60, b=30),
-            xaxis=dict(title='', showgrid=False, zeroline=False),
+            xaxis=dict(title='', showgrid=False, zeroline=False, rangeslider=dict(visible=True), type='date'),
             yaxis=dict(title='', showgrid=True, gridcolor='rgba(51,65,85,0.4)', zeroline=False),
             hovermode='x unified',
+            autosize=True
         )
-        charts_dir = os.path.join(output_dir, 'charts')
-        os.makedirs(charts_dir, exist_ok=True)
-        chart_path = os.path.join(charts_dir, 'dollar_index_chart.html')
-        pio.write_html(fig, file=chart_path, auto_open=False, include_plotlyjs='cdn')
+        pio.write_html(fig, file=chart_path, auto_open=False, include_plotlyjs='cdn', full_html=True, config={'displayModeBar': False, 'responsive': True})
         return os.path.relpath(chart_path, output_dir)
     # Otherwise, use TradingView as before
     logger.debug(f"Generating TradingView chart for {index_name}")
@@ -530,13 +531,16 @@ def generate_market_index_chart(data: Dict, output_dir: str, index_name: str) ->
     chart_path = os.path.join(charts_dir, f'{safe_name}_chart.html')
     widget_html = f'''
 <!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
+<html>
+<head></head>
+<body style="height:900px; margin:0; padding:0;">
+<div class="tradingview-widget-container" style="height:900px;">
   <div id="tradingview_{safe_name}"></div>
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <script type="text/javascript">
   new TradingView.widget({{
     "width": "100%",
-    "height": 480,
+    "height": 900,
     "symbol": "{tv_symbol}",
     "interval": "D",
     "timezone": "Etc/UTC",
@@ -551,6 +555,8 @@ def generate_market_index_chart(data: Dict, output_dir: str, index_name: str) ->
   }});
   </script>
 </div>
+</body>
+</html>
 <!-- TradingView Widget END -->
 '''
     try:
@@ -585,8 +591,6 @@ def generate_single_bond_chart(data: Dict, output_dir: str, filename: str, title
             margin=dict(t=60, l=50, r=30, b=80),
             xaxis=dict(showgrid=True, gridcolor='rgba(148, 163, 184, 0.1)', tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'}, title=None, tickangle=45),
             yaxis=dict(showgrid=True, gridcolor='rgba(148, 163, 184, 0.1)', zeroline=True, zerolinecolor='rgba(148, 163, 184, 0.5)', zerolinewidth=1, ticksuffix='%', tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'}, title={'text': 'Yield', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}}, range=[min(values) - 0.5, max(values) + 0.5], tickformat='.2f'),
-            height=400,
-            width=None,
             autosize=True
         )
         charts_dir = os.path.join(output_dir, 'charts')
