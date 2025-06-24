@@ -134,8 +134,8 @@
     .chart-container, .chart-container-inflation {
         position: relative;
         width: 100%;
-        max-width: 500px;
-        height: 500px;
+        max-width: 700px;
+        height: 540px;
         margin: 20px auto;
         background: transparent;
         border-radius: 8px;
@@ -145,7 +145,8 @@
     
     .chart-container iframe, .chart-container-inflation iframe {
         width: 100%;
-        height: 100%;
+        height: 540px;
+        min-height: 540px;
         border: none;
         background: transparent;
     }
@@ -433,20 +434,59 @@
         <i class="fa-solid fa-chart-line text-blue-400"></i>
         <h2>Market Indices</h2>
     </div>
+    {# Consolidated Rates subsection for 10Y and 2Y Treasury, only once at the top #}
+    {% if (ten_year_chart_path is defined and ten_year_chart_path) or (two_year_chart_path is defined and two_year_chart_path) %}
+    <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">Rates</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    10-Year Treasury
+                    <span class="ml-1" title="Benchmark government bond yield">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">{{ interest_rates['10-Year Treasury'] }}</div>
+            </div>
+            <div>
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    2-Year Treasury
+                    <span class="ml-1" title="Short-term government bond yield">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">{{ interest_rates['2-Year Treasury'] }}</div>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% if ten_year_chart_path is defined and ten_year_chart_path %}
+            <div class="chart-container mt-2" style="max-width: 99vw; width: 100%; height: 420px; min-height: 420px; overflow: hidden; margin: 0; padding: 0;">
+                <iframe src="{{ ten_year_chart_path }}" frameborder="0" style="width: 100%; height: 420px; min-height: 420px; overflow: hidden; margin: 0; padding: 0;"></iframe>
+            </div>
+            {% endif %}
+            {% if two_year_chart_path is defined and two_year_chart_path %}
+            <div class="chart-container mt-2" style="max-width: 99vw; width: 100%; height: 420px; min-height: 420px; overflow: hidden; margin: 0; padding: 0;">
+                <iframe src="{{ two_year_chart_path }}" frameborder="0" style="width: 100%; height: 420px; min-height: 420px; overflow: hidden; margin: 0; padding: 0;"></iframe>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
     {% for group, group_indices in indices.items() %}
     <div class="mb-4">
         <div class="text-lg font-semibold text-blue-300 mb-2">{{ group }}</div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 gap-4">
             {% for idx in group_indices %}
-            <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            {% if idx.name != '10Y Treasury' and idx.name != '2Y Treasury' %}
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
                 <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
                     {{ idx.name }}
                     <span class="ml-1" title="{{ idx.description }}">
                         <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
                     </span>
                 </div>
-                <div class="text-2xl font-bold mb-2 text-white">{{ idx.value }}</div>
-                <div class="flex items-center {{ idx.direction }}">
+                <div class="text-2xl font-bold mb-1 text-white">{{ idx.value }}</div>
+                <div class="flex items-center {{ idx.direction }} mb-1">
                     {% if idx.direction == 'up' %}
                         <i class="fas fa-arrow-up mr-1"></i>
                     {% elif idx.direction == 'down' %}
@@ -456,43 +496,17 @@
                     {% endif %}
                     <span class="font-medium">{{ idx.change }}</span>
                 </div>
+                {% if market_index_charts[idx.name] is defined and market_index_charts[idx.name] %}
+                <div class="chart-container mt-2" style="max-width: 99vw; width: 100%; height: 420px; min-height: 420px; overflow: hidden; margin: 0; padding: 0;">
+                    <iframe src="{{ market_index_charts[idx.name] }}" frameborder="0" style="width: 100%; height: 420px; min-height: 420px; overflow: hidden; margin: 0; padding: 0;"></iframe>
+                </div>
+                {% endif %}
             </div>
+            {% endif %}
             {% endfor %}
         </div>
     </div>
     {% endfor %}
-</div>
-{% endif %}
-
-<!-- Interest Rates Section -->
-{% if interest_rates is defined %}
-<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm section">
-    <div class="section-header">
-        <i class="fa-solid fa-percent text-blue-400"></i>
-        <h2>Interest Rates & Yields</h2>
-    </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {% for name, value in interest_rates.items() %}
-            {% if name != 'Last Updated' %}
-            <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
-                <div class="text-sm text-slate-400 mb-1">{{ name }}</div>
-                <div class="text-2xl font-bold text-white">{{ value }}</div>
-                <div class="text-xs text-slate-500 mt-2">
-                    {% if name == 'Federal Funds Rate' %}
-                        Target rate set by the Federal Reserve
-                    {% elif name == '10-Year Treasury' %}
-                        Benchmark government bond yield
-                    {% elif name == '30-Year Fixed Mortgage' %}
-                        Average 30-year fixed mortgage rate
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
-        {% endfor %}
-    </div>
-    
-    <div class="text-xs text-slate-500 mt-4">Last updated: {{ interest_rates['Last Updated'] }}</div>
 </div>
 {% endif %}
 {% endblock %}
