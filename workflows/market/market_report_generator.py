@@ -86,7 +86,6 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
             ('spy', 'S&P 500'),
             ('vix', 'VIX'),
             ('ten_year', '10Y Treasury'),
-            ('two_year', '2Y Treasury'),
         ]:
             idx = find_index(label)
             if idx:

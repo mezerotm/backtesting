@@ -104,27 +104,58 @@ class MarketDataFetcher(BaseFetcher):
             for name, polygon_ticker, description, group in indices:
                 value, change, direction = None, None, 'neutral'
                 try:
+                    # Get the most recent valid day for current
                     current_agg, current_date = self.get_polygon_agg(polygon_ticker)
-                    if current_date:
-                        prev_date_dt = datetime.strptime(current_date, '%Y-%m-%d') - timedelta(days=1)
-                        prev_agg, prev_date = self.get_polygon_agg(polygon_ticker, date=prev_date_dt.strftime('%Y-%m-%d'))
-                    else:
-                        prev_agg, prev_date = None, None
-                    if current_agg:
+                    prev_agg, prev_date = None, None
+                    if current_date and current_agg:
+                        # Parse the current date as a datetime for comparison
+                        current_dt = datetime.strptime(current_date, '%Y-%m-%d')
+                        attempted_prev_dates = []
+                        for offset in range(1, 11):
+                            prev_date_dt = current_dt - timedelta(days=offset)
+                            try_date = prev_date_dt.strftime('%Y-%m-%d')
+                            agg, date = self.get_polygon_agg(polygon_ticker, date=try_date)
+                            # Check the actual date of the returned aggregation
+                            agg_date = None
+                            if agg and hasattr(agg, 'timestamp'):
+                                # Polygon returns timestamp in ms or as datetime
+                                ts = getattr(agg, 'timestamp', None)
+                                if hasattr(ts, 'strftime'):
+                                    agg_date = ts.strftime('%Y-%m-%d')
+                                elif isinstance(ts, (int, float)):
+                                    agg_date = datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d')
+                            attempted_prev_dates.append((try_date, date, agg_date, agg.close if agg else None))
+                            # Only accept if agg_date is strictly before current_date
+                            if agg and agg_date and agg_date < current_date:
+                                prev_agg, prev_date = agg, agg_date
+                                break
+                        logger.info(f"Index: {name} | Attempted previous dates: {attempted_prev_dates}")
+                    # Logging for debugging
+                    logger.info(f"Index: {name} | Current date: {current_date}, Previous date: {prev_date}")
+                    if current_agg and prev_agg and current_date != prev_date:
                         current = current_agg.close
-                        previous = prev_agg.close if prev_agg else current
+                        previous = prev_agg.close
+                        logger.info(f"Index: {name} | Current value: {current}, Previous value: {previous}")
                         change_val = ((current - previous) / previous) * 100 if previous != 0 else 0
                         value = f"{current:.2f}"
                         change = f"{change_val:+.2f}%"
                         direction = 'up' if change_val > 0 else 'down' if change_val < 0 else 'neutral'
+                    elif current_agg:
+                        current = current_agg.close
+                        value = f"{current:.2f}"
+                        change = 'N/A'
+                        direction = 'neutral'
+                        logger.warning(f"Index: {name} | Only one valid trading day found or duplicate dates. Change set to N/A.")
                     else:
                         value = 'N/A'
                         change = 'N/A'
                         direction = 'neutral'
+                        logger.warning(f"Index: {name} | No valid trading data found.")
                 except Exception as e:
                     value = 'N/A'
                     change = 'N/A'
                     direction = 'neutral'
+                    logger.error(f"Index: {name} | Exception: {e}")
                 if group not in results:
                     results[group] = []
                 results[group].append({
@@ -137,6 +168,57 @@ class MarketDataFetcher(BaseFetcher):
                     'previous_date': prev_date if prev_agg else None
                 })
             self._save_to_cache(cache_key, results)
+
+            # --- Add 10Y Treasury to indices (Rates group) using FRED ---
+            try:
+                fred_api_key = self.fred_api_key
+                if fred_api_key:
+                    response = requests.get(
+                        "https://api.stlouisfed.org/fred/series/observations",
+                        params={
+                            'series_id': 'DGS10',
+                            'api_key': fred_api_key,
+                            'file_type': 'json',
+                            'sort_order': 'desc',
+                            'limit': 7
+                        }
+                    )
+                    data = response.json()
+                    obs = [o for o in data.get('observations', []) if o['value'] != '.']
+                    if len(obs) >= 2:
+                        current = float(obs[0]['value'])
+                        previous = float(obs[1]['value'])
+                        change_val = ((current - previous) / previous) * 100 if previous != 0 else 0
+                        value = f"{current:.2f}"
+                        change = f"{change_val:+.2f}%"
+                        direction = 'up' if change_val > 0 else 'down' if change_val < 0 else 'neutral'
+                        ten_year_idx = {
+                            'name': '10Y Treasury',
+                            'value': value,
+                            'change': change,
+                            'direction': direction,
+                            'description': '10-Year US Treasury Yield',
+                            'date': obs[0]['date'],
+                            'previous_date': obs[1]['date']
+                        }
+                    else:
+                        ten_year_idx = {
+                            'name': '10Y Treasury',
+                            'value': 'N/A',
+                            'change': 'N/A',
+                            'direction': 'neutral',
+                            'description': '10-Year US Treasury Yield',
+                            'date': None,
+                            'previous_date': None
+                        }
+                    if 'Rates' not in results:
+                        results['Rates'] = []
+                    # Remove any existing 10Y Treasury
+                    results['Rates'] = [idx for idx in results['Rates'] if idx.get('name') != '10Y Treasury']
+                    results['Rates'].append(ten_year_idx)
+            except Exception as e:
+                logger.error(f"Error adding 10Y Treasury to indices: {e}")
+
             return results
         except Exception as e:
             logger.error(f"Error fetching market indices: {e}")

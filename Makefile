@@ -56,7 +56,7 @@ dev: results-dir
 
 # NVDA CRWD COIN MSTR NAKA CRWV NBIS
 financial-analysis: results-dir
-	$(PYTHON) financial_workflow_cli.py --symbols COST --force-refresh
+	$(PYTHON) financial_workflow_cli.py --symbols UNH --force-refresh
 
 # market check with all indicators
 market-check: results-dir
