@@ -21,9 +21,16 @@ activate-venv: ensure-venv
 setup: activate-venv
 	$(PIP) install -r requirements.txt
 
-# Freeze current dependencies to requirements.txt
-freeze:
-	$(PIP) freeze > requirements.txt
+# Modern dependency management: single command for deps
+install: ensure-venv
+	@echo "[INFO] To add or upgrade packages, edit requirements.in then run: make deps"
+	@if ! $(VENV)/bin/pip show pip-tools > /dev/null 2>&1; then \
+		echo "Installing pip-tools in the virtual environment..."; \
+		$(PIP) install pip-tools; \
+	fi
+	$(VENV)/bin/pip-compile requirements.in --output-file requirements.txt
+	$(PIP) install -r requirements.txt
+	@echo "[SUCCESS] All dependencies installed! (requirements.txt is up to date)"
 
 # Test run with NVDA and custom parameters
 backtest-nvda: results-dir
@@ -75,6 +82,6 @@ results-dir:
 server:
 	$(PYTHON) server/report_server.py
 
-.PHONY: setup freeze backtest-nvda backtest-smci \
+.PHONY: setup backtest-nvda backtest-smci \
 	compare-active clean results-dir server ensure-venv activate-venv backtest-active \
-	backtest-experimental compare-experimental dev debug-buy-hold market-check morning-check full-market-check debug-market-check
+	backtest-experimental compare-experimental dev debug-buy-hold market-check morning-check full-market-check debug-market-check install

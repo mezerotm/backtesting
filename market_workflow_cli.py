@@ -67,7 +67,7 @@ from workflows.market.market_report_generator import (
     generate_bond_chart
 )
 from workflows.metadata_generator import generate_metadata, save_metadata
-from workflows.market.market_chart_generator import generate_market_index_chart, generate_single_bond_chart
+from workflows.market.market_chart_generator import generate_market_index_chart, generate_single_bond_chart, generate_style_box_heatmap
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -193,6 +193,13 @@ def create_market_report(args) -> str:
                 'values': bond_10y_data['values_2y'],
             }
             data['two_year_chart_path'] = generate_single_bond_chart(two_year_data, report_dir, 'two_year_chart.html', TWO_YEAR_KEY + ' Yield')
+        
+        # --- Generate style box heatmap for economic trends ---
+        style_box_data = data_fetcher.fetch_style_box_etf_data()
+        style_box_heatmap_path = None
+        if style_box_data and style_box_data.get('z'):
+            style_box_heatmap_path = generate_style_box_heatmap(style_box_data, report_dir)
+        data['style_box_heatmap_path'] = style_box_heatmap_path
         
         # Store historical data
         data.update({

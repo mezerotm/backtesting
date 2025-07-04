@@ -61,15 +61,22 @@ class MarketDataFetcher(BaseFetcher):
 
     @with_most_recent_data(max_days=7)
     def get_polygon_agg(self, ticker, date=None):
-        aggs = self.client.get_aggs(
-            ticker=ticker,
-            multiplier=1,
-            timespan="day",
-            from_=date,
-            to=date,
-            adjusted=True
-        )
-        return aggs[0] if aggs else None
+        logger = logging.getLogger(__name__)
+        logger.debug(f"get_polygon_agg: ticker={ticker}, date={date}")
+        try:
+            aggs = self.client.get_aggs(
+                ticker=ticker,
+                multiplier=1,
+                timespan="day",
+                from_=date,
+                to=date,
+                adjusted=True
+            )
+            logger.debug(f"get_polygon_agg: aggs for {ticker} on {date}: {aggs}")
+            return aggs[0] if aggs else None
+        except Exception as e:
+            logger.error(f"get_polygon_agg: Exception for {ticker} on {date}: {e}")
+            return None
 
     def fetch_market_indices(self) -> Dict:
         """Fetch major market indices data: Polygon first, then FRED, then Yahoo Finance (rate-limited)."""
@@ -946,4 +953,47 @@ class MarketDataFetcher(BaseFetcher):
                 return {'labels': [], 'values': []}
         except Exception as e:
             logger.error(f"Error fetching index history for {ticker} from Polygon: {e}")
-            return {'labels': [], 'values': []} 
+            return {'labels': [], 'values': []}
+    
+    def fetch_style_box_etf_data(self) -> Dict:
+        """Fetch 1-day % change for style box ETFs (Value/Growth/Core x Large/Mid/Small) from Polygon using multi-day history."""
+        import logging
+        logger = logging.getLogger(__name__)
+        from datetime import datetime, timedelta
+        style_box = [
+            ["IVE", "IVW", "SPY"],   # Large: Value, Growth, Core
+            ["IJJ", "IJK", "MDY"],   # Mid: Value, Growth, Core
+            ["IJS", "IJT", "IWM"]    # Small: Value, Growth, Core
+        ]
+        x_labels = ["Value", "Growth", "Core"]
+        y_labels = ["Large", "Mid", "Small"]
+        z = []
+        for row_idx, row in enumerate(style_box):
+            z_row = []
+            for col_idx, ticker in enumerate(row):
+                try:
+                    end_date = datetime.now()
+                    start_date = end_date - timedelta(days=7)
+                    aggs = self.client.get_aggs(
+                        ticker=ticker,
+                        multiplier=1,
+                        timespan="day",
+                        from_=start_date.strftime('%Y-%m-%d'),
+                        to=end_date.strftime('%Y-%m-%d'),
+                        adjusted=True
+                    )
+                    aggs = sorted(aggs, key=lambda x: x.timestamp) if aggs else []
+                    if aggs and len(aggs) >= 2:
+                        prev = aggs[-2]
+                        last = aggs[-1]
+                        prev_close = getattr(prev, 'adjusted_close', prev.close)
+                        last_close = getattr(last, 'adjusted_close', last.close)
+                        change = ((last_close - prev_close) / prev_close) * 100 if prev_close != 0 else 0
+                        z_row.append(round(change, 2))
+                    else:
+                        z_row.append(None)
+                except Exception as e:
+                    logger.error(f"[StyleBox] Ticker: {ticker} | Exception: {e}")
+                    z_row.append(None)
+            z.append(z_row)
+        return {"z": z, "x": x_labels, "y": y_labels} 

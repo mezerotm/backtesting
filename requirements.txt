@@ -87,6 +87,8 @@ idna==3.10
     #   anyio
     #   httpx
     #   requests
+iniconfig==2.1.0
+    # via pytest
 jinja2==3.1.6
     # via
     #   -r requirements.in
@@ -137,6 +139,7 @@ packaging==24.2
     #   bokeh
     #   matplotlib
     #   plotly
+    #   pytest
 pandas==2.2.3
     # via
     #   -r requirements.in
@@ -160,6 +163,8 @@ platformdirs==4.3.7
     #   yfinance
 plotly==6.0.1
     # via -r requirements.in
+pluggy==1.6.0
+    # via pytest
 polygon-api-client==1.14.6
     # via -r requirements.in
 proxy-tools==0.1.0
@@ -175,10 +180,14 @@ pydantic-core==2.27.2
     # via
     #   -r requirements.in
     #   pydantic
+pygments==2.19.2
+    # via pytest
 pyparsing==3.2.1
     # via
     #   -r requirements.in
     #   matplotlib
+pytest==8.4.1
+    # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via
     #   -r requirements.in

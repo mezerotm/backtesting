@@ -144,10 +144,12 @@
     
     .chart-container iframe, .chart-container-inflation iframe {
         width: 100%;
-        min-height: 400px;
+        height: 420px;   /* Match Plotly chart height */
+        min-height: 0;
         border: none;
         background: transparent;
         display: block;
+        overflow: hidden;
     }
     
     .chart-title, .chart-legend {
@@ -358,6 +360,20 @@
     </div>
     
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+        {% if style_box_heatmap_path %}
+        <div class="bg-slate-900 p-4 rounded-lg">
+            <div class="chart-container">
+                <iframe src="{{ style_box_heatmap_path }}" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Rows: Large, Mid, Small cap; Columns: Value, Core, Growth</li>
+                    <li>Cell color: green (positive), red (negative), intensity by magnitude</li>
+                    <li>Value: 1-day % change for each ETF</li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
         <!-- GDP Chart -->
         {% if gdp_history is defined %}
         <div class="bg-slate-900 p-4 rounded-lg">

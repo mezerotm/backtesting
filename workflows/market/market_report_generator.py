@@ -9,7 +9,8 @@ from workflows.market.market_chart_generator import (
     generate_inflation_chart,
     generate_unemployment_chart,
     generate_bond_chart,
-    generate_market_index_chart
+    generate_market_index_chart,
+    generate_style_box_heatmap
 )
 from typing import Dict
 from workflows.market.market_data import MarketDataFetcher
@@ -124,6 +125,13 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
         if 'Rates' in indices:
             indices['Rates'] = [idx for idx in indices['Rates'] if idx.get('name') not in ['10Y Treasury', '2Y Treasury']]
 
+        # --- Use style box heatmap path from data if present, else generate ---
+        style_box_heatmap_path = data.get('style_box_heatmap_path')
+        if not style_box_heatmap_path:
+            style_box_data = fetcher.fetch_style_box_etf_data()
+            if style_box_data and style_box_data.get('z'):
+                style_box_heatmap_path = generate_style_box_heatmap(style_box_data, report_dir)
+
         # Prepare template data
         template_data = {
             'date': datetime.now().strftime('%B %d, %Y'),
@@ -150,6 +158,7 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
             'market_index_charts': market_index_charts,
             'ten_year_chart_path': data.get('ten_year_chart_path'),
             'two_year_chart_path': data.get('two_year_chart_path'),
+            'style_box_heatmap_path': style_box_heatmap_path,
         }
         
         # Generate charts if data is available
