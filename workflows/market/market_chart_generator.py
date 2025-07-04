@@ -605,4 +605,88 @@ def generate_single_bond_chart(data: Dict, output_dir: str, filename: str, title
         return os.path.relpath(chart_path, output_dir)
     except Exception as e:
         print(f"ERROR - Failed to generate {title} chart: {e}")
+        return None
+
+def generate_style_box_heatmap(data: Dict, output_dir: str) -> Optional[str]:
+    """Generate a style box heatmap (Value/Core/Growth x Large/Mid/Small) using Plotly."""
+    try:
+        # data: {"z": [[...], [...], [...]], "x": ["Value", "Core", "Growth"], "y": ["Large", "Mid", "Small"]}
+        z = data["z"]
+        x = data["x"]
+        y = data["y"]
+        # Color scale: green for positive, red for negative, gray for None
+        def cell_color(val):
+            if val is None:
+                return "rgba(100,116,139,0.4)"  # slate-400 (neutral gray)
+            if val >= 0:
+                # Green scale
+                return f"rgba(74,222,128,{0.3 + 0.5 * min(1, abs(val)/1.5)})"  # green-400
+            else:
+                # Red scale
+                return f"rgba(248,113,113,{0.3 + 0.5 * min(1, abs(val)/1.5)})"  # red-400
+        colors = [[cell_color(val) for val in row] for row in z]
+        # Text for each cell
+        text = [["N/A" if val is None else f"{val:+.2f}" for val in row] for row in z]
+        # For z, replace None with 0 for plotting (so Plotly doesn't error)
+        z_plot = [[val if val is not None else 0 for val in row] for row in z]
+        fig = go.Figure(data=go.Heatmap(
+            z=z_plot,
+            x=x,
+            y=y,
+            text=text,
+            texttemplate="%{text}",
+            colorscale=[[0, "#f87171"], [0.5, "#fca5a5"], [0.5, "#bbf7d0"], [1, "#4ade80"]],
+            zmin=-1.5,
+            zmax=1.5,
+            showscale=False,
+            hovertemplate="<b>%{y} / %{x}</b><br>%{text}<extra></extra>",
+        ))
+        # Overlay cell colors for custom alpha
+        for i, row in enumerate(z):
+            for j, val in enumerate(row):
+                fig.add_shape(
+                    type="rect",
+                    x0=j-0.5, x1=j+0.5, y0=i-0.5, y1=i+0.5,
+                    fillcolor=colors[i][j],
+                    line=dict(width=0),
+                    layer="below"
+                )
+        fig.update_layout(
+            title={
+                'text': 'Morningstar Heatmap',
+                'y': 0.93,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {'color': 'rgb(148, 163, 184)', 'size': 30}
+            },
+            plot_bgcolor='rgb(13, 18, 30)',
+            paper_bgcolor='rgb(13, 18, 30)',
+            font={'color': 'rgb(148, 163, 184)', 'size': 20, 'family': 'system-ui'},
+            margin=dict(t=30, l=40, r=40, b=40),
+            xaxis=dict(title='', side='top', tickmode='array', tickvals=list(range(len(x))), ticktext=x, showgrid=False, tickfont={'size': 18, 'color': 'rgb(148, 163, 184)'}, automargin=True),
+            yaxis=dict(title='', autorange='reversed', tickmode='array', tickvals=list(range(len(y))), ticktext=y, showgrid=False, tickfont={'size': 18, 'color': 'rgb(148, 163, 184)'}, automargin=True),
+            autosize=True,
+            height=320,
+        )
+        # Add invisible scatter for better cell spacing
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None],
+            mode='markers',
+            marker=dict(size=1, color='rgba(0,0,0,0)'),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+        charts_dir = os.path.join(output_dir, 'charts')
+        os.makedirs(charts_dir, exist_ok=True)
+        chart_path = os.path.join(charts_dir, 'style_box_heatmap.html')
+        fig.write_html(
+            chart_path,
+            include_plotlyjs=True,
+            full_html=True,
+            config={'displayModeBar': False, 'responsive': True}
+        )
+        return os.path.relpath(chart_path, output_dir)
+    except Exception as e:
+        print(f"ERROR - Failed to generate style box heatmap: {e}")
         return None 
