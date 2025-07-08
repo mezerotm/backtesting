@@ -1,0 +1,84 @@
+<div class="mb-8 max-w-[85rem] mx-auto w-full">
+    <div class="bg-slate-800 rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-white">Portfolio</h2>
+            <button id="add-position-btn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">
+                <i class="fa-solid fa-plus mr-2"></i>Add Position
+            </button>
+        </div>
+        <!-- Portfolio Cash Section -->
+        <div class="mb-4 flex items-center gap-4">
+            <label for="portfolio-cash" class="block text-sm text-gray-300 font-semibold">Total Portfolio Cash ($):</label>
+            <input type="number" id="portfolio-cash" class="p-2 rounded bg-slate-700 text-white w-40" step="any" min="0" value="10000">
+            <button type="button" id="save-portfolio-cash" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+        </div>
+        <div class="overflow-x-auto mb-4">
+            <table class="min-w-full divide-y divide-slate-700" id="positions-table">
+                <thead>
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Quantity</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Price</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Date</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">% of Portfolio</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Beta</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Delta</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700" id="positions-tbody">
+                    <tr><td colspan="9" class="text-center text-gray-400 py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Add/Edit Modal (hidden by default) -->
+    <div id="position-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+        <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
+            <h3 class="text-xl font-bold text-white mb-4" id="modal-title">Add Position</h3>
+            <form id="position-form" class="space-y-4">
+                <input type="hidden" id="position-id">
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-symbol">Symbol</label>
+                    <input type="text" id="portfolio-symbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-quantity">Quantity</label>
+                    <input type="number" id="portfolio-quantity" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required value="1">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-buy-price">Buy Price</label>
+                    <input type="number" id="portfolio-buy-price" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-buy-date">Buy Date</label>
+                    <input type="date" id="portfolio-buy-date" class="w-full p-2 rounded bg-slate-700 text-white" required>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-beta">Beta</label>
+                    <input type="number" id="portfolio-beta" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-delta">Delta</label>
+                    <input type="number" id="portfolio-delta" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-notes">Notes</label>
+                    <textarea id="portfolio-notes" class="w-full p-2 rounded bg-slate-700 text-white"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" id="cancel-modal" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+                    <button type="submit" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+#portfolio-symbol {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+</style> 

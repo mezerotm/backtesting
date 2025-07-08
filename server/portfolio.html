@@ -1,0 +1,179 @@
+{% extends "base_layout.html" %}
+
+{% block title %}Portfolio Manager{% endblock %}
+
+{% block content %}
+<div class="h-full flex flex-col">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-white">Portfolio Manager</h2>
+        <button id="add-position-btn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">
+            <i class="fa-solid fa-plus mr-2"></i>Add Position
+        </button>
+    </div>
+    <div class="bg-slate-800 rounded-xl shadow-sm p-6 flex-1 flex flex-col">
+        <div class="overflow-x-auto mb-6">
+            <table class="min-w-full divide-y divide-slate-700" id="positions-table">
+                <thead>
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Quantity</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Price</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Date</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700" id="positions-tbody">
+                    <tr><td colspan="6" class="text-center text-gray-400 py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-8">
+            <h3 class="text-lg font-semibold text-white mb-2">Allocation</h3>
+            <div id="allocation-chart" class="w-full h-64 bg-slate-900 rounded-lg flex items-center justify-center">
+                <span class="text-gray-500">(Chart coming soon)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal (hidden by default) -->
+<div id="position-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+    <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
+        <h3 class="text-xl font-bold text-white mb-4" id="modal-title">Add Position</h3>
+        <form id="position-form" class="space-y-4">
+            <input type="hidden" id="position-id">
+            <div>
+                <label class="block text-sm text-gray-300 mb-1">Symbol</label>
+                <input type="text" id="symbol" class="w-full p-2 rounded bg-slate-700 text-white" required>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-300 mb-1">Quantity</label>
+                <input type="number" id="quantity" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-300 mb-1">Buy Price</label>
+                <input type="number" id="buy-price" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-300 mb-1">Buy Date</label>
+                <input type="date" id="buy-date" class="w-full p-2 rounded bg-slate-700 text-white" required>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-300 mb-1">Notes</label>
+                <textarea id="notes" class="w-full p-2 rounded bg-slate-700 text-white"></textarea>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button type="button" id="cancel-modal" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+                <button type="submit" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// --- Portfolio CRUD Logic ---
+const API_URL = '/api/portfolio';
+
+function fetchPositions() {
+    fetch(API_URL + '/')
+        .then(r => r.json())
+        .then(data => renderPositions(data))
+        .catch(() => renderPositions([]));
+}
+
+function renderPositions(positions) {
+    const tbody = document.getElementById('positions-tbody');
+    tbody.innerHTML = '';
+    if (!positions.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-4">No positions found.</td></tr>';
+        return;
+    }
+    positions.forEach(pos => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-3 py-2 text-white font-semibold">${pos.symbol}</td>
+            <td class="px-3 py-2 text-gray-200">${pos.quantity}</td>
+            <td class="px-3 py-2 text-gray-200">$${pos.buy_price.toFixed(2)}</td>
+            <td class="px-3 py-2 text-gray-200">${pos.buy_date}</td>
+            <td class="px-3 py-2 text-gray-400">${pos.notes || ''}</td>
+            <td class="px-3 py-2">
+                <button class="edit-btn text-blue-400 hover:text-blue-300 mr-2" title="Edit" onclick='openEditModal(${JSON.stringify(pos)})'><i class="fa-solid fa-pen"></i></button>
+                <button class="delete-btn text-red-400 hover:text-red-300" title="Delete" onclick='deletePosition(${pos.id})'><i class="fa-solid fa-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function openEditModal(pos) {
+    document.getElementById('modal-title').textContent = 'Edit Position';
+    document.getElementById('position-id').value = pos.id;
+    document.getElementById('symbol').value = pos.symbol;
+    document.getElementById('quantity').value = pos.quantity;
+    document.getElementById('buy-price').value = pos.buy_price;
+    document.getElementById('buy-date').value = pos.buy_date;
+    document.getElementById('notes').value = pos.notes || '';
+    document.getElementById('position-modal').classList.remove('hidden');
+}
+
+function openAddModal() {
+    document.getElementById('modal-title').textContent = 'Add Position';
+    document.getElementById('position-id').value = '';
+    document.getElementById('symbol').value = '';
+    document.getElementById('quantity').value = '';
+    document.getElementById('buy-price').value = '';
+    document.getElementById('buy-date').value = '';
+    document.getElementById('notes').value = '';
+    document.getElementById('position-modal').classList.remove('hidden');
+}
+
+document.getElementById('add-position-btn').addEventListener('click', openAddModal);
+document.getElementById('cancel-modal').addEventListener('click', () => {
+    document.getElementById('position-modal').classList.add('hidden');
+});
+
+document.getElementById('position-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('position-id').value;
+    const symbol = document.getElementById('symbol').value.trim().toUpperCase();
+    const quantity = parseFloat(document.getElementById('quantity').value);
+    const buy_price = parseFloat(document.getElementById('buy-price').value);
+    const buy_date = document.getElementById('buy-date').value;
+    const notes = document.getElementById('notes').value;
+    const pos = { id: id ? parseInt(id) : Date.now(), symbol, quantity, buy_price, buy_date, notes };
+    if (id) {
+        // Update
+        fetch(`${API_URL}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pos)
+        }).then(() => {
+            fetchPositions();
+            document.getElementById('position-modal').classList.add('hidden');
+        });
+    } else {
+        // Add
+        fetch(API_URL + '/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pos)
+        }).then(() => {
+            fetchPositions();
+            document.getElementById('position-modal').classList.add('hidden');
+        });
+    }
+});
+
+function deletePosition(id) {
+    if (!confirm('Delete this position?')) return;
+    fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+        .then(() => fetchPositions());
+}
+
+// Initial load
+fetchPositions();
+</script>
+{% endblock %} 

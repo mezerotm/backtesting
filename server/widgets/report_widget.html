@@ -1,0 +1,128 @@
+<div class="bg-slate-800 border border-slate-700 rounded-xl shadow p-6 flex flex-col w-full max-w-[85rem] mx-auto">
+    <div class="flex justify-between items-center mb-4">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-table text-blue-400"></i>
+            <h2 class="text-lg font-bold text-white">Available Reports</h2>
+        </div>
+        <div class="text-sm text-gray-500">
+            Last updated: <span id="last-updated">{{ now }}</span>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table id="reports-table" class="min-w-full divide-y divide-slate-700">
+            <thead class="bg-slate-800 sticky top-0 z-10">
+                <tr>
+                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Actions</th>
+                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Report Type</th>
+                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Strategy</th>
+                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Timeframe</th>
+                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Date Range</th>
+                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">
+                        Created
+                        <i class="fa-solid fa-arrow-up-short-wide ml-1 text-blue-400" title="Sorted by newest first"></i>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700">
+                <!-- Dynamic content will be inserted here -->
+                <tr>
+                    <td colspan="7" class="px-3 py-3 text-center text-gray-400">
+                        <div class="flex justify-center items-center space-x-2">
+                            <div class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-blue-600 rounded-full" role="status" aria-label="loading">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                            <span>Loading reports...</span>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<!-- Modal for Report Generation -->
+<div id="report-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+    <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
+        <h3 class="text-xl font-bold text-white mb-4">Generate Report</h3>
+        <form id="generate-report-form" class="space-y-4">
+            <div>
+                <label class="block text-sm text-gray-300 mb-1" for="gen-symbol">Symbol</label>
+                <input type="text" id="gen-symbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-300 mb-1" for="gen-report-type">Report Type</label>
+                <select id="gen-report-type" class="w-full p-2 rounded bg-slate-700 text-white" required>
+                    <option value="market">Market Check</option>
+                    <option value="backtest">Backtest</option>
+                    <option value="comparison">Comparison</option>
+                    <option value="finance">Finance</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-300 mb-1" for="gen-strategy">Strategy</label>
+                <input type="text" id="gen-strategy" class="w-full p-2 rounded bg-slate-700 text-white">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-300 mb-1" for="gen-timeframe">Timeframe</label>
+                <input type="text" id="gen-timeframe" class="w-full p-2 rounded bg-slate-700 text-white">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-300 mb-1" for="gen-start-date">Start Date</label>
+                <input type="date" id="gen-start-date" class="w-full p-2 rounded bg-slate-700 text-white">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-300 mb-1" for="gen-end-date">End Date</label>
+                <input type="date" id="gen-end-date" class="w-full p-2 rounded bg-slate-700 text-white">
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button type="button" id="cancel-report-modal" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+                <button type="submit" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700">Generate</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+// Modal logic for Generate Report
+const openReportModalBtn = document.getElementById('open-generate-report-modal');
+const reportModal = document.getElementById('report-modal');
+const cancelReportModalBtn = document.getElementById('cancel-report-modal');
+
+if (openReportModalBtn && reportModal && cancelReportModalBtn) {
+    openReportModalBtn.addEventListener('click', () => {
+        reportModal.classList.remove('hidden');
+    });
+    cancelReportModalBtn.addEventListener('click', () => {
+        reportModal.classList.add('hidden');
+    });
+    // Optional: close modal on outside click
+    reportModal.addEventListener('mousedown', (e) => {
+        if (e.target === reportModal) {
+            reportModal.classList.add('hidden');
+        }
+    });
+}
+
+function cleanResults() {
+    // Show confirmation modal before cleaning all results
+    showConfirmationModal(
+        `Are you sure you want to delete all results? This cannot be undone.`,
+        () => {
+            // Confirmed - proceed with cleaning
+            fetch('/clean-results', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showToast('All results cleaned successfully', 'success');
+                    if (typeof fetchReportsData === 'function') fetchReportsData();
+                })
+                .catch(error => {
+                    showToast('Error cleaning results: ' + error.message, 'error');
+                });
+        }
+    );
+}
+</script> 

@@ -78,9 +78,9 @@ results-dir:
 	mkdir -p public/results
 	
 
-# Start report server
-server:
-	$(PYTHON) server/report_server.py
+# Start FastAPI server (serves static and API)
+server: results-dir
+	$(PYTHON) -m server.main
 
 .PHONY: setup backtest-nvda backtest-smci \
 	compare-active clean results-dir server ensure-venv activate-venv backtest-active \
