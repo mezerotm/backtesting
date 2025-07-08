@@ -13,6 +13,8 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import shutil
 import logging
+import subprocess
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +133,7 @@ def generate_dashboard(refresh_interval=1000):
         dashboard_html = template.render(
             reports=reports,
             refresh_interval=refresh_interval,
-            timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            now=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             format_report_date=format_report_date  # Pass the function to template
         )
         
@@ -437,5 +439,24 @@ def generate_dashboard_only():
     dashboard_path = generate_dashboard(refresh_interval=refresh_interval)
     return dashboard_path
 
+# To use the new API routers, add the following to your FastAPI app:
+#
+# from server.api.report import router as report_router
+# from server.api.dashboard import router as dashboard_router
+# from server.api.portfolio import router as portfolio_router
+# app.include_router(report_router)
+# app.include_router(dashboard_router)
+# app.include_router(portfolio_router)
+#
+# Make sure your FastAPI app is running and serving the /api/* endpoints.
+
 if __name__ == "__main__":
-    start_dashboard_server() 
+    # Start FastAPI app (server/api/dashboard.py) with uvicorn in a background process
+    fastapi_proc = subprocess.Popen([
+        sys.executable, "-m", "uvicorn", "server.api.dashboard:router", "--host", "0.0.0.0", "--port", "8001", "--reload"
+    ])
+    try:
+        start_dashboard_server()
+    finally:
+        fastapi_proc.terminate()
+        fastapi_proc.wait() 
