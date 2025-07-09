@@ -6,7 +6,7 @@
 <div class="h-full flex flex-col">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-white">Portfolio Manager</h2>
-        <button id="add-position-btn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">
+        <button id="addPositionBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">
             <i class="fa-solid fa-plus mr-2"></i>Add Position
         </button>
     </div>
@@ -130,7 +130,7 @@ function openAddModal() {
     document.getElementById('position-modal').classList.remove('hidden');
 }
 
-document.getElementById('add-position-btn').addEventListener('click', openAddModal);
+document.getElementById('addPositionBtn').addEventListener('click', openAddModal);
 document.getElementById('cancel-modal').addEventListener('click', () => {
     document.getElementById('position-modal').classList.add('hidden');
 });

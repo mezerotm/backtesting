@@ -33,6 +33,8 @@ async def log_requests(request: Request, call_next):
 # Serve static files from /static
 app.mount("/static", StaticFiles(directory="public", html=True), name="public")
 app.mount("/results", StaticFiles(directory="public/results", html=True), name="results")
+# Serve widget JS files from /js
+app.mount("/js", StaticFiles(directory=os.path.abspath(os.path.join(os.path.dirname(__file__), '../../public/js'))), name="js")
 
 # Serve dashboard at root
 @app.get("/")

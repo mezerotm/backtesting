@@ -1,0 +1,249 @@
+// --- Report Widget Logic (migrated from dashboard.html) ---
+const API_REPORT = '/api/report';
+
+export function fetchReportsData() {
+    fetch(API_REPORT + '/list')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data) {
+                console.error('Invalid reports data format:', data);
+                return;
+            }
+            const finishedReports = data.filter(report => !report.status || report.status === 'finished');
+            displayReports(finishedReports);
+            const lastUpdated = document.getElementById('lastUpdated');
+            if (lastUpdated) lastUpdated.textContent = new Date().toLocaleString();
+        })
+        .catch(error => {
+            console.error('Error fetching reports data:', error);
+            const tableBody = document.querySelector('#reportsTable tbody');
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-red-500 font-medium">
+                            <i class="fa-solid fa-circle-exclamation mr-2"></i>
+                            Failed to load reports. Error: ${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+}
+
+export function displayReports(reports) {
+    reports.sort((a, b) => new Date(b.created) - new Date(a.created));
+    const tableBody = document.querySelector('#reportsTable tbody');
+    if (!tableBody) {
+        console.error('Table body not found');
+        return;
+    }
+    tableBody.innerHTML = '';
+    if (reports.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="py-4 text-center">
+                    <div class="flex justify-center text-gray-300">
+                        <i class="fa-solid fa-folder-open text-xl mr-2"></i>
+                        <span>No reports available</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    // Filter logic can be re-enabled here if needed
+    reports.forEach((report, index) => {
+        const row = document.createElement('tr');
+        row.className = `${index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-900'} hover:bg-slate-700`;
+        let typeBadgeClass = '';
+        if (report.type === 'backtest') {
+            typeBadgeClass = 'bg-green-800 text-green-200';
+        } else if (report.type === 'comparison') {
+            typeBadgeClass = 'bg-rose-900 text-rose-200';
+        } else if (report.type === 'chart') {
+            typeBadgeClass = 'bg-blue-900 text-blue-200';
+        } else {
+            typeBadgeClass = 'bg-gray-700 text-gray-200';
+        }
+        const startDate = report.start_date ? formatDate(report.start_date, false, true) : '';
+        const endDate = report.end_date ? formatDate(report.end_date, false, true) : '';
+        row.innerHTML = `
+            <td class="px-3 py-3 align-middle whitespace-nowrap">
+                <div class="flex items-center gap-2">
+                    <a href="${report.path}" class="text-blue-500 hover:text-blue-400" title="View Report">
+                        <i class="fa-solid fa-file-lines"></i>
+                    </a>
+                    <button onclick="deleteReport('${report.dir}')" class="text-red-500 hover:text-red-400" title="Delete Report">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+            <td class="px-3 py-3 align-middle whitespace-nowrap font-medium text-white">
+                ${report.symbol || 'Unknown'}
+            </td>
+            <td class="px-3 py-3 align-middle whitespace-nowrap">
+                <span class="inline-flex items-center gap-x-1.5 py-1 px-2.5 text-xs font-medium rounded-full ${typeBadgeClass}">
+                    ${report.type || 'Unknown'}
+                </span>
+            </td>
+            <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-200">
+                ${report.strategy === 'Unknown' ? '-' : report.strategy || '-'}
+            </td>
+            <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
+                ${report.timeframe || '-'}
+            </td>
+            <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-gray-300">
+                ${report.date_range || report.start_date && report.end_date ? 
+                    `${formatDate(report.start_date, false, true)} to ${formatDate(report.end_date, false, true)}` : 
+                    '-'}
+            </td>
+            <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
+                ${report.created ? formatDate(report.created, true, true) : '-'}
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+export function formatDate(dateString, includeTime = false, compact = false) {
+    try {
+        const date = new Date(dateString);
+        if (compact) {
+            const month = date.toLocaleString('en-US', { month: 'short' });
+            const day = date.getDate();
+            const year = date.getFullYear();
+            let formatted = `${month} ${day}, ${year}`;
+            if (includeTime) {
+                const hours = date.getHours();
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                formatted = `${month} ${day}, ${year} ${hours}:${minutes}`;
+            }
+            return formatted;
+        } else {
+            const options = { year: 'numeric', month: 'short', day: 'numeric', hour12: false };
+            if (includeTime) {
+                options.hour = '2-digit';
+                options.minute = '2-digit';
+            }
+            return date.toLocaleDateString('en-US', options);
+        }
+    } catch (e) {
+        console.error('Date parsing error:', e, 'for date:', dateString);
+        return dateString;
+    }
+}
+
+export function deleteReport(reportDir) {
+    showConfirmationModal(
+        `Are you sure you want to delete this report?`,
+        () => {
+            fetch(`/delete-report/${reportDir}`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                showToast('Report deleted successfully', 'success');
+                fetchReportsData();
+            })
+            .catch(error => {
+                showToast('Error deleting report: ' + error.message, 'error');
+                console.error('Delete error:', error);
+            });
+        }
+    );
+}
+
+export function showConfirmationModal(message, confirmCallback) {
+    const modal = document.getElementById('modal');
+    const confirmBtn = document.getElementById('confirmModalBtn');
+    const cancelBtn = document.getElementById('cancelModalBtn');
+
+    if (modal && confirmBtn && cancelBtn) {
+        modal.classList.remove('hidden');
+        modal.querySelector('.modal-content p').textContent = message;
+
+        confirmBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            confirmCallback();
+        });
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        // Optional: close modal on outside click
+        modal.addEventListener('mousedown', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    }
+}
+
+export function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        console.error('Toast container not found');
+        return;
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 3000); // Hide after 3 seconds
+
+    toast.addEventListener('transitionend', () => {
+        if (toast.classList.contains('hidden')) {
+            toast.remove();
+        }
+    });
+}
+
+export function resetFilters() {
+    // This function was not provided in the edit_specification,
+    // so it will be left as a placeholder.
+    console.log('Resetting filters...');
+}
+
+export function initReport() {
+    fetchReportsData();
+    // Set up event listeners for filters, report generation, etc.
+}
+
+export function cleanResults() {
+    // Show confirmation modal before cleaning all results
+    showConfirmationModal(
+        `Are you sure you want to delete all results? This cannot be undone.`,
+        () => {
+            // Confirmed - proceed with cleaning
+            fetch('/clean-results', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showToast('All results cleaned successfully', 'success');
+                    if (typeof fetchReportsData === 'function') fetchReportsData();
+                })
+                .catch(error => {
+                    showToast('Error cleaning results: ' + error.message, 'error');
+                });
+        }
+    );
+}
