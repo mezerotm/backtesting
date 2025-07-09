@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 import requests
 
-PORTFOLIO_PATH = os.path.join("public", "portfolio", "positions.json")
+# NOTE: This file is backend-only. Do NOT mount public/data as a static folder unless browser access is required.
+PORTFOLIO_PATH = os.path.join("public", "data", "positions.json")
 POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 
 class Position(BaseModel):

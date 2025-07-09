@@ -67,22 +67,30 @@
 <div class="h-full">
     <!-- Portfolio Widget Section -->
     <div class="mb-8 max-w-[85rem] mx-auto w-full">
-        <div class="mb-8 max-w-[85rem] mx-auto w-full">
+        <!--
+  IMPORTANT: All IDs, variable names, and function names in this widget must use camelCase.
+  This ensures consistency between HTML and JavaScript, and avoids mismatches.
+  Do NOT use dash-case (e.g. add-position-btn) for IDs in widget code.
+-->
+<div class="mb-8 max-w-[85rem] mx-auto w-full flex flex-col gap-6">
+    <!-- Add Position Toolbar -->
+    <div class="bg-slate-800 rounded-xl shadow p-6 flex justify-end gap-4">
+        <button id="addPositionBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> Add Position
+        </button>
+        <button id="settingsBtn" class="text-slate-400 hover:text-blue-400 focus:outline-none flex items-center justify-center rounded-full h-10 w-10" title="Portfolio Settings">
+            <i class="fa-solid fa-gear text-xl"></i>
+        </button>
+    </div>
+    <!-- Portfolio Card -->
     <div class="bg-slate-800 rounded-xl shadow-sm p-6">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold text-white">Portfolio</h2>
-            <button id="add-position-btn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">
-                <i class="fa-solid fa-plus mr-2"></i>Add Position
-            </button>
-        </div>
-        <!-- Portfolio Cash Section -->
-        <div class="mb-4 flex items-center gap-4">
-            <label for="portfolio-cash" class="block text-sm text-gray-300 font-semibold">Total Portfolio Cash ($):</label>
-            <input type="number" id="portfolio-cash" class="p-2 rounded bg-slate-700 text-white w-40" step="any" min="0" value="10000">
-            <button type="button" id="save-portfolio-cash" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                Portfolio
+            </h2>
         </div>
         <div class="overflow-x-auto mb-4">
-            <table class="min-w-full divide-y divide-slate-700" id="positions-table">
+            <table class="min-w-full divide-y divide-slate-700" id="positionsTable">
                 <thead>
                     <tr>
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
@@ -96,48 +104,64 @@
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-700" id="positions-tbody">
+                <tbody class="divide-y divide-slate-700" id="positionsTbody">
                     <tr><td colspan="9" class="text-center text-gray-400 py-4">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
     <!-- Add/Edit Modal (hidden by default) -->
-    <div id="position-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+    <div id="positionModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
         <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
-            <h3 class="text-xl font-bold text-white mb-4" id="modal-title">Add Position</h3>
-            <form id="position-form" class="space-y-4">
-                <input type="hidden" id="position-id">
+            <h3 class="text-xl font-bold text-white mb-4" id="modalTitle">Add Position</h3>
+            <form id="positionForm" class="space-y-4">
+                <input type="hidden" id="positionId">
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-symbol">Symbol</label>
-                    <input type="text" id="portfolio-symbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+                    <label class="block text-sm text-gray-300 mb-1" for="symbol">Symbol</label>
+                    <input type="text" id="symbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-quantity">Quantity</label>
-                    <input type="number" id="portfolio-quantity" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required value="1">
+                    <label class="block text-sm text-gray-300 mb-1" for="quantity">Quantity</label>
+                    <input type="number" id="quantity" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required value="1">
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-buy-price">Buy Price</label>
-                    <input type="number" id="portfolio-buy-price" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required>
+                    <label class="block text-sm text-gray-300 mb-1" for="buyPrice">Buy Price</label>
+                    <input type="number" id="buyPrice" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required>
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-buy-date">Buy Date</label>
-                    <input type="date" id="portfolio-buy-date" class="w-full p-2 rounded bg-slate-700 text-white" required>
+                    <label class="block text-sm text-gray-300 mb-1" for="buyDate">Buy Date</label>
+                    <input type="date" id="buyDate" class="w-full p-2 rounded bg-slate-700 text-white" required>
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-beta">Beta</label>
-                    <input type="number" id="portfolio-beta" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+                    <label class="block text-sm text-gray-300 mb-1" for="beta">Beta</label>
+                    <input type="number" id="beta" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-delta">Delta</label>
-                    <input type="number" id="portfolio-delta" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+                    <label class="block text-sm text-gray-300 mb-1" for="delta">Delta</label>
+                    <input type="number" id="delta" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="portfolio-notes">Notes</label>
-                    <textarea id="portfolio-notes" class="w-full p-2 rounded bg-slate-700 text-white"></textarea>
+                    <label class="block text-sm text-gray-300 mb-1" for="notes">Notes</label>
+                    <textarea id="notes" class="w-full p-2 rounded bg-slate-700 text-white"></textarea>
                 </div>
                 <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" id="cancel-modal" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+                    <button type="button" id="cancelModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+                    <button type="submit" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Portfolio Cash Modal (hidden by default) -->
+    <div id="cashModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+        <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
+            <h3 class="text-xl font-bold text-white mb-4">Portfolio Settings</h3>
+            <form id="cashForm" class="space-y-4">
+                <div>
+                    <label for="cash" class="block text-sm text-gray-300 font-semibold mb-2">Total Portfolio Cash ($):</label>
+                    <input type="number" id="cash" class="p-2 rounded bg-slate-700 text-white w-full" step="any" min="0">
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" id="cancelCashModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
                     <button type="submit" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
                 </div>
             </form>
@@ -146,7 +170,7 @@
 </div>
 
 <style>
-#portfolio-symbol {
+#symbol {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -162,193 +186,153 @@
             <button type="button" onclick="cleanResults()" class="py-2 px-4 rounded border border-slate-600 text-white bg-slate-800 hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
                 <i class="fa-solid fa-trash"></i> Clean Results
             </button>
-            <button id="open-generate-report-modal" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 whitespace-nowrap">
+            <button id="openModalBtn" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 whitespace-nowrap">
                 <i class="fa-solid fa-plus"></i> Generate Report
             </button>
         </div>
     </div>
     <!-- Reports Area: Two Columns -->
     <div class="flex flex-col lg:flex-row gap-8 max-w-[85rem] mx-auto w-full">
-        <div class="w-full lg:w-1/3">
-            <div class="bg-slate-700/80 border border-slate-600 rounded-xl shadow p-6 w-full max-w-[85rem] mx-auto flex flex-col gap-4">
-    <div class="flex items-center gap-2 mb-4">
+        <!--
+  IMPORTANT: All IDs, variable names, and function names in this widget must be unique within the widget folder.
+-->
+<div class="w-full max-w-[85rem] mx-auto">
+  <div class="flex flex-col lg:flex-row gap-6 w-full">
+    <!-- Filters Section -->
+    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow p-4 w-full lg:max-w-xs lg:flex-none flex flex-col gap-3 mb-8 lg:mb-0">
+      <div class="flex items-center gap-2 mb-4">
         <i class="fa-solid fa-filter text-blue-400"></i>
         <h3 class="text-lg font-semibold text-white">Filters</h3>
-    </div>
-    <div class="flex flex-col gap-4">
-        <div class="bg-slate-800 rounded-lg shadow p-3">
-            <label for="report-type" class="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
-            <select id="report-type" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-                <option value="all">All Reports</option>
-                <option value="comparison">Comparison Reports</option>
-                <option value="backtest">Backtest Reports</option>
-                <option value="market">Market Check</option>
-                <option value="finance">Finance Report</option>
-            </select>
+      </div>
+      <div class="flex flex-col gap-4">
+        <div>
+          <label for="reportType" class="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
+          <select id="reportType" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+            <option value="all">All Reports</option>
+            <option value="comparison">Comparison Reports</option>
+            <option value="backtest">Backtest Reports</option>
+            <option value="market">Market Check</option>
+            <option value="finance">Finance Report</option>
+          </select>
         </div>
-        <div class="bg-slate-800 rounded-lg shadow p-3">
-            <label for="report-filter-symbol" class="block text-sm font-medium mb-2 text-gray-300">Symbol</label>
-            <select id="report-filter-symbol" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-                <option value="all">All Symbols</option>
-                
-            </select>
+        <div>
+          <label for="symbol" class="block text-sm font-medium mb-2 text-gray-300">Symbol</label>
+          <select id="symbol" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+            <option value="all">All Symbols</option>
+            
+          </select>
         </div>
-        <div class="bg-slate-800 rounded-lg shadow p-3">
-            <label for="strategy" class="block text-sm font-medium mb-2 text-gray-300">Strategy</label>
-            <select id="strategy" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-                <option value="all">All Strategies</option>
-                
-            </select>
+        <div>
+          <label for="strategy" class="block text-sm font-medium mb-2 text-gray-300">Strategy</label>
+          <select id="strategy" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+            <option value="all">All Strategies</option>
+            
+          </select>
         </div>
-        <div class="bg-slate-800 rounded-lg shadow p-3">
-            <label for="start-date" class="block text-xs text-gray-300 mb-1">Start Date</label>
-            <input type="date" id="start-date" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
+        <div>
+          <label for="startDate" class="block text-xs text-gray-300 mb-1">Start Date</label>
+          <input type="date" id="startDate" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
         </div>
-        <div class="bg-slate-800 rounded-lg shadow p-3">
-            <label for="end-date" class="block text-xs text-gray-300 mb-1">End Date</label>
-            <input type="date" id="end-date" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
+        <div>
+          <label for="endDate" class="block text-xs text-gray-300 mb-1">End Date</label>
+          <input type="date" id="endDate" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
         </div>
         <div class="flex flex-col gap-2 mt-2">
-            <button id="reset-filters" class="reset-btn py-2 px-4 rounded-lg border border-gray-600 bg-slate-800 text-white hover:bg-slate-600 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-rotate"></i> Reset
-            </button>
-            <button id="apply-filters" class="primary-btn py-2 px-4 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-filter"></i> Apply Filters
-            </button>
+          <button id="resetFilters" class="reset-btn py-2 px-4 rounded-lg border border-gray-600 bg-slate-800 text-white hover:bg-slate-600 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-rotate"></i> Reset
+          </button>
+          <button id="applyFilters" class="primary-btn py-2 px-4 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-filter"></i> Apply Filters
+          </button>
         </div>
+      </div>
     </div>
-</div> 
-        </div>
-        <div class="w-full lg:w-2/3">
-            <div class="bg-slate-800 border border-slate-700 rounded-xl shadow p-6 flex flex-col w-full max-w-[85rem] mx-auto">
-    <div class="flex justify-between items-center mb-4">
+    <!-- Reports Table Section -->
+    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow p-6 flex flex-col flex-1 min-w-0">
+      <div class="flex justify-between items-center mb-4">
         <div class="flex items-center gap-2">
-            <i class="fa-solid fa-table text-blue-400"></i>
-            <h2 class="text-lg font-bold text-white">Available Reports</h2>
+          <i class="fa-solid fa-table text-blue-400"></i>
+          <h2 class="text-lg font-bold text-white">Available Reports</h2>
         </div>
         <div class="text-sm text-gray-500">
-            Last updated: <span id="last-updated">2025-07-08 13:44:51</span>
+          Last updated: <span id="lastUpdated">2025-07-08 22:24:25</span>
         </div>
-    </div>
-    <div class="overflow-x-auto">
-        <table id="reports-table" class="min-w-full divide-y divide-slate-700">
-            <thead class="bg-slate-800 sticky top-0 z-10">
-                <tr>
-                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Actions</th>
-                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Symbol</th>
-                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Report Type</th>
-                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Strategy</th>
-                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Timeframe</th>
-                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">Date Range</th>
-                    <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase">
-                        Created
-                        <i class="fa-solid fa-arrow-up-short-wide ml-1 text-blue-400" title="Sorted by newest first"></i>
-                    </th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-700">
-                <!-- Dynamic content will be inserted here -->
-                <tr>
-                    <td colspan="7" class="px-3 py-3 text-center text-gray-400">
-                        <div class="flex justify-center items-center space-x-2">
-                            <div class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-blue-600 rounded-full" role="status" aria-label="loading">
-                                <span class="sr-only">Loading...</span>
-                            </div>
-                            <span>Loading reports...</span>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
+      </div>
+      <div class="overflow-x-auto">
+        <table id="reportsTable" class="min-w-0 w-full table-auto divide-y divide-slate-700">
+          <thead class="bg-slate-800 sticky top-0 z-10">
+            <tr>
+              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Actions</th>
+              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Symbol</th>
+              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Report Type</th>
+              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Strategy</th>
+              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Timeframe</th>
+              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Date Range</th>
+              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">
+                Created
+                <i class="fa-solid fa-arrow-up-short-wide ml-1 text-blue-400" title="Sorted by newest first"></i>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-700">
+            <!-- Dynamic content will be inserted here -->
+            <tr>
+              <td colspan="7" class="px-3 py-3 text-center text-gray-400 truncate">
+                <div class="flex justify-center items-center space-x-2">
+                  <div class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-blue-600 rounded-full" role="status" aria-label="loading">
+                    <span class="sr-only">Loading reports...</span>
+                  </div>
+                  <span>Loading reports...</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
         </table>
+      </div>
     </div>
+  </div>
 </div>
 <!-- Modal for Report Generation -->
-<div id="report-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
-    <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
-        <h3 class="text-xl font-bold text-white mb-4">Generate Report</h3>
-        <form id="generate-report-form" class="space-y-4">
-            <div>
-                <label class="block text-sm text-gray-300 mb-1" for="gen-symbol">Symbol</label>
-                <input type="text" id="gen-symbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
-            </div>
-            <div>
-                <label class="block text-sm text-gray-300 mb-1" for="gen-report-type">Report Type</label>
-                <select id="gen-report-type" class="w-full p-2 rounded bg-slate-700 text-white" required>
-                    <option value="market">Market Check</option>
-                    <option value="backtest">Backtest</option>
-                    <option value="comparison">Comparison</option>
-                    <option value="finance">Finance</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm text-gray-300 mb-1" for="gen-strategy">Strategy</label>
-                <input type="text" id="gen-strategy" class="w-full p-2 rounded bg-slate-700 text-white">
-            </div>
-            <div>
-                <label class="block text-sm text-gray-300 mb-1" for="gen-timeframe">Timeframe</label>
-                <input type="text" id="gen-timeframe" class="w-full p-2 rounded bg-slate-700 text-white">
-            </div>
-            <div>
-                <label class="block text-sm text-gray-300 mb-1" for="gen-start-date">Start Date</label>
-                <input type="date" id="gen-start-date" class="w-full p-2 rounded bg-slate-700 text-white">
-            </div>
-            <div>
-                <label class="block text-sm text-gray-300 mb-1" for="gen-end-date">End Date</label>
-                <input type="date" id="gen-end-date" class="w-full p-2 rounded bg-slate-700 text-white">
-            </div>
-            <div class="flex justify-end gap-2 mt-4">
-                <button type="button" id="cancel-report-modal" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
-                <button type="submit" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700">Generate</button>
-            </div>
-        </form>
-    </div>
-</div>
-<script>
-// Modal logic for Generate Report
-const openReportModalBtn = document.getElementById('open-generate-report-modal');
-const reportModal = document.getElementById('report-modal');
-const cancelReportModalBtn = document.getElementById('cancel-report-modal');
-
-if (openReportModalBtn && reportModal && cancelReportModalBtn) {
-    openReportModalBtn.addEventListener('click', () => {
-        reportModal.classList.remove('hidden');
-    });
-    cancelReportModalBtn.addEventListener('click', () => {
-        reportModal.classList.add('hidden');
-    });
-    // Optional: close modal on outside click
-    reportModal.addEventListener('mousedown', (e) => {
-        if (e.target === reportModal) {
-            reportModal.classList.add('hidden');
-        }
-    });
-}
-
-function cleanResults() {
-    // Show confirmation modal before cleaning all results
-    showConfirmationModal(
-        `Are you sure you want to delete all results? This cannot be undone.`,
-        () => {
-            // Confirmed - proceed with cleaning
-            fetch('/clean-results', { method: 'POST' })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    showToast('All results cleaned successfully', 'success');
-                    if (typeof fetchReportsData === 'function') fetchReportsData();
-                })
-                .catch(error => {
-                    showToast('Error cleaning results: ' + error.message, 'error');
-                });
-        }
-    );
-}
-</script> 
-        </div>
+<div id="modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+  <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
+    <h3 class="text-xl font-bold text-white mb-4">Generate Report</h3>
+    <form id="generateReportForm" class="space-y-4">
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="genSymbol">Symbol</label>
+        <input type="text" id="genSymbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="genReportType">Report Type</label>
+        <select id="genReportType" class="w-full p-2 rounded bg-slate-700 text-white" required>
+          <option value="market">Market Check</option>
+          <option value="backtest">Backtest</option>
+          <option value="comparison">Comparison</option>
+          <option value="finance">Finance</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="genStrategy">Strategy</label>
+        <input type="text" id="genStrategy" class="w-full p-2 rounded bg-slate-700 text-white">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="genTimeframe">Timeframe</label>
+        <input type="text" id="genTimeframe" class="w-full p-2 rounded bg-slate-700 text-white">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="genStartDate">Start Date</label>
+        <input type="date" id="genStartDate" class="w-full p-2 rounded bg-slate-700 text-white">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="genEndDate">End Date</label>
+        <input type="date" id="genEndDate" class="w-full p-2 rounded bg-slate-700 text-white">
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button type="button" id="cancelModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+        <button type="submit" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700">Generate</button>
+      </div>
+    </form>
+  </div>
+</div> 
     </div>
 </div>
 
@@ -366,7 +350,7 @@ function cleanResults() {
                     &copy;  Trading Strategy Suite. All rights reserved.
                 </div>
                 <div class="text-slate-400 text-sm">
-                    Generated on: 2025-07-08 13:44:51
+                    Generated on: 2025-07-08 22:24:25
                 </div>
             </div>
         </div>
@@ -376,780 +360,11 @@ function cleanResults() {
     <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.js"></script>
     
     
-<script>
-// --- Portfolio CRUD Logic ---
-const API_PORTFOLIO = '/api/portfolio';
-
-function fetchPositions() {
-    fetch(API_PORTFOLIO + '/')
-        .then(r => r.json())
-        .then(data => renderPositions(data))
-        .catch(() => renderPositions([]));
-}
-
-function getPortfolioCash() {
-    const val = localStorage.getItem('portfolio-cash');
-    return val ? parseFloat(val) : 10000;
-}
-
-function setPortfolioCash(val) {
-    localStorage.setItem('portfolio-cash', val);
-}
-
-function renderPositions(positions) {
-    const tbody = document.getElementById('positions-tbody');
-    tbody.innerHTML = '';
-    const portfolioCash = getPortfolioCash();
-    let totalValue = 0;
-    positions.forEach(pos => {
-        totalValue += pos.quantity * pos.buy_price;
-    });
-    if (!positions.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-4">No positions found.</td></tr>';
-        return;
-    }
-    positions.forEach(pos => {
-        const percent = portfolioCash ? ((pos.quantity * pos.buy_price) / portfolioCash * 100).toFixed(2) : '0.00';
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="px-3 py-2 text-white font-semibold">${pos.symbol}</td>
-            <td class="px-3 py-2 text-gray-200">${pos.quantity}</td>
-            <td class="px-3 py-2 text-gray-200">$${pos.buy_price.toFixed(2)}</td>
-            <td class="px-3 py-2 text-gray-200">${pos.buy_date}</td>
-            <td class="px-3 py-2 text-gray-200">${percent}%</td>
-            <td class="px-3 py-2 text-gray-200">${pos.beta !== undefined ? pos.beta : ''}</td>
-            <td class="px-3 py-2 text-gray-200">${pos.delta !== undefined ? pos.delta : ''}</td>
-            <td class="px-3 py-2 text-gray-400">${pos.notes || ''}</td>
-            <td class="px-3 py-2">
-                <button class="edit-btn text-blue-400 hover:text-blue-300 mr-2" title="Edit" onclick='openEditModal(${JSON.stringify(pos)})'><i class="fa-solid fa-pen"></i></button>
-                <button class="delete-btn text-red-400 hover:text-red-300" title="Delete" onclick='deletePosition(${pos.id})'><i class="fa-solid fa-trash"></i></button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function openEditModal(pos) {
-    document.getElementById('modal-title').textContent = 'Edit Position';
-    document.getElementById('position-id').value = pos.id;
-    document.getElementById('portfolio-symbol').value = pos.symbol;
-    document.getElementById('portfolio-quantity').value = pos.quantity;
-    document.getElementById('portfolio-buy-price').value = pos.buy_price;
-    document.getElementById('portfolio-buy-date').value = pos.buy_date;
-    document.getElementById('portfolio-beta').value = pos.beta !== undefined ? pos.beta : '';
-    document.getElementById('portfolio-delta').value = pos.delta !== undefined ? pos.delta : '';
-    document.getElementById('portfolio-notes').value = pos.notes || '';
-    document.getElementById('position-modal').classList.remove('hidden');
-    bindPortfolioSymbolAutocomplete();
-}
-
-// --- Portfolio Modal Symbol Autocomplete ---
-function bindPortfolioSymbolAutocomplete() {
-    console.log('[Portfolio Widget] bindPortfolioSymbolAutocomplete called');
-    const symbolInput = document.getElementById('portfolio-symbol');
-    console.log('[Portfolio Widget] symbolInput:', symbolInput);
-    if (!symbolInput) {
-        console.error('[Portfolio Widget] symbolInput not found!');
-        return;
-    }
-    let autocompleteDropdown;
-
-    async function inputHandler(e) {
-        const query = e.target.value.trim().toUpperCase();
-        console.log('[Portfolio Widget] Input event:', query);
-        if (query.length < 1) {
-            closeAutocomplete();
-            return;
-        }
-        try {
-            const resp = await fetch(`/api/portfolio/search-symbols?query=${encodeURIComponent(query)}`);
-            console.log('[Portfolio Widget] API request:', resp.url, resp.status);
-            if (!resp.ok) return;
-            const results = await resp.json();
-            console.log('[Portfolio Widget] API results:', results);
-            showAutocomplete(results);
-        } catch (e) {
-            console.error('[Portfolio Widget] API error:', e);
-        }
-    }
-
-    function blurHandler(e) {
-        setTimeout(() => {
-            closeAutocomplete();
-            const symbol = symbolInput.value.trim().toUpperCase();
-            if (symbol) fetchAndFillPrice(symbol);
-        }, 200);
-    }
-
-    function showAutocomplete(results) {
-        closeAutocomplete();
-        if (!results.length) return;
-        autocompleteDropdown = document.createElement('div');
-        autocompleteDropdown.className = 'absolute z-50 bg-slate-800 border border-slate-600 rounded shadow mt-1 w-full';
-        autocompleteDropdown.style.maxHeight = '200px';
-        autocompleteDropdown.style.overflowY = 'auto';
-        results.forEach(item => {
-            const option = document.createElement('div');
-            option.className = 'px-3 py-2 cursor-pointer hover:bg-slate-700 text-white';
-            option.textContent = `${item.symbol} — ${item.name}`;
-            option.addEventListener('mousedown', () => {
-                symbolInput.value = item.symbol;
-                closeAutocomplete();
-                fetchAndFillPrice(item.symbol);
-            });
-            autocompleteDropdown.appendChild(option);
-        });
-        symbolInput.parentNode.style.position = 'relative';
-        symbolInput.parentNode.appendChild(autocompleteDropdown);
-        console.log('[Portfolio Widget] Autocomplete dropdown rendered');
-    }
-
-    function closeAutocomplete() {
-        if (autocompleteDropdown && autocompleteDropdown.parentNode) {
-            autocompleteDropdown.parentNode.removeChild(autocompleteDropdown);
-            autocompleteDropdown = null;
-        }
-    }
-
-    async function fetchAndFillPrice(symbol) {
-        if (!symbol) return;
-        try {
-            const resp = await fetch(`/api/portfolio/latest-price/${encodeURIComponent(symbol)}`);
-            console.log('[Portfolio Widget] Price API request:', resp.url, resp.status);
-            if (!resp.ok) return;
-            const data = await resp.json();
-            console.log('[Portfolio Widget] Price API result:', data);
-            if (data.price) {
-                document.getElementById('portfolio-buy-price').value = data.price;
-            }
-        } catch (e) {
-            console.error('[Portfolio Widget] Price API error:', e);
-        }
-    }
-
-    symbolInput.addEventListener('input', inputHandler);
-    symbolInput.addEventListener('blur', blurHandler);
-
-    // Unbind on modal close
-    document.getElementById('cancel-modal').addEventListener('click', () => {
-        symbolInput.removeEventListener('input', inputHandler);
-        symbolInput.removeEventListener('blur', blurHandler);
-        console.log('[Portfolio Widget] Autocomplete event handlers unbound');
-    });
-}
-
-function openAddModal() {
-    console.log('[Portfolio Widget] openAddModal called');
-    // Check for duplicate ids
-    const symbolInputs = document.querySelectorAll('#portfolio-symbol');
-    console.log(`[Portfolio Widget] #portfolio-symbol count: ${symbolInputs.length}`);
-    if (symbolInputs.length > 1) {
-        console.warn('[Portfolio Widget] WARNING: Duplicate #portfolio-symbol elements found!');
-    }
-    document.getElementById('modal-title').textContent = 'Add Position';
-    document.getElementById('position-id').value = '';
-    document.getElementById('portfolio-symbol').value = '';
-    document.getElementById('portfolio-buy-price').value = '';
-    document.getElementById('portfolio-beta').value = '';
-    document.getElementById('portfolio-delta').value = '';
-    // Set buy date to today
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('portfolio-buy-date').value = today;
-    document.getElementById('portfolio-notes').value = '';
-    document.getElementById('position-modal').classList.remove('hidden');
-    // Set quantity after modal is visible
-    const quantityInput = document.getElementById('portfolio-quantity');
-    console.log('[Portfolio Widget] Before setting quantity, value is:', quantityInput.value);
-    if (!quantityInput.value) quantityInput.value = 1;
-    console.log('[Portfolio Widget] After setting quantity, value is:', quantityInput.value);
-    quantityInput.addEventListener('input', function(e) {
-        console.log('[Portfolio Widget] Quantity input event, value is:', e.target.value);
-    });
-    bindPortfolioSymbolAutocomplete();
-}
-
-document.getElementById('add-position-btn').addEventListener('click', openAddModal);
-document.getElementById('cancel-modal').addEventListener('click', () => {
-    document.getElementById('position-modal').classList.add('hidden');
-});
-
-document.getElementById('position-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const id = document.getElementById('position-id').value;
-    const symbol = document.getElementById('portfolio-symbol').value.trim().toUpperCase();
-    const quantity = parseFloat(document.getElementById('portfolio-quantity').value);
-    const buy_price = parseFloat(document.getElementById('portfolio-buy-price').value);
-    const buy_date = document.getElementById('portfolio-buy-date').value;
-    const beta = parseFloat(document.getElementById('portfolio-beta').value);
-    const delta = parseFloat(document.getElementById('portfolio-delta').value);
-    const notes = document.getElementById('portfolio-notes').value;
-    const pos = { id: id ? parseInt(id) : Date.now(), symbol, quantity, buy_price, buy_date, notes };
-    if (!isNaN(beta)) pos.beta = beta;
-    if (!isNaN(delta)) pos.delta = delta;
-    if (id) {
-        // Update
-        fetch(`${API_PORTFOLIO}/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(pos)
-        }).then(() => {
-            fetchPositions();
-            document.getElementById('position-modal').classList.add('hidden');
-        });
-    } else {
-        // Add
-        fetch(API_PORTFOLIO + '/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(pos)
-        }).then(() => {
-            fetchPositions();
-            document.getElementById('position-modal').classList.add('hidden');
-        });
-    }
-});
-
-function deletePosition(id) {
-    if (!confirm('Delete this position?')) return;
-    fetch(`${API_PORTFOLIO}/${id}`, { method: 'DELETE' })
-        .then(() => fetchPositions());
-}
-
-// Initial load
-fetchPositions();
-
-// --- Reports AJAX ---
-const API_REPORT = '/api/report';
-
-function fetchReportsData() {
-    fetch(API_REPORT + '/list')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (!data) {
-                console.error('Invalid reports data format:', data);
-                return;
-            }
-            // Filter out reports that are not finished (if status exists)
-            const finishedReports = data.filter(report => !report.status || report.status === 'finished');
-            displayReports(finishedReports);
-            document.getElementById('last-updated').textContent = new Date().toLocaleString();
-        })
-        .catch(error => {
-            console.error('Error fetching reports data:', error);
-            // Show an error message in the table
-            const tableBody = document.querySelector('#reports-table tbody');
-            if (tableBody) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="px-6 py-4 text-center text-red-500 font-medium">
-                            <i class="fa-solid fa-circle-exclamation mr-2"></i>
-                            Failed to load reports. Error: ${error.message}
-                        </td>
-                    </tr>
-                `;
-            }
-        });
-}
-
-// Auto-refresh functionality
-let refreshInterval;
-// Define refreshIntervalMs from template variable
-const refreshIntervalMs = Number("1000");
-
-function startAutoRefresh() {
-    // Refresh only the reports section based on configured interval
-    refreshInterval = setInterval(() => {
-        fetchReportsData();
-    }, refreshIntervalMs);
-}
-
-function displayReports(reports) {
-    // Sort reports by creation time (newest first)
-    reports.sort((a, b) => {
-        // Parse the creation timestamps or use the date strings directly
-        const dateA = new Date(a.created);
-        const dateB = new Date(b.created);
-        return dateB - dateA; // Reverse order (newest first)
-    });
-    
-    const tableBody = document.querySelector('#reports-table tbody');
-    
-    if (!tableBody) {
-        console.error('Table body not found');
-        return;
-    }
-    
-    // Clear the table body
-    tableBody.innerHTML = '';
-    
-    if (reports.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="7" class="py-4 text-center">
-                    <div class="flex justify-center text-gray-300">
-                        <i class="fa-solid fa-folder-open text-xl mr-2"></i>
-                        <span>No reports available</span>
-                    </div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    // Get filter values
-    const reportType = document.getElementById('report-type')?.value || 'all';
-    const symbol = document.getElementById('report-filter-symbol')?.value || 'all';
-    const strategy = document.getElementById('strategy')?.value || 'all';
-    const startDate = document.getElementById('start-date')?.value || '';
-    const endDate = document.getElementById('end-date')?.value || '';
-    
-    // Filter reports
-    const filteredReports = reports.filter(report => {
-        // Standard filter checks
-        if (reportType !== 'all' && report.type !== reportType) return false;
-        if (symbol !== 'all' && report.symbol !== symbol) return false;
-        if (strategy !== 'all' && report.strategy !== strategy) return false;
-        
-        // Date range checks
-        if (startDate && report.start_date && new Date(report.start_date) < new Date(startDate)) return false;
-        if (endDate && report.end_date && new Date(report.end_date) > new Date(endDate)) return false;
-        
-        return true;
-    });
-    
-    if (filteredReports.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="7" class="py-6">
-                    <div class="flex flex-col items-center justify-center text-center space-y-3">
-                        <div class="flex items-center text-red-400">
-                            <i class="fa-solid fa-filter-circle-xmark text-xl mr-2"></i>
-                            <span>No reports match the current filter settings</span>
-                        </div>
-                        <button onclick="resetFilters()" class="inline-flex items-center gap-x-1 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600 py-2 px-3">
-                            <i class="fa-solid fa-rotate-right"></i>
-                            Reset Filters
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    // Create rows for each report using Preline & Tailwind classes
-    filteredReports.forEach((report, index) => {
-        const row = document.createElement('tr');
-        
-        // Use Tailwind classes for styling rows
-        row.className = `${index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-900'} hover:bg-slate-700`;
-        
-        // Get report type badge style
-        let typeBadgeClass = '';
-        if (report.type === 'backtest') {
-            typeBadgeClass = 'bg-green-800 text-green-200';
-        } else if (report.type === 'comparison') {
-            typeBadgeClass = 'bg-rose-900 text-rose-200';
-        } else if (report.type === 'chart') {
-            typeBadgeClass = 'bg-blue-900 text-blue-200';
-        } else {
-            typeBadgeClass = 'bg-gray-700 text-gray-200';
-        }
-        
-        // Format dates for display
-        const startDate = report.start_date ? formatDate(report.start_date, false, true) : '';
-        const endDate = report.end_date ? formatDate(report.end_date, false, true) : '';
-        
-        // Create row content with Tailwind classes
-        row.innerHTML = `
-            <td class="px-3 py-3 align-middle whitespace-nowrap">
-                <div class="flex items-center gap-2">
-                    <a href="${report.path}" class="text-blue-500 hover:text-blue-400" title="View Report">
-                        <i class="fa-solid fa-file-lines"></i>
-                    </a>
-                    <button onclick="deleteReport('${report.dir}')" class="text-red-500 hover:text-red-400" title="Delete Report">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-            <td class="px-3 py-3 align-middle whitespace-nowrap font-medium text-white">
-                ${report.symbol || 'Unknown'}
-            </td>
-            <td class="px-3 py-3 align-middle whitespace-nowrap">
-                <span class="inline-flex items-center gap-x-1.5 py-1 px-2.5 text-xs font-medium rounded-full ${typeBadgeClass}">
-                    ${report.type || 'Unknown'}
-                </span>
-            </td>
-            <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-200">
-                ${report.strategy === 'Unknown' ? '-' : report.strategy || '-'}
-            </td>
-            <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
-                ${report.timeframe || '-'}
-            </td>
-            <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-gray-300">
-                ${report.date_range || report.start_date && report.end_date ? 
-                    `${formatDate(report.start_date, false, true)} to ${formatDate(report.end_date, false, true)}` : 
-                    '-'}
-            </td>
-            <td class="px-3 py-3 align-middle whitespace-nowrap text-gray-300">
-                ${report.created ? formatDate(report.created, true, true) : '-'}
-            </td>
-        `;
-        
-        tableBody.appendChild(row);
-    });
-}
-
-// Enhanced formatDate function with compact option
-function formatDate(dateString, includeTime = false, compact = false) {
-    try {
-        const date = new Date(dateString);
-        
-        if (compact) {
-            // More compact date format
-            const month = date.toLocaleString('en-US', { month: 'short' });
-            const day = date.getDate();
-            const year = date.getFullYear();
-            
-            let formatted = `${month} ${day}, ${year}`;
-            
-            if (includeTime) {
-                const hours = date.getHours();
-                const minutes = date.getMinutes().toString().padStart(2, '0');
-                formatted = `${month} ${day}, ${year} ${hours}:${minutes}`;
-            }
-            
-            return formatted;
-        } else {
-            // Original format
-            const options = { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric',
-                hour12: false
-            };
-            
-            if (includeTime) {
-                options.hour = '2-digit';
-                options.minute = '2-digit';
-            }
-            
-            return date.toLocaleDateString('en-US', options);
-        }
-    } catch (e) {
-        console.error('Date parsing error:', e, 'for date:', dateString);
-        return dateString; // Return original if parsing fails
-    }
-}
-
-function deleteReport(reportDir) {
-    // Show confirmation modal before deletion
-    showConfirmationModal(
-        `Are you sure you want to delete this report?`,
-        () => {
-            // Confirmed - proceed with deletion
-            fetch(`/delete-report/${reportDir}`, { 
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                showToast('Report deleted successfully', 'success');
-                fetchReportsData(); // Refresh the reports list
-            })
-            .catch(error => {
-                showToast('Error deleting report: ' + error.message, 'error');
-                console.error('Delete error:', error);
-            });
-        }
-    );
-}
-
-// Replace showConfirmationToast with showConfirmationModal
-function showConfirmationModal(message, confirmCallback) {
-    // Create modal container and backdrop
-    const modalBackdrop = document.createElement('div');
-    const uniqueId = 'modal-' + Date.now();
-    modalBackdrop.id = uniqueId + '-backdrop';
-    modalBackdrop.className = 'fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center';
-    
-    // Create the modal dialog
-    const modal = document.createElement('div');
-    modal.id = uniqueId;
-    modal.className = 'bg-slate-800 border border-slate-700 rounded-lg w-full max-w-md mx-4 overflow-hidden shadow-xl transform transition-all';
-    
-    // Create modal content
-    modal.innerHTML = `
-        <div class="p-4">
-            <div class="flex items-start">
-                <div class="flex-shrink-0 text-red-400">
-                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
-                </div>
-                <div class="ml-4 flex-grow">
-                    <p class="text-sm text-white">${message}</p>
-                </div>
-                <div class="ml-4">
-                    <button type="button" 
-                            class="text-gray-400 hover:text-white focus:outline-none" 
-                            id="${uniqueId}-close">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-4">
-                <button type="button" 
-                        class="py-1.5 px-4 inline-flex justify-center items-center text-sm font-medium rounded-lg bg-slate-700 text-white hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                        id="${uniqueId}-cancel">
-                    Cancel
-                </button>
-                <button type="button"
-                        class="py-1.5 px-4 inline-flex justify-center items-center text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                        id="${uniqueId}-confirm">
-                    Confirm
-                </button>
-            </div>
-        </div>
-    `;
-    
-    // Add modal to page
-    modalBackdrop.appendChild(modal);
-    document.body.appendChild(modalBackdrop);
-    
-    // Set up event listeners properly
-    document.getElementById(`${uniqueId}-close`).addEventListener('click', () => {
-        document.getElementById(`${uniqueId}-backdrop`).remove();
-    });
-    
-    document.getElementById(`${uniqueId}-cancel`).addEventListener('click', () => {
-        document.getElementById(`${uniqueId}-backdrop`).remove();
-    });
-    
-    document.getElementById(`${uniqueId}-confirm`).addEventListener('click', () => {
-        document.getElementById(`${uniqueId}-backdrop`).remove();
-        confirmCallback();
-    });
-    
-    // Add keyboard event listener to close on Escape
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            const modalElement = document.getElementById(uniqueId + '-backdrop');
-            if (modalElement) {
-                modalElement.remove();
-            }
-        }
-    }, { once: true });
-    
-    // Add click event listener to close when clicking outside
-    modalBackdrop.addEventListener('click', function(e) {
-        if (e.target === modalBackdrop) {
-            modalBackdrop.remove();
-        }
-    });
-}
-
-function showToast(message, type = 'success') {
-    const toastContainer = document.getElementById('toast-container');
-    
-    // Create toast container if it doesn't exist
-    if (!toastContainer) {
-        const newContainer = document.createElement('div');
-        newContainer.id = 'toast-container';
-        newContainer.className = 'fixed bottom-0 end-0 z-50 p-4';
-        document.body.appendChild(newContainer);
-    }
-    
-    // Define toast styles based on type
-    const styles = {
-        success: {
-            bg: 'bg-teal-50 dark:bg-teal-800',
-            border: 'border-teal-200 dark:border-teal-900',
-            text: 'text-teal-800 dark:text-teal-400',
-            icon: 'fa-circle-check'
-        },
-        error: {
-            bg: 'bg-red-50 dark:bg-red-800',
-            border: 'border-red-200 dark:border-red-900',
-            text: 'text-red-800 dark:text-red-400',
-            icon: 'fa-circle-xmark'
-        },
-        warning: {
-            bg: 'bg-yellow-50 dark:bg-yellow-800',
-            border: 'border-yellow-200 dark:border-yellow-900',
-            text: 'text-yellow-800 dark:text-yellow-400',
-            icon: 'fa-triangle-exclamation'
-        }
-    };
-    
-    const style = styles[type];
-    
-    const toast = document.createElement('div');
-    toast.className = `hs-removing:translate-x-5 hs-removing:opacity-0 transition duration-300 ${style.bg} border ${style.border} rounded-lg p-4 mb-3`;
-    toast.innerHTML = `
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <i class="fa-solid ${style.icon} ${style.text} mt-0.5"></i>
-            </div>
-            <div class="ms-3">
-                <p class="text-sm ${style.text}">${message}</p>
-            </div>
-            <div class="ps-3 ms-auto">
-                <button type="button" 
-                        class="inline-flex ${style.text} rounded-lg p-1.5 hover:${style.bg} focus:outline-none" 
-                        onclick="this.parentElement.parentElement.parentElement.remove()">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.getElementById('toast-container').appendChild(toast);
-    
-    // Remove toast after 5 seconds
-    setTimeout(() => {
-        toast.classList.add('hs-removing');
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.remove();
-            }
-        }, 300);
-    }, 5000);
-}
-
-// Add this function to help reset filters
-function resetFilters() {
-    const filterElements = ['report-type', 'report-filter-symbol', 'strategy', 'start-date', 'end-date'];
-    filterElements.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            if (element.tagName === 'SELECT') {
-                element.value = 'all';
-            } else {
-                element.value = '';
-            }
-        }
-    });
-    fetchReportsData();
-}
-
-// Initialize when document is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Initial fetch of reports data
-    fetchReportsData();
-    
-    // Start auto-refresh
-    startAutoRefresh();
-    
-    // Set up event listeners for filter buttons
-    document.getElementById('apply-filters').addEventListener('click', function() {
-        fetchReportsData();
-    });
-    
-    document.getElementById('reset-filters').addEventListener('click', function() {
-        // Reset all filter fields
-        document.getElementById('report-type').value = 'all';
-        document.getElementById('report-filter-symbol').value = 'all';
-        document.getElementById('strategy').value = 'all';
-        document.getElementById('start-date').value = '';
-        document.getElementById('end-date').value = '';
-        
-        // Refresh reports with reset filters
-        fetchReportsData();
-    });
-    
-    // Initialize Preline UI components
-    if (typeof HSOverlay !== 'undefined') {
-        HSOverlay.autoInit();
-    } else {
-        console.error('HSOverlay not found. Make sure Preline UI is properly included.');
-    }
-    // Enforce uppercase in symbol input
-    const symbolInput = document.getElementById('portfolio-symbol');
-    if (symbolInput) {
-        symbolInput.addEventListener('input', function(e) {
-            e.target.value = e.target.value.toUpperCase();
-        });
-    }
-});
-
-document.getElementById('generate-report-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const symbol = document.getElementById('gen-symbol').value.trim().toUpperCase();
-    const reportType = document.getElementById('gen-report-type').value;
-    const strategy = document.getElementById('gen-strategy').value.trim();
-    const timeframe = document.getElementById('gen-timeframe').value.trim();
-    const startDate = document.getElementById('gen-start-date').value;
-    const endDate = document.getElementById('gen-end-date').value;
-    const payload = { symbol, report_type: reportType, strategy, timeframe, start_date: startDate, end_date: endDate };
-    // TODO: Implement backend endpoint for report generation
-    try {
-        const resp = await fetch('/api/report/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (!resp.ok) throw new Error('Failed to generate report');
-        showToast('Report generation started!', 'success');
-        fetchReportsData();
-    } catch (err) {
-        showToast('Error generating report: ' + err.message, 'error');
-    }
-});
-
-// Modal logic for Generate Report
-const openReportModalBtn = document.getElementById('open-generate-report-modal');
-const reportModal = document.getElementById('report-modal');
-const cancelReportModalBtn = document.getElementById('cancel-report-modal');
-
-if (openReportModalBtn && reportModal && cancelReportModalBtn) {
-    openReportModalBtn.addEventListener('click', () => {
-        reportModal.classList.remove('hidden');
-    });
-    cancelReportModalBtn.addEventListener('click', () => {
-        reportModal.classList.add('hidden');
-    });
-    // Optional: close modal on outside click
-    reportModal.addEventListener('mousedown', (e) => {
-        if (e.target === reportModal) {
-            reportModal.classList.add('hidden');
-        }
-    });
-}
-
-function cleanResults() {
-    // Show confirmation modal before cleaning all results
-    showConfirmationModal(
-        `Are you sure you want to delete all results? This cannot be undone.`,
-        () => {
-            // Confirmed - proceed with cleaning
-            fetch('/clean-results', { method: 'POST' })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    showToast('All results cleaned successfully', 'success');
-                    if (typeof fetchReportsData === 'function') fetchReportsData();
-                })
-                .catch(error => {
-                    showToast('Error cleaning results: ' + error.message, 'error');
-                });
-        }
-    );
-}
+<script type="module">
+  import { initReport } from "/js/report.js";
+  import { initPortfolio } from "/js/portfolio.js";
+  initReport();
+  initPortfolio();
 </script>
 
 </body>
