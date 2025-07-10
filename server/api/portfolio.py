@@ -8,6 +8,7 @@ import requests
 
 # NOTE: This file is backend-only. Do NOT mount public/data as a static folder unless browser access is required.
 PORTFOLIO_PATH = os.path.join("public", "data", "positions.json")
+PORTFOLIO_CASH_PATH = os.path.join("public", "data", "portfolio.json")
 POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 
 class Position(BaseModel):
@@ -27,6 +28,17 @@ def load_positions() -> List[dict]:
 def save_positions(positions: List[dict]):
     with open(PORTFOLIO_PATH, "w", encoding="utf-8") as f:
         json.dump(positions, f, indent=2)
+
+# --- Portfolio Cash Logic ---
+def load_portfolio_cash() -> dict:
+    if not os.path.exists(PORTFOLIO_CASH_PATH):
+        return {"total_portfolio_cash": 0.0}
+    with open(PORTFOLIO_CASH_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_portfolio_cash(data: dict):
+    with open(PORTFOLIO_CASH_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
@@ -98,4 +110,17 @@ def get_latest_price(symbol: str):
     results = data.get("results", [])
     if not results:
         raise HTTPException(status_code=404, detail="No price data found")
-    return {"price": results[0]["c"]} 
+    return {"price": results[0]["c"]}
+
+@router.get("/cash")
+def get_portfolio_cash():
+    """Get the total portfolio cash value from portfolio.json."""
+    return load_portfolio_cash()
+
+@router.post("/cash")
+def set_portfolio_cash(data: dict):
+    """Set the total portfolio cash value in portfolio.json. Expects {"total_portfolio_cash": float}."""
+    if "total_portfolio_cash" not in data:
+        raise HTTPException(status_code=400, detail="Missing total_portfolio_cash field")
+    save_portfolio_cash({"total_portfolio_cash": float(data["total_portfolio_cash"])})
+    return {"status": "ok"} 

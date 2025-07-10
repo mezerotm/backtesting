@@ -165,27 +165,34 @@ export function deleteReport(reportDir) {
 }
 
 export function showConfirmationModal(message, confirmCallback) {
-    const modal = document.getElementById('modal');
-    const confirmBtn = document.getElementById('confirmModalBtn');
-    const cancelBtn = document.getElementById('cancelModalBtn');
+    const modal = document.getElementById('reportConfirmModal');
+    const confirmBtn = document.getElementById('confirmReportModalBtn');
+    const cancelBtn = document.getElementById('cancelReportConfirmModalBtn');
 
     if (modal && confirmBtn && cancelBtn) {
         modal.classList.remove('hidden');
         modal.querySelector('.modal-content p').textContent = message;
 
-        confirmBtn.addEventListener('click', () => {
+        // Remove previous listeners to avoid stacking
+        confirmBtn.onclick = null;
+        cancelBtn.onclick = null;
+        modal.onmousedown = null;
+
+        confirmBtn.onclick = () => {
             modal.classList.add('hidden');
             confirmCallback();
-        });
-        cancelBtn.addEventListener('click', () => {
+        };
+        cancelBtn.onclick = () => {
             modal.classList.add('hidden');
-        });
+        };
         // Optional: close modal on outside click
-        modal.addEventListener('mousedown', (e) => {
+        modal.onmousedown = (e) => {
             if (e.target === modal) {
                 modal.classList.add('hidden');
             }
-        });
+        };
+    } else {
+        console.error('[showConfirmationModal] Modal or buttons not found:', {modal, confirmBtn, cancelBtn});
     }
 }
 
@@ -221,29 +228,209 @@ export function resetFilters() {
 
 export function initReport() {
     fetchReportsData();
-    // Set up event listeners for filters, report generation, etc.
+    // Set up event listeners for Clean Results and Generate Report buttons (toolbar or widget)
+    // Clean Results
+    const cleanBtn = document.getElementById('cleanResultsBtn');
+    if (cleanBtn) {
+        console.log('[initReport] Found cleanResultsBtn, attaching event listener');
+        cleanBtn.addEventListener('click', () => {
+            console.log('[cleanResultsBtn] Clicked');
+            cleanResults();
+        });
+    } else {
+        console.warn('[initReport] cleanResultsBtn not found');
+    }
+    // Generate Report Modal logic
+    const openModalBtn = document.getElementById('openModalBtn');
+    const reportModal = document.getElementById('reportModal');
+    const cancelReportModalBtn = document.getElementById('cancelReportModalBtn');
+    if (openModalBtn && reportModal) {
+        openModalBtn.addEventListener('click', () => {
+            reportModal.classList.remove('hidden');
+        });
+    }
+    if (cancelReportModalBtn && reportModal) {
+        cancelReportModalBtn.addEventListener('click', () => {
+            reportModal.classList.add('hidden');
+        });
+    }
+    // Optional: close modal on outside click
+    if (reportModal) {
+        reportModal.addEventListener('mousedown', (e) => {
+            if (e.target === reportModal) {
+                reportModal.classList.add('hidden');
+            }
+        });
+    }
+    // Dynamic form fields for report type
+    const genReportType = document.getElementById('genReportType');
+    const strategyField = document.getElementById('genStrategy').closest('div');
+    const timeframeField = document.getElementById('genTimeframe').closest('div');
+    const startDateField = document.getElementById('genStartDate').closest('div');
+    const endDateField = document.getElementById('genEndDate').closest('div');
+    const symbolField = document.getElementById('genSymbol').closest('div');
+    const genSymbolInput = document.getElementById('genSymbol');
+    const genSymbolDropdown = document.getElementById('genSymbolDropdown');
+    let genSymbolSuggestions = [];
+    let genSymbolDropdownOpen = false;
+    let genSymbolDropdownIndex = -1;
+
+    function closeGenSymbolDropdown() {
+        genSymbolDropdown.innerHTML = '';
+        genSymbolDropdownOpen = false;
+        genSymbolDropdownIndex = -1;
+    }
+
+    function renderGenSymbolDropdown(suggestions) {
+        if (!suggestions.length) {
+            closeGenSymbolDropdown();
+            return;
+        }
+        genSymbolDropdown.innerHTML = `<div class="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-b-lg shadow-lg mt-0.5 max-h-56 overflow-y-auto select-none">
+            ${suggestions.map((item, i) => `
+                <div class="px-4 py-2 cursor-pointer hover:bg-blue-700 ${i === genSymbolDropdownIndex ? 'bg-blue-700 text-white' : 'text-gray-200'}" data-index="${i}">
+                    <span class="font-semibold">${item.symbol}</span>
+                    <span class="ml-2 text-xs text-gray-400">${item.name ? item.name : ''}</span>
+                </div>
+            `).join('')}
+        </div>`;
+        genSymbolDropdownOpen = true;
+    }
+
+    async function fetchGenSymbolSuggestions(query) {
+        if (!query || query.length < 1) {
+            closeGenSymbolDropdown();
+            return;
+        }
+        try {
+            const resp = await fetch(`/api/report/search-symbols?query=${encodeURIComponent(query)}`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            genSymbolSuggestions = data;
+            renderGenSymbolDropdown(genSymbolSuggestions);
+        } catch (e) {
+            closeGenSymbolDropdown();
+        }
+    }
+
+    // Debounce helper
+    function debounce(fn, delay) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    const debouncedFetchGenSymbols = debounce((e) => {
+        fetchGenSymbolSuggestions(e.target.value.trim().toUpperCase());
+    }, 250);
+
+    if (genSymbolInput) {
+        genSymbolInput.addEventListener('input', debouncedFetchGenSymbols);
+        genSymbolInput.addEventListener('keydown', (e) => {
+            if (!genSymbolDropdownOpen || !genSymbolSuggestions.length) return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                genSymbolDropdownIndex = (genSymbolDropdownIndex + 1) % genSymbolSuggestions.length;
+                renderGenSymbolDropdown(genSymbolSuggestions);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                genSymbolDropdownIndex = (genSymbolDropdownIndex - 1 + genSymbolSuggestions.length) % genSymbolSuggestions.length;
+                renderGenSymbolDropdown(genSymbolSuggestions);
+            } else if (e.key === 'Enter') {
+                if (genSymbolDropdownIndex >= 0 && genSymbolDropdownIndex < genSymbolSuggestions.length) {
+                    genSymbolInput.value = genSymbolSuggestions[genSymbolDropdownIndex].symbol;
+                    closeGenSymbolDropdown();
+                }
+            } else if (e.key === 'Escape') {
+                closeGenSymbolDropdown();
+            }
+        });
+        genSymbolInput.addEventListener('blur', () => {
+            setTimeout(closeGenSymbolDropdown, 150);
+        });
+    }
+    genSymbolDropdown.addEventListener('mousedown', (e) => {
+        const target = e.target.closest('[data-index]');
+        if (target) {
+            const idx = parseInt(target.getAttribute('data-index'));
+            if (!isNaN(idx) && genSymbolSuggestions[idx]) {
+                genSymbolInput.value = genSymbolSuggestions[idx].symbol;
+                closeGenSymbolDropdown();
+            }
+        }
+    });
+    function updateReportFormFields() {
+        const type = genReportType.value;
+        // Always show report type at the top
+        if (type === 'finance') {
+            if (symbolField) symbolField.style.display = '';
+        } else {
+            if (symbolField) symbolField.style.display = 'none';
+        }
+        if (type === 'market' || type === 'finance') {
+            if (strategyField) strategyField.style.display = 'none';
+            if (timeframeField) timeframeField.style.display = 'none';
+            if (startDateField) startDateField.style.display = 'none';
+            if (endDateField) endDateField.style.display = 'none';
+        } else {
+            if (strategyField) strategyField.style.display = '';
+            if (timeframeField) timeframeField.style.display = '';
+            if (startDateField) startDateField.style.display = '';
+            if (endDateField) endDateField.style.display = '';
+        }
+    }
+    if (genReportType) {
+        genReportType.addEventListener('change', updateReportFormFields);
+        updateReportFormFields(); // Initial call
+    }
+    // Add event listener for Generate Report form
+    const generateReportForm = document.getElementById('generateReportForm');
+    if (generateReportForm) {
+        generateReportForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('[Generate Report] Form submitted');
+            const formData = new FormData(generateReportForm);
+            for (const [key, value] of formData.entries()) {
+                console.log(`[Generate Report] ${key}:`, value);
+            }
+            // TODO: Implement actual report generation logic here
+        });
+    } else {
+        console.warn('[initReport] generateReportForm not found');
+    }
+    // Auto-refresh reports every 5 seconds
+    setInterval(fetchReportsData, 5000);
 }
 
 export function cleanResults() {
+    console.log('[cleanResults] Called');
     // Show confirmation modal before cleaning all results
     showConfirmationModal(
-        `Are you sure you want to delete all results? This cannot be undone.`,
+        `[DEBUG] Are you sure you want to delete all results? This cannot be undone.`,
         () => {
+            console.log('[cleanResults] Confirmation callback executed');
             // Confirmed - proceed with cleaning
-            fetch('/clean-results', { method: 'POST' })
+            console.log('[cleanResults] Confirmed, sending POST to /api/report/clean');
+            fetch('/api/report/clean', { method: 'POST' })
                 .then(response => {
+                    console.log('[cleanResults] Response received', response);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     return response.json();
                 })
                 .then(data => {
+                    console.log('[cleanResults] Success data:', data);
                     showToast('All results cleaned successfully', 'success');
                     if (typeof fetchReportsData === 'function') fetchReportsData();
                 })
                 .catch(error => {
+                    console.error('[cleanResults] Error:', error);
                     showToast('Error cleaning results: ' + error.message, 'error');
                 });
         }
     );
+    console.log('[cleanResults] Confirmation modal should be shown');
 }

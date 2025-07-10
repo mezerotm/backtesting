@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from typing import List, Dict
 import os
 import json
 import shutil
+import requests
 from datetime import datetime
 
 # This module provides endpoints for report management (listing, cleaning, deleting).
@@ -11,8 +12,10 @@ from datetime import datetime
 #   GET /api/report/list - List all reports
 #   POST /api/report/clean - Clean all results
 #   POST /api/report/delete/{dir} - Delete a specific report
+#   GET /api/report/search-symbols - Search for symbols (Polygon API)
 
 REPORTS_DIR = os.path.join("public", "results")
+POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 
 router = APIRouter(prefix="/api/report", tags=["report"])
 
@@ -58,4 +61,26 @@ def delete_report(dir: str):
     if os.path.exists(report_path) and os.path.commonprefix([os.path.abspath(report_path), REPORTS_DIR]) == REPORTS_DIR:
         shutil.rmtree(report_path)
         return {"message": "Report deleted successfully"}
-    raise HTTPException(status_code=404, detail="Report not found") 
+    raise HTTPException(status_code=404, detail="Report not found")
+
+@router.get("/search-symbols")
+def search_symbols(query: str = Query(..., min_length=1)):
+    """Search for symbols using Polygon.io's ticker search API."""
+    if not POLYGON_API_KEY:
+        raise HTTPException(status_code=500, detail="Polygon API key not set")
+    url = f"https://api.polygon.io/v3/reference/tickers"
+    params = {
+        "search": query,
+        "active": "true",
+        "apiKey": POLYGON_API_KEY,
+        "limit": 10
+    }
+    resp = requests.get(url, params=params)
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Polygon API error: {resp.text}")
+    data = resp.json()
+    # Return a list of {symbol, name}
+    results = [
+        {"symbol": t["ticker"], "name": t.get("name", "")} for t in data.get("results", [])
+    ]
+    return results 
