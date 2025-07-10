@@ -119,6 +119,7 @@
                 <div>
                     <label class="block text-sm text-gray-300 mb-1" for="symbol">Symbol</label>
                     <input type="text" id="symbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+                    <div id="symbolDropdown" class="relative"></div>
                 </div>
                 <div>
                     <label class="block text-sm text-gray-300 mb-1" for="quantity">Quantity</label>
@@ -158,7 +159,7 @@
             <form id="cashForm" class="space-y-4">
                 <div>
                     <label for="cash" class="block text-sm text-gray-300 font-semibold mb-2">Total Portfolio Cash ($):</label>
-                    <input type="number" id="cash" class="p-2 rounded bg-slate-700 text-white w-full" step="any" min="0">
+                    <input type="text" id="cash" class="p-2 rounded bg-slate-700 text-white w-full" step="1" min="0" inputmode="numeric" autocomplete="off">
                 </div>
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="button" id="cancelCashModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
@@ -174,7 +175,54 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-</style> 
+#symbolDropdown {
+  position: relative;
+  z-index: 50;
+}
+#symbolDropdown > div {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-top: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.25);
+  margin-top: 0;
+  width: 100%;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+#symbolDropdown .cursor-pointer {
+  font-size: 1rem;
+  color: #e5e7eb;
+  padding: 0.5em 1em;
+  background: none;
+  transition: background 0.15s;
+}
+#symbolDropdown .hover\:bg-blue-700:hover, #symbolDropdown .bg-blue-700 {
+  background: #1d4ed8 !important;
+  color: #fff !important;
+}
+#symbolDropdown .font-semibold {
+  font-weight: 600;
+}
+#symbolDropdown .text-xs {
+  font-size: 0.8em;
+}
+/* Style datalist dropdown for symbol */
+input[list="symbolOptions"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+datalist#symbolOptions option {
+  font-size: 1rem;
+  color: #222;
+  background: #fff;
+  padding: 0.5em 1em;
+}
+input[list="symbolOptions"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+</style>
+<!-- Removed JS that formats cash input with commas. Input will now accept only plain whole numbers. --> 
     </div>
     <!-- Divider -->
     <div class="w-full flex justify-center mb-8">
@@ -183,7 +231,7 @@
     <!-- Toolbar Card -->
     <div class="max-w-[85rem] mx-auto w-full mb-8">
         <div class="bg-slate-800 rounded-xl shadow p-6 flex justify-end gap-4">
-            <button type="button" onclick="cleanResults()" class="py-2 px-4 rounded border border-slate-600 text-white bg-slate-800 hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
+            <button id="cleanResultsBtn" type="button" class="py-2 px-4 rounded border border-slate-600 text-white bg-slate-800 hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
                 <i class="fa-solid fa-trash"></i> Clean Results
             </button>
             <button id="openModalBtn" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 whitespace-nowrap">
@@ -195,6 +243,8 @@
     <div class="flex flex-col lg:flex-row gap-8 max-w-[85rem] mx-auto w-full">
         <!--
   IMPORTANT: All IDs, variable names, and function names in this widget must be unique within the widget folder.
+  Use a prefix (e.g. reportModal, cancelReportModalBtn, reportConfirmModal, confirmReportModalBtn) to avoid ID collisions when widgets are included multiple times.
+  Dynamic form fields: The report form fields will be shown/hidden based on the selected report type by JS.
 -->
 <div class="w-full max-w-[85rem] mx-auto">
   <div class="flex flex-col lg:flex-row gap-6 w-full">
@@ -255,7 +305,7 @@
           <h2 class="text-lg font-bold text-white">Available Reports</h2>
         </div>
         <div class="text-sm text-gray-500">
-          Last updated: <span id="lastUpdated">2025-07-08 22:24:25</span>
+          Last updated: <span id="lastUpdated">2025-07-09 22:23:15</span>
         </div>
       </div>
       <div class="overflow-x-auto">
@@ -293,22 +343,24 @@
   </div>
 </div>
 <!-- Modal for Report Generation -->
-<div id="modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+<div id="reportModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
   <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
     <h3 class="text-xl font-bold text-white mb-4">Generate Report</h3>
     <form id="generateReportForm" class="space-y-4">
-      <div>
-        <label class="block text-sm text-gray-300 mb-1" for="genSymbol">Symbol</label>
-        <input type="text" id="genSymbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
-      </div>
+      <!-- Report Type should always be at the top -->
       <div>
         <label class="block text-sm text-gray-300 mb-1" for="genReportType">Report Type</label>
         <select id="genReportType" class="w-full p-2 rounded bg-slate-700 text-white" required>
-          <option value="market">Market Check</option>
-          <option value="backtest">Backtest</option>
-          <option value="comparison">Comparison</option>
-          <option value="finance">Finance</option>
+          <option value="market" data-snapshot="true">Market Check</option>
+          <option value="backtest" disabled data-snapshot="false">Backtest</option>
+          <option value="comparison" disabled data-snapshot="false">Comparison</option>
+          <option value="finance" data-snapshot="true">Finance</option>
         </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="genSymbol">Symbol</label>
+        <input type="text" id="genSymbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+        <div id="genSymbolDropdown" class="relative"></div>
       </div>
       <div>
         <label class="block text-sm text-gray-300 mb-1" for="genStrategy">Strategy</label>
@@ -327,12 +379,74 @@
         <input type="date" id="genEndDate" class="w-full p-2 rounded bg-slate-700 text-white">
       </div>
       <div class="flex justify-end gap-2 mt-4">
-        <button type="button" id="cancelModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+        <button type="button" id="cancelReportModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
         <button type="submit" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700">Generate</button>
       </div>
     </form>
   </div>
-</div> 
+</div>
+<!-- Confirmation Modal for Report Widget -->
+<div id="reportConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+  <div class="modal-content bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
+    <p class="text-white mb-6">Are you sure?</p>
+    <div class="flex justify-end gap-2">
+      <button type="button" id="cancelReportConfirmModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+      <button type="button" id="confirmReportModalBtn" class="py-2 px-4 rounded bg-red-600 text-white hover:bg-red-700">Yes</button>
+    </div>
+  </div>
+</div>
+<style>
+#genSymbol {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+#genSymbolDropdown {
+  position: relative;
+  z-index: 50;
+}
+#genSymbolDropdown > div {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-top: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.25);
+  margin-top: 0;
+  width: 100%;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+#genSymbolDropdown .cursor-pointer {
+  font-size: 1rem;
+  color: #e5e7eb;
+  padding: 0.5em 1em;
+  background: none;
+  transition: background 0.15s;
+}
+#genSymbolDropdown .hover\:bg-blue-700:hover, #genSymbolDropdown .bg-blue-700 {
+  background: #1d4ed8 !important;
+  color: #fff !important;
+}
+#genSymbolDropdown .font-semibold {
+  font-weight: 600;
+}
+#genSymbolDropdown .text-xs {
+  font-size: 0.8em;
+}
+/* Style datalist dropdown for genSymbol */
+input[list="genSymbolOptions"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+datalist#genSymbolOptions option {
+  font-size: 1rem;
+  color: #222;
+  background: #fff;
+  padding: 0.5em 1em;
+}
+input[list="genSymbolOptions"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+</style> 
     </div>
 </div>
 
@@ -350,7 +464,7 @@
                     &copy;  Trading Strategy Suite. All rights reserved.
                 </div>
                 <div class="text-slate-400 text-sm">
-                    Generated on: 2025-07-08 22:24:25
+                    Generated on: 2025-07-09 22:23:15
                 </div>
             </div>
         </div>

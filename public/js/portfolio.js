@@ -1,5 +1,27 @@
 const API_PORTFOLIO = '/api/portfolio';
 
+let portfolioCash = 0;
+
+async function fetchPortfolioCash() {
+  const resp = await fetch('/api/portfolio/cash');
+  const data = await resp.json();
+  portfolioCash = data.total_portfolio_cash || 0;
+}
+
+async function setPortfolioCash(val) {
+  await fetch('/api/portfolio/cash', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ total_portfolio_cash: val })
+  });
+  portfolioCash = val;
+}
+
+async function fetchPositionsAndCash() {
+  await fetchPortfolioCash();
+  fetchPositions();
+}
+
 function fetchPositions() {
   fetch(API_PORTFOLIO + '/')
     .then(r => r.json())
@@ -11,13 +33,28 @@ function renderPositions(positions) {
   const tbody = document.getElementById('positionsTbody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  const portfolioCash = getPortfolioCash();
   let totalValue = 0;
   positions.forEach(pos => {
     totalValue += pos.quantity * pos.buy_price;
   });
+  // Add cash row at the top
+  const cashLeft = portfolioCash - totalValue;
+  const cashPercent = portfolioCash ? ((cashLeft / portfolioCash) * 100).toFixed(2) : '0.00';
+  const cashRow = document.createElement('tr');
+  cashRow.innerHTML = `
+    <td class="px-3 py-2 text-green-400 font-bold">CASH</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-green-300">${cashPercent}%</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-400">$${cashLeft.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+    <td class="px-3 py-2"></td>
+  `;
+  tbody.appendChild(cashRow);
   if (!positions.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-4">No positions found.</td></tr>';
+    tbody.innerHTML += '<tr><td colspan="9" class="text-center text-gray-400 py-4">No positions found.</td></tr>';
     return;
   }
   positions.forEach(pos => {
@@ -55,15 +92,6 @@ function renderPositions(positions) {
   });
 }
 
-function getPortfolioCash() {
-  const val = localStorage.getItem('portfolio-cash');
-  return val ? parseFloat(val) : 10000;
-}
-
-function setPortfolioCash(val) {
-  localStorage.setItem('portfolio-cash', val);
-}
-
 function openEditModal(pos) {
   document.getElementById('modalTitle').textContent = 'Edit Position';
   document.getElementById('positionId').value = pos.id;
@@ -93,7 +121,7 @@ function openAddModal() {
 function deletePosition(id) {
   if (!confirm('Delete this position?')) return;
   fetch(`${API_PORTFOLIO}/${id}`, { method: 'DELETE' })
-    .then(() => fetchPositions());
+    .then(() => fetchPositionsAndCash());
 }
 
 export function initPortfolio() {
@@ -102,7 +130,11 @@ export function initPortfolio() {
   const cashModal = document.getElementById('cashModal');
   const cancelCashModalBtn = document.getElementById('cancelCashModalBtn');
   if (settingsBtn && cashModal && cancelCashModalBtn) {
-    settingsBtn.addEventListener('click', () => {
+    settingsBtn.addEventListener('click', async () => {
+      // Set input value to current cash
+      await fetchPortfolioCash();
+      const cashInput = document.getElementById('cash');
+      if (cashInput) cashInput.value = portfolioCash;
       cashModal.classList.remove('hidden');
     });
     cancelCashModalBtn.addEventListener('click', () => {
@@ -112,6 +144,22 @@ export function initPortfolio() {
       if (e.target === cashModal) {
         cashModal.classList.add('hidden');
       }
+    });
+  }
+  // Handle cash form submission
+  const cashForm = document.getElementById('cashForm');
+  if (cashForm) {
+    cashForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const cashInput = document.getElementById('cash');
+      if (cashInput) {
+        const val = parseFloat(cashInput.value);
+        if (!isNaN(val) && val >= 0) {
+          await setPortfolioCash(val);
+        }
+      }
+      cashModal.classList.add('hidden');
+      fetchPositionsAndCash(); // Refresh table
     });
   }
   // Portfolio CRUD logic
@@ -147,7 +195,7 @@ export function initPortfolio() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(pos)
         }).then(() => {
-          fetchPositions();
+          fetchPositionsAndCash();
           document.getElementById('positionModal').classList.add('hidden');
         });
       } else {
@@ -157,11 +205,109 @@ export function initPortfolio() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(pos)
         }).then(() => {
-          fetchPositions();
+          fetchPositionsAndCash();
           document.getElementById('positionModal').classList.add('hidden');
         });
       }
     });
   }
-  fetchPositions();
+  const symbolInput = document.getElementById('symbol');
+  const symbolDropdown = document.getElementById('symbolDropdown');
+  let symbolSuggestions = [];
+  let symbolDropdownOpen = false;
+  let symbolDropdownIndex = -1;
+
+  function debounce(fn, delay) {
+      let timeout;
+      return function(...args) {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => fn.apply(this, args), delay);
+      };
+  }
+
+  function closeSymbolDropdown() {
+      symbolDropdown.innerHTML = '';
+      symbolDropdownOpen = false;
+      symbolDropdownIndex = -1;
+  }
+
+  function renderSymbolDropdown(suggestions) {
+      if (!suggestions.length) {
+          closeSymbolDropdown();
+          return;
+      }
+      symbolDropdown.innerHTML = `<div class="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-b-lg shadow-lg mt-0.5 max-h-56 overflow-y-auto select-none">
+          ${suggestions.map((item, i) => `
+              <div class="px-4 py-2 cursor-pointer hover:bg-blue-700 ${i === symbolDropdownIndex ? 'bg-blue-700 text-white' : 'text-gray-200'}" data-index="${i}">
+                  <span class="font-semibold">${item.symbol}</span>
+                  <span class="ml-2 text-xs text-gray-400">${item.name ? item.name : ''}</span>
+              </div>
+          `).join('')}
+      </div>`;
+      symbolDropdownOpen = true;
+  }
+
+  async function fetchSymbolSuggestionsPortfolio(query) {
+      if (!query || query.length < 1) {
+          closeSymbolDropdown();
+          return;
+      }
+      try {
+          const resp = await fetch(`/api/portfolio/search-symbols?query=${encodeURIComponent(query)}`);
+          if (!resp.ok) return;
+          const data = await resp.json();
+          symbolSuggestions = data;
+          renderSymbolDropdown(symbolSuggestions);
+      } catch (e) {
+          closeSymbolDropdown();
+      }
+  }
+  const debouncedFetchSymbolsPortfolio = debounce((e) => {
+      fetchSymbolSuggestionsPortfolio(e.target.value.trim().toUpperCase());
+  }, 250);
+  if (symbolInput) {
+      symbolInput.addEventListener('input', debouncedFetchSymbolsPortfolio);
+      symbolInput.addEventListener('keydown', (e) => {
+          if (!symbolDropdownOpen || !symbolSuggestions.length) return;
+          if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              symbolDropdownIndex = (symbolDropdownIndex + 1) % symbolSuggestions.length;
+              renderSymbolDropdown(symbolSuggestions);
+          } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              symbolDropdownIndex = (symbolDropdownIndex - 1 + symbolSuggestions.length) % symbolSuggestions.length;
+              renderSymbolDropdown(symbolSuggestions);
+          } else if (e.key === 'Enter') {
+              if (symbolDropdownIndex >= 0 && symbolDropdownIndex < symbolSuggestions.length) {
+                  symbolInput.value = symbolSuggestions[symbolDropdownIndex].symbol;
+                  closeSymbolDropdown();
+              }
+          } else if (e.key === 'Escape') {
+              closeSymbolDropdown();
+          }
+      });
+      symbolInput.addEventListener('blur', () => {
+          setTimeout(closeSymbolDropdown, 150);
+      });
+  }
+
+  symbolDropdown.addEventListener('mousedown', (e) => {
+      const target = e.target.closest('[data-index]');
+      if (target) {
+          const idx = parseInt(target.getAttribute('data-index'));
+          if (!isNaN(idx) && symbolSuggestions[idx]) {
+              symbolInput.value = symbolSuggestions[idx].symbol;
+              closeSymbolDropdown();
+          }
+      }
+  });
+  const positionModal = document.getElementById('positionModal');
+  if (positionModal) {
+      positionModal.addEventListener('mousedown', (e) => {
+          if (e.target === positionModal) {
+              positionModal.classList.add('hidden');
+          }
+      });
+  }
+  fetchPositionsAndCash();
 } 
