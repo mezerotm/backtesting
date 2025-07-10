@@ -266,8 +266,17 @@ input[list="symbolOptions"] {
 }
 #portfolioActionBar {
   overflow: hidden;
-  transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
-  max-height: 200px;
+  /* Remove max-height transition, handled by JS for content only */
+  transition: opacity 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+.fade-scale-hide {
+  opacity: 0 !important;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+.fade-scale-show {
+  opacity: 1 !important;
+  transform: scale(1);
 }
 </style>
 <!-- Removed JS that formats cash input with commas. Input will now accept only plain whole numbers. --> 
@@ -518,7 +527,7 @@ input[list="symbolOptions"] {
         <h2 class="text-lg font-bold text-white">Available Reports</h2>
       </div>
       <div class="text-sm text-gray-500">
-        Last updated: <span id="lastUpdated">2025-07-10 17:59:23</span>
+        Last updated: <span id="lastUpdated">2025-07-10 18:03:43</span>
       </div>
     </div>
     <div class="overflow-x-auto">
@@ -676,7 +685,7 @@ input[list="genSymbolOptions"] {
                     &copy;  Trading Strategy Suite. All rights reserved.
                 </div>
                 <div class="text-slate-400 text-sm">
-                    Generated on: 2025-07-10 17:59:23
+                    Generated on: 2025-07-10 18:03:43
                 </div>
             </div>
         </div>
