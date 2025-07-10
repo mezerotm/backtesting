@@ -8,7 +8,7 @@
   - Do not duplicate global styles or JS in widget files.
 -->
     <!-- Add Position Toolbar -->
-    <div class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2">
+    <div id="portfolioActionBar" class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2">
         <button id="addPositionBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
             <i class="fa-solid fa-plus"></i> Add Position
         </button>
@@ -162,6 +162,11 @@ datalist#symbolOptions option {
 input[list="symbolOptions"] {
   width: 100%;
   box-sizing: border-box;
+}
+#portfolioActionBar {
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
+  max-height: 200px;
 }
 </style>
 <!-- Removed JS that formats cash input with commas. Input will now accept only plain whole numbers. --> 

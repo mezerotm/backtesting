@@ -2,10 +2,10 @@
   <div class="flex justify-between items-center mb-0">
     <h2 class="text-lg font-bold text-white flex items-center gap-2">
       Trades
-      <button id="tradesMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Trades" style="transition: transform 0.2s;"><i id="tradesMinimizeIcon" class="fa-solid fa-chevron-up"></i></button>
+      <button id="tradesMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Trades" style="transition: transform 0.2s;"><i id="tradesMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
     </h2>
   </div>
-  <div id="tradesContent" class="collapsed">
+  <div id="tradesContent" style="max-height:0px;overflow:hidden;">
     <div class="mb-4">
       <form id="tradeForm" class="flex flex-wrap gap-2 items-end">
         <input type="hidden" id="tradeId">
