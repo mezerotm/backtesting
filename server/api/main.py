@@ -1,12 +1,16 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from server.api.report import router as report_router
 from server.api.portfolio import router as portfolio_router
+from server.api.dividends import router as dividends_router
+from server.api.profit_loss import router as profit_loss_router
+from server.api.trades import router as trades_router
 import webbrowser
 import logging
 import os
 from server.dashboard_generator import generate_dashboard
+from market_workflow_cli import run_market_report
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,6 +50,12 @@ logger.info("Registering report_router at /api/report")
 app.include_router(report_router)
 logger.info("Registering portfolio_router at /api/portfolio")
 app.include_router(portfolio_router)
+logger.info("Registering dividends_router at /api/dividends")
+app.include_router(dividends_router)
+logger.info("Registering profit_loss_router at /api/profit_loss")
+app.include_router(profit_loss_router)
+logger.info("Registering trades_router at /api/trades")
+app.include_router(trades_router)
 
 # Health check endpoint
 @app.get("/api/dashboard/health")
@@ -58,4 +68,13 @@ try:
     generate_dashboard()
     logging.info('Dashboard generated successfully.')
 except Exception as e:
-    logging.error(f'Error generating dashboard: {e}') 
+    logging.error(f'Error generating dashboard: {e}')
+
+@app.post("/api/market/generate-report")
+def generate_market_report_api(
+    output_dir: str = Query('public/results', description='Directory to save the report'),
+    force_refresh: bool = Query(False, description='Force refresh of data (bypass cache)')
+):
+    """Trigger market report generation and return the report path."""
+    path = run_market_report(output_dir=output_dir, force_refresh=force_refresh)
+    return {"report_path": path} 

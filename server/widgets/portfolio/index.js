@@ -1,20 +1,29 @@
 const API_PORTFOLIO = '/api/portfolio';
 
 let portfolioCash = 0;
+let portfolioBTC = 0;
+let portfolioBTCDollar = 0;
+let btcPrice = null;
+let btcPriceFetched = false;
+let btcAvgBuyPrice = 0;
 
 async function fetchPortfolioCash() {
   const resp = await fetch('/api/portfolio/cash');
   const data = await resp.json();
   portfolioCash = data.total_portfolio_cash || 0;
+  portfolioBTCDollar = data.total_portfolio_btc || 0;
+  btcAvgBuyPrice = data.btc_avg_buy_price || 0;
 }
 
-async function setPortfolioCash(val) {
+async function setPortfolioCashAndBTC(cashVal, btcDollarVal, btcAvgVal) {
   await fetch('/api/portfolio/cash', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ total_portfolio_cash: val })
+    body: JSON.stringify({ total_portfolio_cash: cashVal, total_portfolio_btc: btcDollarVal, btc_avg_buy_price: btcAvgVal })
   });
-  portfolioCash = val;
+  portfolioCash = cashVal;
+  portfolioBTCDollar = btcDollarVal;
+  btcAvgBuyPrice = btcAvgVal;
 }
 
 async function fetchPositionsAndCash() {
@@ -29,7 +38,7 @@ function fetchPositions() {
     .catch(() => renderPositions([]));
 }
 
-function renderPositions(positions) {
+async function renderPositions(positions) {
   const tbody = document.getElementById('positionsTbody');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -37,55 +46,88 @@ function renderPositions(positions) {
   positions.forEach(pos => {
     totalValue += pos.quantity * pos.buy_price;
   });
-  // Add cash row at the top
-  const cashLeft = portfolioCash - totalValue;
-  const cashPercent = portfolioCash ? ((cashLeft / portfolioCash) * 100).toFixed(2) : '0.00';
+  let btcValueForTotal = portfolioBTCDollar > 0 ? portfolioBTCDollar : 0;
+  let cashLeft = portfolioCash - totalValue;
+  if (cashLeft < 0) cashLeft = 0;
+  let totalPortfolioValue = 0;
+  if (totalValue > 0) totalPortfolioValue += totalValue;
+  if (btcValueForTotal > 0) totalPortfolioValue += btcValueForTotal;
+  if (cashLeft > 0) totalPortfolioValue += cashLeft;
+  if (totalPortfolioValue === 0) totalPortfolioValue = 1; // Prevent divide by zero, will show 0.00%
+
+  // --- BTC row at the top ---
+  let btcPercent = '-';
+  let btcNotes = '-';
+  if (portfolioBTCDollar && btcAvgBuyPrice) {
+    btcNotes = `₿${(portfolioBTCDollar / btcAvgBuyPrice).toFixed(8)}`;
+    btcPercent = portfolioBTCDollar > 0 ? ((portfolioBTCDollar / totalPortfolioValue) * 100).toFixed(2) + '%' : '-';
+  } else if (portfolioBTCDollar) {
+    btcNotes = '';
+    btcPercent = portfolioBTCDollar > 0 ? ((portfolioBTCDollar / totalPortfolioValue) * 100).toFixed(2) + '%' : '-';
+  }
+  const btcRow = document.createElement('tr');
+  btcRow.innerHTML = `
+    <td class="px-3 py-2 text-yellow-400 font-bold">BTC</td>
+    <td class="px-3 py-2 text-gray-200">$${portfolioBTCDollar.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-yellow-300">${btcPercent}</td>
+    <td class="px-3 py-2 text-gray-200"></td>
+    <td class="px-3 py-2 text-gray-200"></td>
+    <td class="px-3 py-2 text-gray-400">${btcNotes}</td>
+    <td class="px-3 py-2"></td>
+  `;
+  tbody.appendChild(btcRow);
+
+  // --- Positions ---
+  if (!positions.length) {
+    tbody.innerHTML += '<tr><td colspan="8" class="text-center text-gray-400 py-4">No positions found.</td></tr>';
+  } else {
+    positions.forEach(pos => {
+      const amount = pos.quantity * pos.buy_price;
+      const percent = amount > 0 ? ((amount / totalPortfolioValue) * 100).toFixed(2) : '0.00';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="px-3 py-2 text-white font-semibold">${pos.symbol}</td>
+        <td class="px-3 py-2 text-gray-200">$${amount.toFixed(2)}</td>
+        <td class="px-3 py-2 text-gray-200">$${pos.buy_price.toFixed(2)}</td>
+        <td class="px-3 py-2 text-gray-200">${percent}%</td>
+        <td class="px-3 py-2 text-gray-200"></td>
+        <td class="px-3 py-2 text-gray-200"></td>
+        <td class="px-3 py-2 text-gray-400">${pos.notes || ''}</td>
+        <td class="px-3 py-2">
+          <button class="portfolio-edit-btn text-blue-400 hover:text-blue-300 mr-2" title="Edit" data-id="${pos.id}"><i class="fa-solid fa-pen"></i></button>
+          <button class="portfolio-delete-btn text-red-400 hover:text-red-300" title="Delete" data-id="${pos.id}"><i class="fa-solid fa-trash"></i></button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- CASH row at the bottom ---
+  const cashPercent = cashLeft > 0 ? ((cashLeft / totalPortfolioValue) * 100).toFixed(2) : '0.00';
   const cashRow = document.createElement('tr');
   cashRow.innerHTML = `
     <td class="px-3 py-2 text-green-400 font-bold">CASH</td>
-    <td class="px-3 py-2 text-gray-200">-</td>
-    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">$${cashLeft.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
     <td class="px-3 py-2 text-gray-200">-</td>
     <td class="px-3 py-2 text-green-300">${cashPercent}%</td>
-    <td class="px-3 py-2 text-gray-200">-</td>
-    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200"></td>
+    <td class="px-3 py-2 text-gray-200"></td>
     <td class="px-3 py-2 text-gray-400">$${cashLeft.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
     <td class="px-3 py-2"></td>
   `;
   tbody.appendChild(cashRow);
-  if (!positions.length) {
-    tbody.innerHTML += '<tr><td colspan="9" class="text-center text-gray-400 py-4">No positions found.</td></tr>';
-    return;
-  }
-  positions.forEach(pos => {
-    const percent = portfolioCash ? ((pos.quantity * pos.buy_price) / portfolioCash * 100).toFixed(2) : '0.00';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="px-3 py-2 text-white font-semibold">${pos.symbol}</td>
-      <td class="px-3 py-2 text-gray-200">${pos.quantity}</td>
-      <td class="px-3 py-2 text-gray-200">$${pos.buy_price.toFixed(2)}</td>
-      <td class="px-3 py-2 text-gray-200">${pos.buy_date}</td>
-      <td class="px-3 py-2 text-gray-200">${percent}%</td>
-      <td class="px-3 py-2 text-gray-200">${pos.beta !== undefined ? pos.beta : ''}</td>
-      <td class="px-3 py-2 text-gray-200">${pos.delta !== undefined ? pos.delta : ''}</td>
-      <td class="px-3 py-2 text-gray-400">${pos.notes || ''}</td>
-      <td class="px-3 py-2">
-        <button class="edit-btn text-blue-400 hover:text-blue-300 mr-2" title="Edit" data-id="${pos.id}"><i class="fa-solid fa-pen"></i></button>
-        <button class="delete-btn text-red-400 hover:text-red-300" title="Delete" data-id="${pos.id}"><i class="fa-solid fa-trash"></i></button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-  // Attach event listeners for edit/delete
-  tbody.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
+
+  // Add event listeners for edit/delete buttons (use unique class names)
+  tbody.querySelectorAll('.portfolio-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
       const pos = positions.find(p => String(p.id) === String(id));
       if (pos) openEditModal(pos);
     });
   });
-  tbody.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
+  tbody.querySelectorAll('.portfolio-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
       deletePosition(id);
     });
@@ -96,11 +138,8 @@ function openEditModal(pos) {
   document.getElementById('modalTitle').textContent = 'Edit Position';
   document.getElementById('positionId').value = pos.id;
   document.getElementById('symbol').value = pos.symbol;
-  document.getElementById('quantity').value = pos.quantity;
+  document.getElementById('amount').value = (pos.quantity * pos.buy_price).toFixed(2);
   document.getElementById('buyPrice').value = pos.buy_price;
-  document.getElementById('buyDate').value = pos.buy_date;
-  document.getElementById('beta').value = pos.beta !== undefined ? pos.beta : '';
-  document.getElementById('delta').value = pos.delta !== undefined ? pos.delta : '';
   document.getElementById('notes').value = pos.notes || '';
   document.getElementById('positionModal').classList.remove('hidden');
 }
@@ -109,19 +148,60 @@ function openAddModal() {
   document.getElementById('modalTitle').textContent = 'Add Position';
   document.getElementById('positionId').value = '';
   document.getElementById('symbol').value = '';
-  document.getElementById('quantity').value = 1;
+  document.getElementById('amount').value = '';
   document.getElementById('buyPrice').value = '';
-  document.getElementById('buyDate').value = '';
-  document.getElementById('beta').value = '';
-  document.getElementById('delta').value = '';
   document.getElementById('notes').value = '';
   document.getElementById('positionModal').classList.remove('hidden');
 }
 
+function showPortfolioConfirmationModal(message, confirmCallback) {
+  const modal = document.getElementById('portfolioConfirmModal');
+  const confirmBtn = document.getElementById('confirmPortfolioModalBtn');
+  const cancelBtn = document.getElementById('cancelPortfolioConfirmModalBtn');
+  const msg = document.getElementById('portfolioConfirmMessage');
+  if (modal && confirmBtn && cancelBtn && msg) {
+    modal.classList.remove('hidden');
+    msg.textContent = message;
+    confirmBtn.onclick = null;
+    cancelBtn.onclick = null;
+    modal.onmousedown = null;
+    confirmBtn.onclick = () => {
+      modal.classList.add('hidden');
+      confirmCallback();
+    };
+    cancelBtn.onclick = () => {
+      modal.classList.add('hidden');
+    };
+    modal.onmousedown = (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+      }
+    };
+  }
+}
+
 function deletePosition(id) {
-  if (!confirm('Delete this position?')) return;
-  fetch(`${API_PORTFOLIO}/${id}`, { method: 'DELETE' })
-    .then(() => fetchPositionsAndCash());
+  showPortfolioConfirmationModal('Are you sure you want to delete this position?', () => {
+    fetch(`${API_PORTFOLIO}/${id}`, { method: 'DELETE' })
+      .then(() => fetchPositionsAndCash());
+  });
+}
+
+async function getBTCPrice() {
+  if (btcPriceFetched && btcPrice !== null) return btcPrice;
+  try {
+    const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+    if (!resp.ok) throw new Error('Failed to fetch BTC price');
+    const data = await resp.json();
+    btcPrice = data.bitcoin.usd;
+    btcPriceFetched = true;
+    return btcPrice;
+  } catch (e) {
+    btcPrice = null;
+    btcPriceFetched = true;
+    console.warn('Failed to fetch BTC price from CoinGecko:', e);
+    return null;
+  }
 }
 
 export function initPortfolio() {
@@ -131,10 +211,13 @@ export function initPortfolio() {
   const cancelCashModalBtn = document.getElementById('cancelCashModalBtn');
   if (settingsBtn && cashModal && cancelCashModalBtn) {
     settingsBtn.addEventListener('click', async () => {
-      // Set input value to current cash
       await fetchPortfolioCash();
       const cashInput = document.getElementById('cash');
+      const btcDollarInput = document.getElementById('btcDollar');
+      const btcAvgBuyPriceInput = document.getElementById('btcAvgBuyPrice');
       if (cashInput) cashInput.value = portfolioCash;
+      if (btcDollarInput) btcDollarInput.value = portfolioBTCDollar;
+      if (btcAvgBuyPriceInput) btcAvgBuyPriceInput.value = btcAvgBuyPrice || '';
       cashModal.classList.remove('hidden');
     });
     cancelCashModalBtn.addEventListener('click', () => {
@@ -152,12 +235,32 @@ export function initPortfolio() {
     cashForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       const cashInput = document.getElementById('cash');
+      const btcDollarInput = document.getElementById('btcDollar');
+      const btcAvgBuyPriceInput = document.getElementById('btcAvgBuyPrice');
+      let cashVal = portfolioCash;
+      let btcDollarVal = portfolioBTCDollar;
+      let btcAvgVal = btcAvgBuyPrice;
       if (cashInput) {
         const val = parseFloat(cashInput.value);
         if (!isNaN(val) && val >= 0) {
-          await setPortfolioCash(val);
+          cashVal = val;
         }
       }
+      if (btcDollarInput) {
+        const val = parseFloat(btcDollarInput.value);
+        if (!isNaN(val) && val >= 0) {
+          btcDollarVal = val;
+        }
+      }
+      if (btcAvgBuyPriceInput) {
+        const val = parseFloat(btcAvgBuyPriceInput.value);
+        if (!isNaN(val) && val >= 0) {
+          btcAvgVal = val;
+        } else {
+          btcAvgVal = '';
+        }
+      }
+      await setPortfolioCashAndBTC(cashVal, btcDollarVal, btcAvgVal);
       cashModal.classList.add('hidden');
       fetchPositionsAndCash(); // Refresh table
     });
@@ -179,15 +282,12 @@ export function initPortfolio() {
       e.preventDefault();
       const id = document.getElementById('positionId').value;
       const symbol = document.getElementById('symbol').value.trim().toUpperCase();
-      const quantity = parseFloat(document.getElementById('quantity').value);
+      const amount = parseFloat(document.getElementById('amount').value);
       const buy_price = parseFloat(document.getElementById('buyPrice').value);
-      const buy_date = document.getElementById('buyDate').value;
-      const beta = parseFloat(document.getElementById('beta').value);
-      const delta = parseFloat(document.getElementById('delta').value);
       const notes = document.getElementById('notes').value;
-      const pos = { id: id ? parseInt(id) : Date.now(), symbol, quantity, buy_price, buy_date, notes };
-      if (!isNaN(beta)) pos.beta = beta;
-      if (!isNaN(delta)) pos.delta = delta;
+      if (isNaN(amount) || isNaN(buy_price) || buy_price <= 0) return;
+      const quantity = amount / buy_price;
+      const pos = { id: id ? parseInt(id) : Date.now(), symbol, quantity, buy_price, notes };
       if (id) {
         // Update
         fetch(`${API_PORTFOLIO}/${id}`, {

@@ -16,7 +16,6 @@ class Position(BaseModel):
     symbol: str
     quantity: float
     buy_price: float
-    buy_date: str  # ISO date string
     notes: Optional[str] = None
 
 def load_positions() -> List[dict]:
@@ -29,16 +28,27 @@ def save_positions(positions: List[dict]):
     with open(PORTFOLIO_PATH, "w", encoding="utf-8") as f:
         json.dump(positions, f, indent=2)
 
-# --- Portfolio Cash Logic ---
-def load_portfolio_cash() -> dict:
+# --- Portfolio Cash, BTC, and BTC Avg Buy Price Logic ---
+def load_portfolio_cash_btc() -> dict:
     if not os.path.exists(PORTFOLIO_CASH_PATH):
-        return {"total_portfolio_cash": 0.0}
+        return {"total_portfolio_cash": 0.0, "total_portfolio_btc": 0.0, "btc_avg_buy_price": 0.0}
     with open(PORTFOLIO_CASH_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+        if "total_portfolio_btc" not in data:
+            data["total_portfolio_btc"] = 0.0
+        if "btc_avg_buy_price" not in data:
+            data["btc_avg_buy_price"] = 0.0
+        return data
 
-def save_portfolio_cash(data: dict):
+def save_portfolio_cash_btc(data: dict):
+    # Always write all fields
+    out = {
+        "total_portfolio_cash": float(data.get("total_portfolio_cash", 0.0)),
+        "total_portfolio_btc": float(data.get("total_portfolio_btc", 0.0)),
+        "btc_avg_buy_price": float(data.get("btc_avg_buy_price", 0.0)),
+    }
     with open(PORTFOLIO_CASH_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+        json.dump(out, f, indent=2)
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
@@ -114,13 +124,40 @@ def get_latest_price(symbol: str):
 
 @router.get("/cash")
 def get_portfolio_cash():
-    """Get the total portfolio cash value from portfolio.json."""
-    return load_portfolio_cash()
+    """
+    Get the total portfolio cash, BTC (dollar value), and BTC avg buy price from portfolio.json.
+    Returns: {"total_portfolio_cash": float, "total_portfolio_btc": float, "btc_avg_buy_price": float}
+    """
+    return load_portfolio_cash_btc()
 
 @router.post("/cash")
 def set_portfolio_cash(data: dict):
-    """Set the total portfolio cash value in portfolio.json. Expects {"total_portfolio_cash": float}."""
-    if "total_portfolio_cash" not in data:
-        raise HTTPException(status_code=400, detail="Missing total_portfolio_cash field")
-    save_portfolio_cash({"total_portfolio_cash": float(data["total_portfolio_cash"])})
+    """
+    Set the total portfolio cash, BTC (dollar value), and/or BTC avg buy price in portfolio.json.
+    Accepts any of: {"total_portfolio_cash": float, "total_portfolio_btc": float, "btc_avg_buy_price": float}
+    """
+    # Load current, update only provided fields
+    current = load_portfolio_cash_btc()
+    if "total_portfolio_cash" in data:
+        current["total_portfolio_cash"] = float(data["total_portfolio_cash"])
+    if "total_portfolio_btc" in data:
+        current["total_portfolio_btc"] = float(data["total_portfolio_btc"])
+    if "btc_avg_buy_price" in data:
+        current["btc_avg_buy_price"] = float(data["btc_avg_buy_price"])
+    save_portfolio_cash_btc(current)
+    return {"status": "ok"}
+
+@router.get("/btc")
+def get_portfolio_btc():
+    """Get the total portfolio BTC value from portfolio.json."""
+    return {"total_portfolio_btc": load_portfolio_cash_btc().get("total_portfolio_btc", 0.0)}
+
+@router.post("/btc")
+def set_portfolio_btc(data: dict):
+    """Set the total portfolio BTC value in portfolio.json. Accepts {"total_portfolio_btc": float}."""
+    if "total_portfolio_btc" not in data:
+        raise HTTPException(status_code=400, detail="Missing total_portfolio_btc field")
+    current = load_portfolio_cash_btc()
+    current["total_portfolio_btc"] = float(data["total_portfolio_btc"])
+    save_portfolio_cash_btc(current)
     return {"status": "ok"} 

@@ -247,6 +247,11 @@ def create_market_report(args) -> str:
         logger.error(f"Failed to generate market report: {e}", exc_info=True)
         raise
 
+def run_market_report(output_dir='public/results', force_refresh=False):
+    """Generate the market analysis report. Returns the report path."""
+    args = argparse.Namespace(output_dir=output_dir, force_refresh=force_refresh)
+    return create_market_report(args)
+
 def main():
     """Main function to run the market analysis report."""
     args = parse_args()

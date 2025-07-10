@@ -3,103 +3,110 @@
   Use a prefix (e.g. reportModal, cancelReportModalBtn, reportConfirmModal, confirmReportModalBtn) to avoid ID collisions when widgets are included multiple times.
   Dynamic form fields: The report form fields will be shown/hidden based on the selected report type by JS.
 -->
-<div class="w-full max-w-[85rem] mx-auto">
-  <div class="flex flex-col lg:flex-row gap-6 w-full">
-    <!-- Filters Section -->
-    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow p-4 w-full lg:max-w-xs lg:flex-none flex flex-col gap-3 mb-8 lg:mb-0">
-      <div class="flex items-center gap-2 mb-4">
-        <i class="fa-solid fa-filter text-blue-400"></i>
-        <h3 class="text-lg font-semibold text-white">Filters</h3>
+<!-- Report Action Bar -->
+<div class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2">
+    <button id="cleanResultsBtn" type="button" class="py-2 px-4 rounded border border-slate-600 text-white bg-slate-800 hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-trash"></i> Clean Results
+    </button>
+    <button id="openModalBtn" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-plus"></i> Generate Report
+    </button>
+</div>
+<div class="flex flex-col lg:flex-row gap-4 w-full items-start mt-2">
+  <!-- Filters Section -->
+  <div class="bg-slate-800 border border-slate-700 rounded-xl shadow flex flex-col gap-3 p-6 w-full lg:max-w-sm lg:flex-none">
+    <div class="flex items-center gap-2 mb-4">
+      <i class="fa-solid fa-filter text-blue-400"></i>
+      <h3 class="text-lg font-semibold text-white">Filters</h3>
+    </div>
+    <div class="flex flex-col gap-4">
+      <div>
+        <label for="reportType" class="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
+        <select id="reportType" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+          <option value="all">All Reports</option>
+          <option value="comparison">Comparison Reports</option>
+          <option value="backtest">Backtest Reports</option>
+          <option value="market">Market Check</option>
+          <option value="finance">Finance Report</option>
+        </select>
       </div>
-      <div class="flex flex-col gap-4">
-        <div>
-          <label for="reportType" class="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
-          <select id="reportType" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-            <option value="all">All Reports</option>
-            <option value="comparison">Comparison Reports</option>
-            <option value="backtest">Backtest Reports</option>
-            <option value="market">Market Check</option>
-            <option value="finance">Finance Report</option>
-          </select>
-        </div>
-        <div>
-          <label for="symbol" class="block text-sm font-medium mb-2 text-gray-300">Symbol</label>
-          <select id="symbol" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-            <option value="all">All Symbols</option>
-            {% for symbol in symbols %}
-            <option value="{{ symbol }}">{{ symbol }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label for="strategy" class="block text-sm font-medium mb-2 text-gray-300">Strategy</label>
-          <select id="strategy" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-            <option value="all">All Strategies</option>
-            {% for strategy in strategies %}
-            <option value="{{ strategy }}">{{ strategy }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label for="startDate" class="block text-xs text-gray-300 mb-1">Start Date</label>
-          <input type="date" id="startDate" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
-        </div>
-        <div>
-          <label for="endDate" class="block text-xs text-gray-300 mb-1">End Date</label>
-          <input type="date" id="endDate" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
-        </div>
-        <div class="flex flex-col gap-2 mt-2">
-          <button id="resetFilters" class="reset-btn py-2 px-4 rounded-lg border border-gray-600 bg-slate-800 text-white hover:bg-slate-600 flex items-center justify-center gap-2">
-            <i class="fa-solid fa-rotate"></i> Reset
-          </button>
-          <button id="applyFilters" class="primary-btn py-2 px-4 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2">
-            <i class="fa-solid fa-filter"></i> Apply Filters
-          </button>
-        </div>
+      <div>
+        <label for="symbol" class="block text-sm font-medium mb-2 text-gray-300">Symbol</label>
+        <select id="symbol" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+          <option value="all">All Symbols</option>
+          {% for symbol in symbols %}
+          <option value="{{ symbol }}">{{ symbol }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="strategy" class="block text-sm font-medium mb-2 text-gray-300">Strategy</label>
+        <select id="strategy" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+          <option value="all">All Strategies</option>
+          {% for strategy in strategies %}
+          <option value="{{ strategy }}">{{ strategy }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="startDate" class="block text-xs text-gray-300 mb-1">Start Date</label>
+        <input type="date" id="startDate" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
+      </div>
+      <div>
+        <label for="endDate" class="block text-xs text-gray-300 mb-1">End Date</label>
+        <input type="date" id="endDate" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
+      </div>
+      <div class="flex flex-col gap-2 mt-2">
+        <button id="resetFilters" class="reset-btn py-2 px-4 rounded-lg border border-gray-600 bg-slate-800 text-white hover:bg-slate-600 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-rotate"></i> Reset
+        </button>
+        <button id="applyFilters" class="primary-btn py-2 px-4 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-filter"></i> Apply Filters
+        </button>
       </div>
     </div>
-    <!-- Reports Table Section -->
-    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow p-6 flex flex-col flex-1 min-w-0">
-      <div class="flex justify-between items-center mb-4">
-        <div class="flex items-center gap-2">
-          <i class="fa-solid fa-table text-blue-400"></i>
-          <h2 class="text-lg font-bold text-white">Available Reports</h2>
-        </div>
-        <div class="text-sm text-gray-500">
-          Last updated: <span id="lastUpdated">{{ now }}</span>
-        </div>
+  </div>
+  <!-- Reports Table Section -->
+  <div class="bg-slate-800 border border-slate-700 rounded-xl shadow flex flex-col flex-1 min-w-0 p-6 w-full">
+    <div class="flex justify-between items-center mb-4">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-table text-blue-400"></i>
+        <h2 class="text-lg font-bold text-white">Available Reports</h2>
       </div>
-      <div class="overflow-x-auto">
-        <table id="reportsTable" class="min-w-0 w-full table-auto divide-y divide-slate-700">
-          <thead class="bg-slate-800 sticky top-0 z-10">
-            <tr>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Actions</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Symbol</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Report Type</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Strategy</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Timeframe</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Date Range</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">
-                Created
-                <i class="fa-solid fa-arrow-up-short-wide ml-1 text-blue-400" title="Sorted by newest first"></i>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-700">
-            <!-- Dynamic content will be inserted here -->
-            <tr>
-              <td colspan="7" class="px-3 py-3 text-center text-gray-400 truncate">
-                <div class="flex justify-center items-center space-x-2">
-                  <div class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-blue-600 rounded-full" role="status" aria-label="loading">
-                    <span class="sr-only">Loading reports...</span>
-                  </div>
-                  <span>Loading reports...</span>
+      <div class="text-sm text-gray-500">
+        Last updated: <span id="lastUpdated">{{ now }}</span>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table id="reportsTable" class="min-w-0 w-full table-auto divide-y divide-slate-700">
+        <thead class="bg-slate-800 sticky top-0 z-10">
+          <tr>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Actions</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Symbol</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Report Type</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Strategy</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Timeframe</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Date Range</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">
+              Created
+              <i class="fa-solid fa-arrow-up-short-wide ml-1 text-blue-400" title="Sorted by newest first"></i>
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-700">
+          <!-- Dynamic content will be inserted here -->
+          <tr>
+            <td colspan="7" class="px-3 py-3 text-center text-gray-400 truncate">
+              <div class="flex justify-center items-center space-x-2">
+                <div class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-blue-600 rounded-full" role="status" aria-label="loading">
+                  <span class="sr-only">Loading reports...</span>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                <span>Loading reports...</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -120,7 +127,7 @@
       </div>
       <div>
         <label class="block text-sm text-gray-300 mb-1" for="genSymbol">Symbol</label>
-        <input type="text" id="genSymbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+        <input type="text" id="genSymbol" class="w-full p-2 rounded bg-slate-700 text-white" autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
         <div id="genSymbolDropdown" class="relative"></div>
       </div>
       <div>

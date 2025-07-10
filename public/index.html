@@ -33,6 +33,30 @@
             background-color: #0f172a;  /* slate-900 */
             color: #f8fafc;  /* slate-50 */
         }
+        .collapsed {
+            display: none !important;
+        }
+        /* Widget header and action bar height standardization */
+        .bg-slate-800 .flex.items-center.mb-2,
+        .bg-slate-800 .flex.items-center.mb-4 {
+            min-height: 56px;
+            height: 56px;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            align-items: center;
+            display: flex;
+        }
+        /* Remove extra margin/padding when collapsed */
+        .bg-slate-800 > .collapsed + * {
+            margin-top: 0 !important;
+        }
+        .bg-slate-800 > .collapsed ~ * {
+            margin-top: 0 !important;
+        }
+        .bg-slate-800 > .collapsed {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
     </style>
     
     
@@ -66,15 +90,18 @@
             
 <div class="h-full">
     <!-- Portfolio Widget Section -->
-    <div class="mb-8 max-w-[85rem] mx-auto w-full">
+    <div class="max-w-[85rem] mx-auto w-full">
         <!--
-  IMPORTANT: All IDs, variable names, and function names in this widget must use camelCase.
-  This ensures consistency between HTML and JavaScript, and avoids mismatches.
-  Do NOT use dash-case (e.g. add-position-btn) for IDs in widget code.
+  WIDGET ALIGNMENT & GLOBAL STYLES STANDARD
+  - Each widget should be wrapped in a single outer div with: max-w-[85rem] mx-auto w-full
+  - If the widget has an action bar, it should be a sibling above the main card, both inside the same outer wrapper for alignment.
+  - Use tight margin (e.g., mt-2) between action bar and card for visual separation.
+  - Do not add extra margin or padding to the outermost widget container; rely on dashboard dividers for vertical spacing.
+  - All global styles (e.g., .collapsed) and global JavaScript (e.g., minimize logic) are defined in base_layout.html and apply to all widgets.
+  - Do not duplicate global styles or JS in widget files.
 -->
-<div class="mb-8 max-w-[85rem] mx-auto w-full flex flex-col gap-6">
     <!-- Add Position Toolbar -->
-    <div class="bg-slate-800 rounded-xl shadow p-6 flex justify-end gap-4">
+    <div class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2">
         <button id="addPositionBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
             <i class="fa-solid fa-plus"></i> Add Position
         </button>
@@ -83,31 +110,33 @@
         </button>
     </div>
     <!-- Portfolio Card -->
-    <div class="bg-slate-800 rounded-xl shadow-sm p-6">
-        <div class="flex justify-between items-center mb-4">
+    <div class="bg-slate-800 rounded-xl shadow-sm widget-portfolio p-6 mt-2 w-full">
+        <div class="flex justify-between items-center mb-0">
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
                 Portfolio
+                <button id="portfolioMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Portfolio" style="transition: transform 0.2s;"><i id="portfolioMinimizeIcon" class="fa-solid fa-chevron-up"></i></button>
             </h2>
         </div>
-        <div class="overflow-x-auto mb-4">
-            <table class="min-w-full divide-y divide-slate-700" id="positionsTable">
-                <thead>
-                    <tr>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Quantity</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Price</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Date</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">% of Portfolio</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Beta</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Delta</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-700" id="positionsTbody">
-                    <tr><td colspan="9" class="text-center text-gray-400 py-4">Loading...</td></tr>
-                </tbody>
-            </table>
+        <div id="portfolioContent">
+            <div class="overflow-x-auto mb-4">
+                <table class="min-w-full divide-y divide-slate-700" id="positionsTable">
+                    <thead>
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Amount ($)</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Avg Buy Price</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">% of Portfolio</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Beta</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Delta</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700" id="positionsTbody">
+                        <tr><td colspan="8" class="text-center text-gray-400 py-4">No positions found.</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     <!-- Add/Edit Modal (hidden by default) -->
@@ -122,24 +151,12 @@
                     <div id="symbolDropdown" class="relative"></div>
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="quantity">Quantity</label>
-                    <input type="number" id="quantity" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required value="1">
+                    <label class="block text-sm text-gray-300 mb-1" for="amount">Amount ($)</label>
+                    <input type="number" id="amount" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required value="0" placeholder="Enter dollar amount">
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="buyPrice">Buy Price</label>
-                    <input type="number" id="buyPrice" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required>
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="buyDate">Buy Date</label>
-                    <input type="date" id="buyDate" class="w-full p-2 rounded bg-slate-700 text-white" required>
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="beta">Beta</label>
-                    <input type="number" id="beta" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="delta">Delta</label>
-                    <input type="number" id="delta" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+                    <label class="block text-sm text-gray-300 mb-1" for="buyPrice">Avg Buy Price</label>
+                    <input type="number" id="buyPrice" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required placeholder="Enter average buy price">
                 </div>
                 <div>
                     <label class="block text-sm text-gray-300 mb-1" for="notes">Notes</label>
@@ -158,8 +175,16 @@
             <h3 class="text-xl font-bold text-white mb-4">Portfolio Settings</h3>
             <form id="cashForm" class="space-y-4">
                 <div>
-                    <label for="cash" class="block text-sm text-gray-300 font-semibold mb-2">Total Portfolio Cash ($):</label>
+                    <label for="cash" class="block text-sm text-green-400 font-semibold mb-2">Total Portfolio Cash ($):</label>
                     <input type="text" id="cash" class="p-2 rounded bg-slate-700 text-white w-full" step="1" min="0" inputmode="numeric" autocomplete="off">
+                </div>
+                <div>
+                    <label for="btcDollar" class="block text-sm text-yellow-300 font-semibold mb-2">Total Portfolio BTC ($):</label>
+                    <input type="text" id="btcDollar" class="p-2 rounded bg-slate-700 text-white w-full" step="any" min="0" inputmode="decimal" autocomplete="off" placeholder="Enter BTC value in dollars">
+                </div>
+                <div>
+                    <label for="btcAvgBuyPrice" class="block text-sm text-yellow-300 font-semibold mb-2">BTC Avg Buy Price ($):</label>
+                    <input type="text" id="btcAvgBuyPrice" class="p-2 rounded bg-slate-700 text-white w-full" step="any" min="0" inputmode="decimal" autocomplete="off">
                 </div>
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="button" id="cancelCashModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
@@ -167,6 +192,16 @@
                 </div>
             </form>
         </div>
+    </div>
+    <!-- Confirmation Modal for Portfolio Delete -->
+    <div id="portfolioConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+      <div class="modal-content bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
+        <p class="text-white mb-6" id="portfolioConfirmMessage">Are you sure?</p>
+        <div class="flex justify-end gap-2">
+          <button type="button" id="cancelPortfolioConfirmModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+          <button type="button" id="confirmPortfolioModalBtn" class="py-2 px-4 rounded bg-red-600 text-white hover:bg-red-700">Delete</button>
+        </div>
+      </div>
     </div>
 </div>
 
@@ -225,120 +260,284 @@ input[list="symbolOptions"] {
 <!-- Removed JS that formats cash input with commas. Input will now accept only plain whole numbers. --> 
     </div>
     <!-- Divider -->
-    <div class="w-full flex justify-center mb-8">
-        <div class="border-t border-slate-700 w-full max-w-[85rem]"></div>
+    <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
+        <div class="border-t border-slate-700 w-full"></div>
     </div>
-    <!-- Toolbar Card -->
-    <div class="max-w-[85rem] mx-auto w-full mb-8">
-        <div class="bg-slate-800 rounded-xl shadow p-6 flex justify-end gap-4">
-            <button id="cleanResultsBtn" type="button" class="py-2 px-4 rounded border border-slate-600 text-white bg-slate-800 hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
-                <i class="fa-solid fa-trash"></i> Clean Results
-            </button>
-            <button id="openModalBtn" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 whitespace-nowrap">
-                <i class="fa-solid fa-plus"></i> Generate Report
-            </button>
+    <!-- Trades Widget Section -->
+    <div class="max-w-[85rem] mx-auto w-full">
+        <div class="bg-slate-800 rounded-xl shadow-sm widget-trades p-6 w-full">
+  <div class="flex justify-between items-center mb-0">
+    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+      Trades
+      <button id="tradesMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Trades" style="transition: transform 0.2s;"><i id="tradesMinimizeIcon" class="fa-solid fa-chevron-up"></i></button>
+    </h2>
+  </div>
+  <div id="tradesContent" class="collapsed">
+    <div class="mb-4">
+      <form id="tradeForm" class="flex flex-wrap gap-2 items-end">
+        <input type="hidden" id="tradeId">
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeSymbol">Symbol</label>
+          <input type="text" id="tradeSymbol" class="p-2 rounded bg-slate-700 text-white w-24" required>
         </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeType">Type</label>
+          <select id="tradeType" class="p-2 rounded bg-slate-700 text-white w-24" required>
+            <option value="buy">Buy</option>
+            <option value="sell">Sell</option>
+            <option value="dividend">Dividend</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeQuantity">Quantity</label>
+          <input type="number" id="tradeQuantity" class="p-2 rounded bg-slate-700 text-white w-20" step="any" required>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeBuyPrice">Buy Price</label>
+          <input type="number" id="tradeBuyPrice" class="p-2 rounded bg-slate-700 text-white w-24" step="any">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeSellPrice">Sell Price</label>
+          <input type="number" id="tradeSellPrice" class="p-2 rounded bg-slate-700 text-white w-24" step="any">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeDate">Date</label>
+          <input type="date" id="tradeDate" class="p-2 rounded bg-slate-700 text-white w-36" required>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradePL">P/L</label>
+          <input type="number" id="tradePL" class="p-2 rounded bg-slate-700 text-white w-24" step="any">
+        </div>
+        <button type="submit" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+        <button type="button" id="cancelTradeBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+      </form>
+    </div>
+    <div>
+      <table class="min-w-full divide-y divide-slate-700 text-sm">
+        <thead>
+          <tr>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">ID</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Type</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Quantity</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Price</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Sell Price</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Date</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">P/L</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tradesTbody">
+          <tr><td colspan="9" class="text-center text-gray-400 py-4">No trades found.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div> 
+    </div>
+    <!-- Divider -->
+    <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
+        <div class="border-t border-slate-700 w-full"></div>
+    </div>
+    <!-- Dividends Widget Section -->
+    <div class="max-w-[85rem] mx-auto w-full">
+        <div class="bg-slate-800 rounded-xl shadow-sm widget-dividends p-6 w-full">
+  <div class="flex justify-between items-center mb-0">
+    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+      Dividends
+      <button id="dividendsMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Dividends" style="transition: transform 0.2s;"><i id="dividendsMinimizeIcon" class="fa-solid fa-chevron-up"></i></button>
+    </h2>
+  </div>
+  <div id="dividendsContent" class="collapsed">
+    <div class="mb-4 text-gray-400">Track your upcoming and received dividends here.</div>
+    <div class="mb-4">
+      <h3 class="text-md font-semibold text-white mb-1">Upcoming Dividends</h3>
+      <table class="min-w-full divide-y divide-slate-700 text-sm">
+        <thead>
+          <tr>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Ex-Date</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Pay Date</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="upcomingDividendsTbody">
+          <tr><td colspan="4" class="text-center text-gray-400 py-4">No upcoming dividends.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="mb-4">
+      <h3 class="text-md font-semibold text-white mb-1">Past Dividends</h3>
+      <table class="min-w-full divide-y divide-slate-700 text-sm">
+        <thead>
+          <tr>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Pay Date</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="pastDividendsTbody">
+          <tr><td colspan="3" class="text-center text-gray-400 py-4">No past dividends.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-6">
+      <h3 class="text-md font-semibold text-white mb-1">Dividends Summary</h3>
+      <div class="text-gray-300">Total received this year: <span id="dividendsTotal">$0.00</span></div>
+    </div>
+  </div>
+</div> 
+    </div>
+    <!-- Divider -->
+    <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
+        <div class="border-t border-slate-700 w-full"></div>
+    </div>
+    <!-- Profit/Loss Widget Section -->
+    <div class="max-w-[85rem] mx-auto w-full">
+        <div class="bg-slate-800 rounded-xl shadow-sm widget-profit-loss p-6 w-full">
+  <div class="flex justify-between items-center mb-0">
+    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+      Profit/Loss
+      <button id="profitLossMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Profit/Loss" style="transition: transform 0.2s;"><i id="profitLossMinimizeIcon" class="fa-solid fa-chevron-up"></i></button>
+    </h2>
+  </div>
+  <div id="profitLossContent" class="collapsed">
+    <div class="mb-4 text-gray-400">Track your realized and unrealized profit/loss here.</div>
+    <div class="mb-4">
+      <h3 class="text-md font-semibold text-white mb-1">Summary</h3>
+      <div class="text-gray-300">Total P/L: <span id="plTotal">$0.00</span></div>
+      <div class="text-gray-300">Unrealized: <span id="plUnrealized">$0.00</span></div>
+      <div class="text-gray-300">Realized: <span id="plRealized">$0.00</span></div>
+    </div>
+    <div>
+      <h3 class="text-md font-semibold text-white mb-1">P/L Details</h3>
+      <table class="min-w-full divide-y divide-slate-700 text-sm">
+        <thead>
+          <tr>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Type</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="plDetailsTbody">
+          <tr><td colspan="3" class="text-center text-gray-400 py-4">No P/L data.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div> 
+    </div>
+    <!-- Divider -->
+    <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
+        <div class="border-t border-slate-700 w-full"></div>
     </div>
     <!-- Reports Area: Two Columns -->
-    <div class="flex flex-col lg:flex-row gap-8 max-w-[85rem] mx-auto w-full">
+    <div class="max-w-[85rem] mx-auto w-full">
         <!--
   IMPORTANT: All IDs, variable names, and function names in this widget must be unique within the widget folder.
   Use a prefix (e.g. reportModal, cancelReportModalBtn, reportConfirmModal, confirmReportModalBtn) to avoid ID collisions when widgets are included multiple times.
   Dynamic form fields: The report form fields will be shown/hidden based on the selected report type by JS.
 -->
-<div class="w-full max-w-[85rem] mx-auto">
-  <div class="flex flex-col lg:flex-row gap-6 w-full">
-    <!-- Filters Section -->
-    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow p-4 w-full lg:max-w-xs lg:flex-none flex flex-col gap-3 mb-8 lg:mb-0">
-      <div class="flex items-center gap-2 mb-4">
-        <i class="fa-solid fa-filter text-blue-400"></i>
-        <h3 class="text-lg font-semibold text-white">Filters</h3>
+<!-- Report Action Bar -->
+<div class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2">
+    <button id="cleanResultsBtn" type="button" class="py-2 px-4 rounded border border-slate-600 text-white bg-slate-800 hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-trash"></i> Clean Results
+    </button>
+    <button id="openModalBtn" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-plus"></i> Generate Report
+    </button>
+</div>
+<div class="flex flex-col lg:flex-row gap-4 w-full items-start mt-2">
+  <!-- Filters Section -->
+  <div class="bg-slate-800 border border-slate-700 rounded-xl shadow flex flex-col gap-3 p-6 w-full lg:max-w-sm lg:flex-none">
+    <div class="flex items-center gap-2 mb-4">
+      <i class="fa-solid fa-filter text-blue-400"></i>
+      <h3 class="text-lg font-semibold text-white">Filters</h3>
+    </div>
+    <div class="flex flex-col gap-4">
+      <div>
+        <label for="reportType" class="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
+        <select id="reportType" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+          <option value="all">All Reports</option>
+          <option value="comparison">Comparison Reports</option>
+          <option value="backtest">Backtest Reports</option>
+          <option value="market">Market Check</option>
+          <option value="finance">Finance Report</option>
+        </select>
       </div>
-      <div class="flex flex-col gap-4">
-        <div>
-          <label for="reportType" class="block text-sm font-medium mb-2 text-gray-300">Report Type</label>
-          <select id="reportType" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-            <option value="all">All Reports</option>
-            <option value="comparison">Comparison Reports</option>
-            <option value="backtest">Backtest Reports</option>
-            <option value="market">Market Check</option>
-            <option value="finance">Finance Report</option>
-          </select>
-        </div>
-        <div>
-          <label for="symbol" class="block text-sm font-medium mb-2 text-gray-300">Symbol</label>
-          <select id="symbol" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-            <option value="all">All Symbols</option>
-            
-          </select>
-        </div>
-        <div>
-          <label for="strategy" class="block text-sm font-medium mb-2 text-gray-300">Strategy</label>
-          <select id="strategy" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
-            <option value="all">All Strategies</option>
-            
-          </select>
-        </div>
-        <div>
-          <label for="startDate" class="block text-xs text-gray-300 mb-1">Start Date</label>
-          <input type="date" id="startDate" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
-        </div>
-        <div>
-          <label for="endDate" class="block text-xs text-gray-300 mb-1">End Date</label>
-          <input type="date" id="endDate" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
-        </div>
-        <div class="flex flex-col gap-2 mt-2">
-          <button id="resetFilters" class="reset-btn py-2 px-4 rounded-lg border border-gray-600 bg-slate-800 text-white hover:bg-slate-600 flex items-center justify-center gap-2">
-            <i class="fa-solid fa-rotate"></i> Reset
-          </button>
-          <button id="applyFilters" class="primary-btn py-2 px-4 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2">
-            <i class="fa-solid fa-filter"></i> Apply Filters
-          </button>
-        </div>
+      <div>
+        <label for="symbol" class="block text-sm font-medium mb-2 text-gray-300">Symbol</label>
+        <select id="symbol" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+          <option value="all">All Symbols</option>
+          
+        </select>
+      </div>
+      <div>
+        <label for="strategy" class="block text-sm font-medium mb-2 text-gray-300">Strategy</label>
+        <select id="strategy" class="p-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 appearance-none">
+          <option value="all">All Strategies</option>
+          
+        </select>
+      </div>
+      <div>
+        <label for="startDate" class="block text-xs text-gray-300 mb-1">Start Date</label>
+        <input type="date" id="startDate" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
+      </div>
+      <div>
+        <label for="endDate" class="block text-xs text-gray-300 mb-1">End Date</label>
+        <input type="date" id="endDate" class="py-2 px-3 block w-full border border-gray-600 bg-slate-900 text-white rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500">
+      </div>
+      <div class="flex flex-col gap-2 mt-2">
+        <button id="resetFilters" class="reset-btn py-2 px-4 rounded-lg border border-gray-600 bg-slate-800 text-white hover:bg-slate-600 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-rotate"></i> Reset
+        </button>
+        <button id="applyFilters" class="primary-btn py-2 px-4 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-filter"></i> Apply Filters
+        </button>
       </div>
     </div>
-    <!-- Reports Table Section -->
-    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow p-6 flex flex-col flex-1 min-w-0">
-      <div class="flex justify-between items-center mb-4">
-        <div class="flex items-center gap-2">
-          <i class="fa-solid fa-table text-blue-400"></i>
-          <h2 class="text-lg font-bold text-white">Available Reports</h2>
-        </div>
-        <div class="text-sm text-gray-500">
-          Last updated: <span id="lastUpdated">2025-07-09 22:23:15</span>
-        </div>
+  </div>
+  <!-- Reports Table Section -->
+  <div class="bg-slate-800 border border-slate-700 rounded-xl shadow flex flex-col flex-1 min-w-0 p-6 w-full">
+    <div class="flex justify-between items-center mb-4">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-table text-blue-400"></i>
+        <h2 class="text-lg font-bold text-white">Available Reports</h2>
       </div>
-      <div class="overflow-x-auto">
-        <table id="reportsTable" class="min-w-0 w-full table-auto divide-y divide-slate-700">
-          <thead class="bg-slate-800 sticky top-0 z-10">
-            <tr>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Actions</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Symbol</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Report Type</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Strategy</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Timeframe</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Date Range</th>
-              <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">
-                Created
-                <i class="fa-solid fa-arrow-up-short-wide ml-1 text-blue-400" title="Sorted by newest first"></i>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-700">
-            <!-- Dynamic content will be inserted here -->
-            <tr>
-              <td colspan="7" class="px-3 py-3 text-center text-gray-400 truncate">
-                <div class="flex justify-center items-center space-x-2">
-                  <div class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-blue-600 rounded-full" role="status" aria-label="loading">
-                    <span class="sr-only">Loading reports...</span>
-                  </div>
-                  <span>Loading reports...</span>
+      <div class="text-sm text-gray-500">
+        Last updated: <span id="lastUpdated">2025-07-10 15:55:03</span>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table id="reportsTable" class="min-w-0 w-full table-auto divide-y divide-slate-700">
+        <thead class="bg-slate-800 sticky top-0 z-10">
+          <tr>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Actions</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Symbol</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Report Type</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Strategy</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Timeframe</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">Date Range</th>
+            <th scope="col" class="px-3 py-3 text-start text-xs font-medium text-gray-300 uppercase truncate">
+              Created
+              <i class="fa-solid fa-arrow-up-short-wide ml-1 text-blue-400" title="Sorted by newest first"></i>
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-700">
+          <!-- Dynamic content will be inserted here -->
+          <tr>
+            <td colspan="7" class="px-3 py-3 text-center text-gray-400 truncate">
+              <div class="flex justify-center items-center space-x-2">
+                <div class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-blue-600 rounded-full" role="status" aria-label="loading">
+                  <span class="sr-only">Loading reports...</span>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                <span>Loading reports...</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -359,7 +558,7 @@ input[list="symbolOptions"] {
       </div>
       <div>
         <label class="block text-sm text-gray-300 mb-1" for="genSymbol">Symbol</label>
-        <input type="text" id="genSymbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+        <input type="text" id="genSymbol" class="w-full p-2 rounded bg-slate-700 text-white" autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
         <div id="genSymbolDropdown" class="relative"></div>
       </div>
       <div>
@@ -464,7 +663,7 @@ input[list="genSymbolOptions"] {
                     &copy;  Trading Strategy Suite. All rights reserved.
                 </div>
                 <div class="text-slate-400 text-sm">
-                    Generated on: 2025-07-09 22:23:15
+                    Generated on: 2025-07-10 15:55:03
                 </div>
             </div>
         </div>
@@ -477,9 +676,47 @@ input[list="genSymbolOptions"] {
 <script type="module">
   import { initReport } from "/js/report.js";
   import { initPortfolio } from "/js/portfolio.js";
+  import { initTrades } from "/js/trades.js";
+  import { initDividends } from "/js/dividends.js";
+  import { initProfitLoss } from "/js/profit_loss.js";
   initReport();
   initPortfolio();
+  initTrades();
+  initDividends();
+  initProfitLoss();
 </script>
 
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Attach click handler to all minimize buttons
+      document.querySelectorAll('button[id$="MinimizeBtn"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const widget = btn.closest('.bg-slate-800');
+          if (!widget) {
+            console.log('No widget container found for minimize button');
+            return;
+          }
+          // Find the content div (by id convention)
+          const content = widget.querySelector('div[id$="Content"]');
+          const icon = btn.querySelector('i');
+          if (!content) {
+            console.log('No content div found for minimize button');
+            return;
+          }
+          content.classList.toggle('collapsed');
+          if (icon) {
+            if (content.classList.contains('collapsed')) {
+              icon.classList.remove('fa-chevron-up');
+              icon.classList.add('fa-chevron-down');
+            } else {
+              icon.classList.remove('fa-chevron-down');
+              icon.classList.add('fa-chevron-up');
+            }
+          }
+          console.log('Toggled minimize for', widget, 'collapsed:', content.classList.contains('collapsed'));
+        });
+      });
+    });
+    </script>
 </body>
 </html> 

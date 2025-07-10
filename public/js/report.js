@@ -14,7 +14,10 @@ export function fetchReportsData() {
                 console.error('Invalid reports data format:', data);
                 return;
             }
+            console.log('[fetchReportsData] Total reports received:', data.length);
             const finishedReports = data.filter(report => !report.status || report.status === 'finished');
+            console.log('[fetchReportsData] Finished reports after filtering:', finishedReports.length);
+            console.log('[fetchReportsData] Report statuses:', data.map(r => ({ dir: r.dir, status: r.status })));
             displayReports(finishedReports);
             const lastUpdated = document.getElementById('lastUpdated');
             if (lastUpdated) lastUpdated.textContent = new Date().toLocaleString();
@@ -365,9 +368,17 @@ export function initReport() {
         const type = genReportType.value;
         // Always show report type at the top
         if (type === 'finance') {
-            if (symbolField) symbolField.style.display = '';
+            if (symbolField) {
+                symbolField.style.display = '';
+                genSymbolInput.required = true;
+                console.log('[updateReportFormFields] Showing symbol field, required=true');
+            }
         } else {
-            if (symbolField) symbolField.style.display = 'none';
+            if (symbolField) {
+                symbolField.style.display = 'none';
+                genSymbolInput.required = false;
+                console.log('[updateReportFormFields] Hiding symbol field, required=false');
+            }
         }
         if (type === 'market' || type === 'finance') {
             if (strategyField) strategyField.style.display = 'none';
@@ -388,14 +399,46 @@ export function initReport() {
     // Add event listener for Generate Report form
     const generateReportForm = document.getElementById('generateReportForm');
     if (generateReportForm) {
-        generateReportForm.addEventListener('submit', function(e) {
+        generateReportForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             console.log('[Generate Report] Form submitted');
+            
+            // Show loading state
+            const submitBtn = generateReportForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Generating...';
+            submitBtn.disabled = true;
+            
             const formData = new FormData(generateReportForm);
-            for (const [key, value] of formData.entries()) {
-                console.log(`[Generate Report] ${key}:`, value);
+            const params = new URLSearchParams();
+            params.append('output_dir', 'public/results');
+            params.append('force_refresh', 'false');
+            // Optionally, you can add more params from the form if needed
+            try {
+                const resp = await fetch('/api/report/generate-market?' + params.toString(), {
+                    method: 'POST',
+                });
+                if (!resp.ok) throw new Error('Failed to generate report: ' + resp.status);
+                const data = await resp.json();
+                console.log('[Generate Report] Success:', data);
+                showToast('Market report generated: ' + (data.report_path || 'unknown'), 'success');
+                
+                // Close the modal
+                const reportModal = document.getElementById('reportModal');
+                if (reportModal) {
+                    reportModal.classList.add('hidden');
+                }
+                
+                // Refresh the reports table to show the new report
+                fetchReportsData();
+            } catch (err) {
+                console.error('[Generate Report] Error:', err);
+                showToast('Error generating report: ' + err.message, 'error');
+            } finally {
+                // Restore button state
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
             }
-            // TODO: Implement actual report generation logic here
         });
     } else {
         console.warn('[initReport] generateReportForm not found');
