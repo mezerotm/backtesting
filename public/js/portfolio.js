@@ -431,27 +431,29 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => { content.style.maxHeight = 'none'; }, 400);
     console.log('[Portfolio] Initial actionBar maxHeight:', actionBar.style.maxHeight, '| content maxHeight:', content.style.maxHeight);
     btn.addEventListener('click', function() {
-      console.log('[Portfolio] Minimize button clicked. actionBar maxHeight:', actionBar.style.maxHeight, '| content maxHeight:', content.style.maxHeight);
+      console.log('[Portfolio] Minimize button clicked. actionBar display:', actionBar.style.display, '| content maxHeight:', content.style.maxHeight);
       // If either is closed, open both
       if (actionBar.style.display === 'none' || content.style.maxHeight === '0px') {
         actionBar.style.display = 'flex';
-        actionBar.style.maxHeight = actionBar.scrollHeight + 'px';
-        // Animate open
-        setTimeout(() => {
-          actionBar.style.maxHeight = 'none';
-        }, 200);
+        actionBar.classList.remove('fade-scale-show');
+        actionBar.classList.add('fade-scale-hide');
+        // Force reflow to apply the initial state
+        void actionBar.offsetWidth;
+        actionBar.classList.remove('fade-scale-hide');
+        actionBar.classList.add('fade-scale-show');
+        // Remove the show class after transition
+        actionBar.addEventListener('transitionend', function handler(e) {
+          if (e.target === actionBar && (e.propertyName === 'opacity' || e.propertyName === 'transform')) {
+            actionBar.classList.remove('fade-scale-show');
+            actionBar.removeEventListener('transitionend', handler);
+          }
+        });
         content.style.maxHeight = content.scrollHeight + 'px';
         console.log('[Portfolio] Opening actionBar and content');
         if (icon) {
           icon.classList.remove('fa-chevron-down');
           icon.classList.add('fa-chevron-up');
         }
-        actionBar.addEventListener('transitionend', function handler(e) {
-          if (e.target === actionBar) {
-            actionBar.style.maxHeight = 'none';
-            actionBar.removeEventListener('transitionend', handler);
-          }
-        });
         content.addEventListener('transitionend', function handler(e) {
           if (e.target === content) {
             content.style.maxHeight = 'none';
@@ -461,13 +463,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       } else {
         // Both are open, so close both
-        actionBar.style.maxHeight = actionBar.scrollHeight + 'px';
-        void actionBar.offsetWidth;
-        actionBar.style.maxHeight = '0px';
-        // Animate close, then hide
+        actionBar.classList.remove('fade-scale-show');
+        actionBar.classList.add('fade-scale-hide');
         actionBar.addEventListener('transitionend', function handler(e) {
-          if (e.target === actionBar) {
+          if (e.target === actionBar && (e.propertyName === 'opacity' || e.propertyName === 'transform')) {
             actionBar.style.display = 'none';
+            actionBar.classList.remove('fade-scale-hide');
             actionBar.removeEventListener('transitionend', handler);
           }
         });
@@ -490,6 +491,6 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     console.log('[Portfolio] Minimize button, actionBar, or content NOT found');
   }
-  if (actionBar) actionBar.style.transition = 'max-height 0.2s cubic-bezier(0.4,0,0.2,1)';
+  if (actionBar) actionBar.style.transition = '';
   if (content) content.style.transition = 'max-height 0.4s cubic-bezier(0.4,0,0.2,1)';
 }); 
