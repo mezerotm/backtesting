@@ -99,4 +99,54 @@ function openEditTrade(trade) {
   document.getElementById('tradeSellPrice').value = trade.sell_price ?? '';
   document.getElementById('tradeDate').value = trade.date ?? '';
   document.getElementById('tradePL').value = trade.pl ?? '';
-} 
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('[Trades] DOMContentLoaded');
+  const btn = document.getElementById('tradesMinimizeBtn');
+  const icon = document.getElementById('tradesMinimizeIcon');
+  const content = document.getElementById('tradesContent');
+  if (btn && content) {
+    console.log('[Trades] Minimize button and content found');
+    // Set initial max-height based on visibility
+    if (content.classList.contains('collapsed')) {
+      content.style.maxHeight = '0px';
+      console.log('[Trades] Content starts collapsed');
+    } else {
+      content.style.maxHeight = content.scrollHeight + 'px';
+      setTimeout(() => { content.style.maxHeight = 'none'; }, 400);
+      console.log('[Trades] Content starts expanded');
+    }
+    btn.addEventListener('click', function() {
+      console.log('[Trades] Minimize button clicked. Current maxHeight:', content.style.maxHeight);
+      if (content.style.maxHeight === '0px') {
+        // Currently closed, so open
+        content.style.maxHeight = content.scrollHeight + 'px';
+        console.log('[Trades] Opening content');
+        if (icon) {
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        }
+        content.addEventListener('transitionend', function handler(e) {
+          if (e.target === content) {
+            content.style.maxHeight = 'none';
+            content.removeEventListener('transitionend', handler);
+            console.log('[Trades] Open animation complete, maxHeight set to none');
+          }
+        });
+      } else {
+        // Currently open, so close
+        content.style.maxHeight = content.scrollHeight + 'px';
+        void content.offsetWidth;
+        content.style.maxHeight = '0px';
+        console.log('[Trades] Closing content');
+        if (icon) {
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+        }
+      }
+    });
+  } else {
+    console.log('[Trades] Minimize button or content NOT found');
+  }
+}); 

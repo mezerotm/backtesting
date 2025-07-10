@@ -57,6 +57,14 @@
             margin-bottom: 0 !important;
             padding-bottom: 0 !important;
         }
+        div[id$='Content'] {
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        #portfolioActionBar {
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
     </style>
     
     {% block additional_styles %}
@@ -110,37 +118,5 @@
     {% block scripts %}
     <!-- Additional scripts can be added by child templates -->
     {% endblock %}
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Attach click handler to all minimize buttons
-      document.querySelectorAll('button[id$="MinimizeBtn"]').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const widget = btn.closest('.bg-slate-800');
-          if (!widget) {
-            console.log('No widget container found for minimize button');
-            return;
-          }
-          // Find the content div (by id convention)
-          const content = widget.querySelector('div[id$="Content"]');
-          const icon = btn.querySelector('i');
-          if (!content) {
-            console.log('No content div found for minimize button');
-            return;
-          }
-          content.classList.toggle('collapsed');
-          if (icon) {
-            if (content.classList.contains('collapsed')) {
-              icon.classList.remove('fa-chevron-up');
-              icon.classList.add('fa-chevron-down');
-            } else {
-              icon.classList.remove('fa-chevron-down');
-              icon.classList.add('fa-chevron-up');
-            }
-          }
-          console.log('Toggled minimize for', widget, 'collapsed:', content.classList.contains('collapsed'));
-        });
-      });
-    });
-    </script>
 </body>
 </html> 

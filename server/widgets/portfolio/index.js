@@ -205,16 +205,19 @@ async function getBTCPrice() {
 }
 
 export function initPortfolio() {
+  console.log('[Portfolio] initPortfolio function called');
   // Modal logic for settings
   const settingsBtn = document.getElementById('settingsBtn');
   const cashModal = document.getElementById('cashModal');
   const cancelCashModalBtn = document.getElementById('cancelCashModalBtn');
+  console.log('[Portfolio] settingsBtn:', settingsBtn, '| cashModal:', cashModal, '| cancelCashModalBtn:', cancelCashModalBtn);
   if (settingsBtn && cashModal && cancelCashModalBtn) {
     settingsBtn.addEventListener('click', async () => {
       await fetchPortfolioCash();
       const cashInput = document.getElementById('cash');
       const btcDollarInput = document.getElementById('btcDollar');
       const btcAvgBuyPriceInput = document.getElementById('btcAvgBuyPrice');
+      console.log('[Portfolio] Opening cash modal. cashInput:', cashInput, '| btcDollarInput:', btcDollarInput, '| btcAvgBuyPriceInput:', btcAvgBuyPriceInput);
       if (cashInput) cashInput.value = portfolioCash;
       if (btcDollarInput) btcDollarInput.value = portfolioBTCDollar;
       if (btcAvgBuyPriceInput) btcAvgBuyPriceInput.value = btcAvgBuyPrice || '';
@@ -410,4 +413,80 @@ export function initPortfolio() {
       });
   }
   fetchPositionsAndCash();
-} 
+}
+
+console.log('[Portfolio] portfolio/index.js script loaded');
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('[Portfolio] DOMContentLoaded event fired');
+  const btn = document.getElementById('portfolioMinimizeBtn');
+  const icon = document.getElementById('portfolioMinimizeIcon');
+  const actionBar = document.getElementById('portfolioActionBar');
+  const content = document.getElementById('portfolioContent');
+  console.log('[Portfolio] btn:', btn, '| icon:', icon, '| actionBar:', actionBar, '| content:', content);
+  if (btn && actionBar && content) {
+    // Set initial max-height for both to open
+    actionBar.style.maxHeight = actionBar.scrollHeight + 'px';
+    setTimeout(() => { actionBar.style.maxHeight = 'none'; }, 400);
+    content.style.maxHeight = content.scrollHeight + 'px';
+    setTimeout(() => { content.style.maxHeight = 'none'; }, 400);
+    console.log('[Portfolio] Initial actionBar maxHeight:', actionBar.style.maxHeight, '| content maxHeight:', content.style.maxHeight);
+    btn.addEventListener('click', function() {
+      console.log('[Portfolio] Minimize button clicked. actionBar maxHeight:', actionBar.style.maxHeight, '| content maxHeight:', content.style.maxHeight);
+      // If either is closed, open both
+      if (actionBar.style.maxHeight === '0px' || content.style.maxHeight === '0px') {
+        actionBar.style.display = 'flex'; // Show before opening
+        actionBar.style.maxHeight = actionBar.scrollHeight + 'px';
+        content.style.maxHeight = content.scrollHeight + 'px';
+        console.log('[Portfolio] Opening actionBar and content');
+        if (icon) {
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        }
+        actionBar.addEventListener('transitionend', function handler(e) {
+          if (e.target === actionBar) {
+            actionBar.style.maxHeight = 'none';
+            console.log('[Portfolio] actionBar open animation complete, maxHeight set to none');
+            actionBar.removeEventListener('transitionend', handler);
+          }
+        });
+        content.addEventListener('transitionend', function handler(e) {
+          if (e.target === content) {
+            content.style.maxHeight = 'none';
+            console.log('[Portfolio] content open animation complete, maxHeight set to none');
+            content.removeEventListener('transitionend', handler);
+          }
+        });
+      } else {
+        // Both are open, so close both
+        actionBar.style.maxHeight = actionBar.scrollHeight + 'px';
+        void actionBar.offsetWidth;
+        actionBar.style.maxHeight = '0px';
+        content.style.maxHeight = content.scrollHeight + 'px';
+        void content.offsetWidth;
+        content.style.maxHeight = '0px';
+        console.log('[Portfolio] Closing actionBar and content');
+        if (icon) {
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+        }
+        actionBar.addEventListener('transitionend', function handler(e) {
+          if (e.target === actionBar) {
+            actionBar.style.display = 'none'; // Hide after transition
+            console.log('[Portfolio] actionBar close animation complete, maxHeight is', actionBar.style.maxHeight);
+            actionBar.removeEventListener('transitionend', handler);
+          }
+        });
+        content.addEventListener('transitionend', function handler(e) {
+          if (e.target === content) {
+            console.log('[Portfolio] content close animation complete, maxHeight is', content.style.maxHeight);
+            content.removeEventListener('transitionend', handler);
+          }
+        });
+      }
+    });
+  } else {
+    console.log('[Portfolio] Minimize button, actionBar, or content NOT found');
+  }
+  if (actionBar) actionBar.style.transition = 'max-height 0.2s cubic-bezier(0.4,0,0.2,1)';
+  if (content) content.style.transition = 'max-height 0.4s cubic-bezier(0.4,0,0.2,1)';
+}); 

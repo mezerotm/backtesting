@@ -57,6 +57,14 @@
             margin-bottom: 0 !important;
             padding-bottom: 0 !important;
         }
+        div[id$='Content'] {
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        #portfolioActionBar {
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
     </style>
     
     
@@ -101,7 +109,7 @@
   - Do not duplicate global styles or JS in widget files.
 -->
     <!-- Add Position Toolbar -->
-    <div class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2">
+    <div id="portfolioActionBar" class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2">
         <button id="addPositionBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
             <i class="fa-solid fa-plus"></i> Add Position
         </button>
@@ -256,6 +264,11 @@ input[list="symbolOptions"] {
   width: 100%;
   box-sizing: border-box;
 }
+#portfolioActionBar {
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
+  max-height: 200px;
+}
 </style>
 <!-- Removed JS that formats cash input with commas. Input will now accept only plain whole numbers. --> 
     </div>
@@ -269,10 +282,10 @@ input[list="symbolOptions"] {
   <div class="flex justify-between items-center mb-0">
     <h2 class="text-lg font-bold text-white flex items-center gap-2">
       Trades
-      <button id="tradesMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Trades" style="transition: transform 0.2s;"><i id="tradesMinimizeIcon" class="fa-solid fa-chevron-up"></i></button>
+      <button id="tradesMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Trades" style="transition: transform 0.2s;"><i id="tradesMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
     </h2>
   </div>
-  <div id="tradesContent" class="collapsed">
+  <div id="tradesContent" style="max-height:0px;overflow:hidden;">
     <div class="mb-4">
       <form id="tradeForm" class="flex flex-wrap gap-2 items-end">
         <input type="hidden" id="tradeId">
@@ -345,10 +358,10 @@ input[list="symbolOptions"] {
   <div class="flex justify-between items-center mb-0">
     <h2 class="text-lg font-bold text-white flex items-center gap-2">
       Dividends
-      <button id="dividendsMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Dividends" style="transition: transform 0.2s;"><i id="dividendsMinimizeIcon" class="fa-solid fa-chevron-up"></i></button>
+      <button id="dividendsMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Dividends" style="transition: transform 0.2s;"><i id="dividendsMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
     </h2>
   </div>
-  <div id="dividendsContent" class="collapsed">
+  <div id="dividendsContent" style="max-height:0px;overflow:hidden;">
     <div class="mb-4 text-gray-400">Track your upcoming and received dividends here.</div>
     <div class="mb-4">
       <h3 class="text-md font-semibold text-white mb-1">Upcoming Dividends</h3>
@@ -398,10 +411,10 @@ input[list="symbolOptions"] {
   <div class="flex justify-between items-center mb-0">
     <h2 class="text-lg font-bold text-white flex items-center gap-2">
       Profit/Loss
-      <button id="profitLossMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Profit/Loss" style="transition: transform 0.2s;"><i id="profitLossMinimizeIcon" class="fa-solid fa-chevron-up"></i></button>
+      <button id="profitLossMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Profit/Loss" style="transition: transform 0.2s;"><i id="profitLossMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
     </h2>
   </div>
-  <div id="profitLossContent" class="collapsed">
+  <div id="profitLossContent" style="max-height:0px;overflow:hidden;">
     <div class="mb-4 text-gray-400">Track your realized and unrealized profit/loss here.</div>
     <div class="mb-4">
       <h3 class="text-md font-semibold text-white mb-1">Summary</h3>
@@ -505,7 +518,7 @@ input[list="symbolOptions"] {
         <h2 class="text-lg font-bold text-white">Available Reports</h2>
       </div>
       <div class="text-sm text-gray-500">
-        Last updated: <span id="lastUpdated">2025-07-10 15:55:03</span>
+        Last updated: <span id="lastUpdated">2025-07-10 17:53:48</span>
       </div>
     </div>
     <div class="overflow-x-auto">
@@ -663,7 +676,7 @@ input[list="genSymbolOptions"] {
                     &copy;  Trading Strategy Suite. All rights reserved.
                 </div>
                 <div class="text-slate-400 text-sm">
-                    Generated on: 2025-07-10 15:55:03
+                    Generated on: 2025-07-10 17:53:48
                 </div>
             </div>
         </div>
@@ -686,37 +699,5 @@ input[list="genSymbolOptions"] {
   initProfitLoss();
 </script>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Attach click handler to all minimize buttons
-      document.querySelectorAll('button[id$="MinimizeBtn"]').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const widget = btn.closest('.bg-slate-800');
-          if (!widget) {
-            console.log('No widget container found for minimize button');
-            return;
-          }
-          // Find the content div (by id convention)
-          const content = widget.querySelector('div[id$="Content"]');
-          const icon = btn.querySelector('i');
-          if (!content) {
-            console.log('No content div found for minimize button');
-            return;
-          }
-          content.classList.toggle('collapsed');
-          if (icon) {
-            if (content.classList.contains('collapsed')) {
-              icon.classList.remove('fa-chevron-up');
-              icon.classList.add('fa-chevron-down');
-            } else {
-              icon.classList.remove('fa-chevron-down');
-              icon.classList.add('fa-chevron-up');
-            }
-          }
-          console.log('Toggled minimize for', widget, 'collapsed:', content.classList.contains('collapsed'));
-        });
-      });
-    });
-    </script>
 </body>
 </html> 
