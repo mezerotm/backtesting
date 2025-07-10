@@ -1,0 +1,69 @@
+<div class="bg-slate-800 rounded-xl shadow-sm widget-trades p-6 w-full">
+  <div class="flex justify-between items-center mb-0">
+    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+      Trades
+      <button id="tradesMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Trades" style="transition: transform 0.2s;"><i id="tradesMinimizeIcon" class="fa-solid fa-chevron-up"></i></button>
+    </h2>
+  </div>
+  <div id="tradesContent" class="collapsed">
+    <div class="mb-4">
+      <form id="tradeForm" class="flex flex-wrap gap-2 items-end">
+        <input type="hidden" id="tradeId">
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeSymbol">Symbol</label>
+          <input type="text" id="tradeSymbol" class="p-2 rounded bg-slate-700 text-white w-24" required>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeType">Type</label>
+          <select id="tradeType" class="p-2 rounded bg-slate-700 text-white w-24" required>
+            <option value="buy">Buy</option>
+            <option value="sell">Sell</option>
+            <option value="dividend">Dividend</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeQuantity">Quantity</label>
+          <input type="number" id="tradeQuantity" class="p-2 rounded bg-slate-700 text-white w-20" step="any" required>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeBuyPrice">Buy Price</label>
+          <input type="number" id="tradeBuyPrice" class="p-2 rounded bg-slate-700 text-white w-24" step="any">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeSellPrice">Sell Price</label>
+          <input type="number" id="tradeSellPrice" class="p-2 rounded bg-slate-700 text-white w-24" step="any">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradeDate">Date</label>
+          <input type="date" id="tradeDate" class="p-2 rounded bg-slate-700 text-white w-36" required>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-300 mb-1" for="tradePL">P/L</label>
+          <input type="number" id="tradePL" class="p-2 rounded bg-slate-700 text-white w-24" step="any">
+        </div>
+        <button type="submit" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+        <button type="button" id="cancelTradeBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+      </form>
+    </div>
+    <div>
+      <table class="min-w-full divide-y divide-slate-700 text-sm">
+        <thead>
+          <tr>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">ID</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Type</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Quantity</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Price</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Sell Price</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Date</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">P/L</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tradesTbody">
+          <tr><td colspan="9" class="text-center text-gray-400 py-4">No trades found.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div> 

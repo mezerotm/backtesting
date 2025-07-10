@@ -188,6 +188,26 @@ def generate_market_report(data: dict, report_dir: str, force_refresh: bool = Fa
         with open(raw_data_path, 'w') as f:
             json.dump(data, f, indent=2, cls=CustomEncoder)
             
+        # Generate and save metadata
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        metadata = generate_metadata(
+            symbol="MARKET",
+            timeframe="snapshot",
+            start_date=current_date,
+            end_date=current_date,
+            initial_capital=0,
+            commission=0,
+            report_type="market",
+            directory_name=os.path.basename(report_dir),
+            additional_data={
+                "status": "finished",
+                "title": "Daily Market Check",
+                "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "report_type": "snapshot"
+            }
+        )
+        save_metadata(metadata, report_dir)
+            
         logger.info(f"Report generated at: {report_path}")
         return report_path
         

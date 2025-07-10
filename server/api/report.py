@@ -5,6 +5,8 @@ import json
 import shutil
 import requests
 from datetime import datetime
+from market_workflow_cli import run_market_report
+import logging
 
 # This module provides endpoints for report management (listing, cleaning, deleting).
 # Report metadata schema: see get_report_metadata in dashboard_server.py
@@ -83,4 +85,20 @@ def search_symbols(query: str = Query(..., min_length=1)):
     results = [
         {"symbol": t["ticker"], "name": t.get("name", "")} for t in data.get("results", [])
     ]
-    return results 
+    return results
+
+@router.post("/generate-market")
+def generate_market_report_api(
+    output_dir: str = Query('public/results', description='Directory to save the report'),
+    force_refresh: bool = Query(False, description='Force refresh of data (bypass cache)')
+):
+    """Trigger market report generation and return the report path."""
+    logger = logging.getLogger(__name__)
+    logger.info(f"[API] /api/report/generate-market called with output_dir={output_dir}, force_refresh={force_refresh}")
+    try:
+        path = run_market_report(output_dir=output_dir, force_refresh=force_refresh)
+        logger.info(f"[API] Market report generated at: {path}")
+        return {"report_path": path}
+    except Exception as e:
+        logger.error(f"[API] Error generating market report: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error generating market report: {e}") 

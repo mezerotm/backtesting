@@ -1,26 +1,9 @@
 [
   {
-    "id": 1751939024125,
-    "symbol": "KR",
-    "quantity": 2.0,
-    "buy_price": 71.45,
-    "buy_date": "2025-07-08",
-    "notes": ""
-  },
-  {
-    "id": 1751939647471,
-    "symbol": "SPY",
-    "quantity": 12.0,
-    "buy_price": 620.68,
-    "buy_date": "2025-07-08",
-    "notes": ""
-  },
-  {
-    "id": 1751941765528,
-    "symbol": "YUM",
-    "quantity": 1.0,
-    "buy_price": 150.36,
-    "buy_date": "2025-07-08",
+    "id": 1752164039208,
+    "symbol": "JEPI",
+    "quantity": 1.736842105263158,
+    "buy_price": 57.0,
     "notes": ""
   }
 ]

@@ -1,11 +1,14 @@
 <!--
-  IMPORTANT: All IDs, variable names, and function names in this widget must use camelCase.
-  This ensures consistency between HTML and JavaScript, and avoids mismatches.
-  Do NOT use dash-case (e.g. add-position-btn) for IDs in widget code.
+  WIDGET ALIGNMENT & GLOBAL STYLES STANDARD
+  - Each widget should be wrapped in a single outer div with: max-w-[85rem] mx-auto w-full
+  - If the widget has an action bar, it should be a sibling above the main card, both inside the same outer wrapper for alignment.
+  - Use tight margin (e.g., mt-2) between action bar and card for visual separation.
+  - Do not add extra margin or padding to the outermost widget container; rely on dashboard dividers for vertical spacing.
+  - All global styles (e.g., .collapsed) and global JavaScript (e.g., minimize logic) are defined in base_layout.html and apply to all widgets.
+  - Do not duplicate global styles or JS in widget files.
 -->
-<div class="mb-8 max-w-[85rem] mx-auto w-full flex flex-col gap-6">
     <!-- Add Position Toolbar -->
-    <div class="bg-slate-800 rounded-xl shadow p-6 flex justify-end gap-4">
+    <div class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2">
         <button id="addPositionBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
             <i class="fa-solid fa-plus"></i> Add Position
         </button>
@@ -14,31 +17,33 @@
         </button>
     </div>
     <!-- Portfolio Card -->
-    <div class="bg-slate-800 rounded-xl shadow-sm p-6">
-        <div class="flex justify-between items-center mb-4">
+    <div class="bg-slate-800 rounded-xl shadow-sm widget-portfolio p-6 mt-2 w-full">
+        <div class="flex justify-between items-center mb-0">
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
                 Portfolio
+                <button id="portfolioMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Portfolio" style="transition: transform 0.2s;"><i id="portfolioMinimizeIcon" class="fa-solid fa-chevron-up"></i></button>
             </h2>
         </div>
-        <div class="overflow-x-auto mb-4">
-            <table class="min-w-full divide-y divide-slate-700" id="positionsTable">
-                <thead>
-                    <tr>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Quantity</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Price</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Date</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">% of Portfolio</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Beta</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Delta</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-700" id="positionsTbody">
-                    <tr><td colspan="9" class="text-center text-gray-400 py-4">Loading...</td></tr>
-                </tbody>
-            </table>
+        <div id="portfolioContent">
+            <div class="overflow-x-auto mb-4">
+                <table class="min-w-full divide-y divide-slate-700" id="positionsTable">
+                    <thead>
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Amount ($)</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Avg Buy Price</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">% of Portfolio</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Beta</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Delta</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700" id="positionsTbody">
+                        <tr><td colspan="8" class="text-center text-gray-400 py-4">No positions found.</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     <!-- Add/Edit Modal (hidden by default) -->
@@ -53,24 +58,12 @@
                     <div id="symbolDropdown" class="relative"></div>
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="quantity">Quantity</label>
-                    <input type="number" id="quantity" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required value="1">
+                    <label class="block text-sm text-gray-300 mb-1" for="amount">Amount ($)</label>
+                    <input type="number" id="amount" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required value="0" placeholder="Enter dollar amount">
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="buyPrice">Buy Price</label>
-                    <input type="number" id="buyPrice" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required>
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="buyDate">Buy Date</label>
-                    <input type="date" id="buyDate" class="w-full p-2 rounded bg-slate-700 text-white" required>
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="beta">Beta</label>
-                    <input type="number" id="beta" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-300 mb-1" for="delta">Delta</label>
-                    <input type="number" id="delta" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+                    <label class="block text-sm text-gray-300 mb-1" for="buyPrice">Avg Buy Price</label>
+                    <input type="number" id="buyPrice" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required placeholder="Enter average buy price">
                 </div>
                 <div>
                     <label class="block text-sm text-gray-300 mb-1" for="notes">Notes</label>
@@ -89,8 +82,16 @@
             <h3 class="text-xl font-bold text-white mb-4">Portfolio Settings</h3>
             <form id="cashForm" class="space-y-4">
                 <div>
-                    <label for="cash" class="block text-sm text-gray-300 font-semibold mb-2">Total Portfolio Cash ($):</label>
+                    <label for="cash" class="block text-sm text-green-400 font-semibold mb-2">Total Portfolio Cash ($):</label>
                     <input type="text" id="cash" class="p-2 rounded bg-slate-700 text-white w-full" step="1" min="0" inputmode="numeric" autocomplete="off">
+                </div>
+                <div>
+                    <label for="btcDollar" class="block text-sm text-yellow-300 font-semibold mb-2">Total Portfolio BTC ($):</label>
+                    <input type="text" id="btcDollar" class="p-2 rounded bg-slate-700 text-white w-full" step="any" min="0" inputmode="decimal" autocomplete="off" placeholder="Enter BTC value in dollars">
+                </div>
+                <div>
+                    <label for="btcAvgBuyPrice" class="block text-sm text-yellow-300 font-semibold mb-2">BTC Avg Buy Price ($):</label>
+                    <input type="text" id="btcAvgBuyPrice" class="p-2 rounded bg-slate-700 text-white w-full" step="any" min="0" inputmode="decimal" autocomplete="off">
                 </div>
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="button" id="cancelCashModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
@@ -98,6 +99,16 @@
                 </div>
             </form>
         </div>
+    </div>
+    <!-- Confirmation Modal for Portfolio Delete -->
+    <div id="portfolioConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+      <div class="modal-content bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
+        <p class="text-white mb-6" id="portfolioConfirmMessage">Are you sure?</p>
+        <div class="flex justify-end gap-2">
+          <button type="button" id="cancelPortfolioConfirmModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+          <button type="button" id="confirmPortfolioModalBtn" class="py-2 px-4 rounded bg-red-600 text-white hover:bg-red-700">Delete</button>
+        </div>
+      </div>
     </div>
 </div>
 

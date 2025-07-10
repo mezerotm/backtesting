@@ -10,26 +10,39 @@
 {% block content %}
 <div class="h-full">
     <!-- Portfolio Widget Section -->
-    <div class="mb-8 max-w-[85rem] mx-auto w-full">
+    <div class="max-w-[85rem] mx-auto w-full">
         {% include "widgets/portfolio/index.html" %}
     </div>
     <!-- Divider -->
-    <div class="w-full flex justify-center mb-8">
-        <div class="border-t border-slate-700 w-full max-w-[85rem]"></div>
+    <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
+        <div class="border-t border-slate-700 w-full"></div>
     </div>
-    <!-- Toolbar Card -->
-    <div class="max-w-[85rem] mx-auto w-full mb-8">
-        <div class="bg-slate-800 rounded-xl shadow p-6 flex justify-end gap-4">
-            <button id="cleanResultsBtn" type="button" class="py-2 px-4 rounded border border-slate-600 text-white bg-slate-800 hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
-                <i class="fa-solid fa-trash"></i> Clean Results
-            </button>
-            <button id="openModalBtn" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 whitespace-nowrap">
-                <i class="fa-solid fa-plus"></i> Generate Report
-            </button>
-        </div>
+    <!-- Trades Widget Section -->
+    <div class="max-w-[85rem] mx-auto w-full">
+        {% include "widgets/trades/index.html" %}
+    </div>
+    <!-- Divider -->
+    <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
+        <div class="border-t border-slate-700 w-full"></div>
+    </div>
+    <!-- Dividends Widget Section -->
+    <div class="max-w-[85rem] mx-auto w-full">
+        {% include "widgets/dividends/index.html" %}
+    </div>
+    <!-- Divider -->
+    <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
+        <div class="border-t border-slate-700 w-full"></div>
+    </div>
+    <!-- Profit/Loss Widget Section -->
+    <div class="max-w-[85rem] mx-auto w-full">
+        {% include "widgets/profit_loss/index.html" %}
+    </div>
+    <!-- Divider -->
+    <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
+        <div class="border-t border-slate-700 w-full"></div>
     </div>
     <!-- Reports Area: Two Columns -->
-    <div class="flex flex-col lg:flex-row gap-8 max-w-[85rem] mx-auto w-full">
+    <div class="max-w-[85rem] mx-auto w-full">
         {% include "widgets/report/index.html" %}
     </div>
 </div>
@@ -42,7 +55,13 @@
 <script type="module">
   import { initReport } from "/js/report.js";
   import { initPortfolio } from "/js/portfolio.js";
+  import { initTrades } from "/js/trades.js";
+  import { initDividends } from "/js/dividends.js";
+  import { initProfitLoss } from "/js/profit_loss.js";
   initReport();
   initPortfolio();
+  initTrades();
+  initDividends();
+  initProfitLoss();
 </script>
 {% endblock %} 

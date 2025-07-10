@@ -33,6 +33,30 @@
             background-color: #0f172a;  /* slate-900 */
             color: #f8fafc;  /* slate-50 */
         }
+        .collapsed {
+            display: none !important;
+        }
+        /* Widget header and action bar height standardization */
+        .bg-slate-800 .flex.items-center.mb-2,
+        .bg-slate-800 .flex.items-center.mb-4 {
+            min-height: 56px;
+            height: 56px;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            align-items: center;
+            display: flex;
+        }
+        /* Remove extra margin/padding when collapsed */
+        .bg-slate-800 > .collapsed + * {
+            margin-top: 0 !important;
+        }
+        .bg-slate-800 > .collapsed ~ * {
+            margin-top: 0 !important;
+        }
+        .bg-slate-800 > .collapsed {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
     </style>
     
     {% block additional_styles %}
@@ -86,5 +110,37 @@
     {% block scripts %}
     <!-- Additional scripts can be added by child templates -->
     {% endblock %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Attach click handler to all minimize buttons
+      document.querySelectorAll('button[id$="MinimizeBtn"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const widget = btn.closest('.bg-slate-800');
+          if (!widget) {
+            console.log('No widget container found for minimize button');
+            return;
+          }
+          // Find the content div (by id convention)
+          const content = widget.querySelector('div[id$="Content"]');
+          const icon = btn.querySelector('i');
+          if (!content) {
+            console.log('No content div found for minimize button');
+            return;
+          }
+          content.classList.toggle('collapsed');
+          if (icon) {
+            if (content.classList.contains('collapsed')) {
+              icon.classList.remove('fa-chevron-up');
+              icon.classList.add('fa-chevron-down');
+            } else {
+              icon.classList.remove('fa-chevron-down');
+              icon.classList.add('fa-chevron-up');
+            }
+          }
+          console.log('Toggled minimize for', widget, 'collapsed:', content.classList.contains('collapsed'));
+        });
+      });
+    });
+    </script>
 </body>
 </html> 

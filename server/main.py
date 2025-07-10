@@ -35,8 +35,14 @@ if __name__ == '__main__':
 
     # Copy widget JS files to public/js with widget-prefixed names
     os.makedirs('public/js', exist_ok=True)
-    shutil.copyfile('server/widgets/report/index.js', 'public/js/report.js')
-    shutil.copyfile('server/widgets/portfolio/index.js', 'public/js/portfolio.js')
+    widgets_dir = 'server/widgets'
+    for widget_name in os.listdir(widgets_dir):
+        widget_path = os.path.join(widgets_dir, widget_name)
+        js_src = os.path.join(widget_path, 'index.js')
+        if os.path.isdir(widget_path) and os.path.isfile(js_src):
+            js_dst = os.path.join('public/js', f'{widget_name}.js')
+            shutil.copyfile(js_src, js_dst)
+            print(f'Copied {js_src} to {js_dst}')
     print('Copied widget JS files to public/js/')
 
     print('Starting FastAPI server...')
