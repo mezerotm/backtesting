@@ -433,9 +433,13 @@ document.addEventListener('DOMContentLoaded', function() {
     btn.addEventListener('click', function() {
       console.log('[Portfolio] Minimize button clicked. actionBar maxHeight:', actionBar.style.maxHeight, '| content maxHeight:', content.style.maxHeight);
       // If either is closed, open both
-      if (actionBar.style.maxHeight === '0px' || content.style.maxHeight === '0px') {
-        actionBar.style.display = 'flex'; // Show before opening
+      if (actionBar.style.display === 'none' || content.style.maxHeight === '0px') {
+        actionBar.style.display = 'flex';
         actionBar.style.maxHeight = actionBar.scrollHeight + 'px';
+        // Animate open
+        setTimeout(() => {
+          actionBar.style.maxHeight = 'none';
+        }, 200);
         content.style.maxHeight = content.scrollHeight + 'px';
         console.log('[Portfolio] Opening actionBar and content');
         if (icon) {
@@ -445,7 +449,6 @@ document.addEventListener('DOMContentLoaded', function() {
         actionBar.addEventListener('transitionend', function handler(e) {
           if (e.target === actionBar) {
             actionBar.style.maxHeight = 'none';
-            console.log('[Portfolio] actionBar open animation complete, maxHeight set to none');
             actionBar.removeEventListener('transitionend', handler);
           }
         });
@@ -461,6 +464,13 @@ document.addEventListener('DOMContentLoaded', function() {
         actionBar.style.maxHeight = actionBar.scrollHeight + 'px';
         void actionBar.offsetWidth;
         actionBar.style.maxHeight = '0px';
+        // Animate close, then hide
+        actionBar.addEventListener('transitionend', function handler(e) {
+          if (e.target === actionBar) {
+            actionBar.style.display = 'none';
+            actionBar.removeEventListener('transitionend', handler);
+          }
+        });
         content.style.maxHeight = content.scrollHeight + 'px';
         void content.offsetWidth;
         content.style.maxHeight = '0px';
@@ -469,13 +479,6 @@ document.addEventListener('DOMContentLoaded', function() {
           icon.classList.remove('fa-chevron-up');
           icon.classList.add('fa-chevron-down');
         }
-        actionBar.addEventListener('transitionend', function handler(e) {
-          if (e.target === actionBar) {
-            actionBar.style.display = 'none'; // Hide after transition
-            console.log('[Portfolio] actionBar close animation complete, maxHeight is', actionBar.style.maxHeight);
-            actionBar.removeEventListener('transitionend', handler);
-          }
-        });
         content.addEventListener('transitionend', function handler(e) {
           if (e.target === content) {
             console.log('[Portfolio] content close animation complete, maxHeight is', content.style.maxHeight);

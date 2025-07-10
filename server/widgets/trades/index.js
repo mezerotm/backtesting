@@ -109,12 +109,20 @@ document.addEventListener('DOMContentLoaded', function() {
   if (btn && content) {
     console.log('[Trades] Minimize button and content found');
     // Set initial max-height based on visibility
-    if (content.classList.contains('collapsed')) {
+    if (content.style.maxHeight === '0px' || (icon && icon.classList.contains('fa-chevron-down'))) {
       content.style.maxHeight = '0px';
-      console.log('[Trades] Content starts collapsed');
+      if (icon) {
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+      }
+      console.log('[Trades] Content starts collapsed (by style or icon)');
     } else {
       content.style.maxHeight = content.scrollHeight + 'px';
       setTimeout(() => { content.style.maxHeight = 'none'; }, 400);
+      if (icon) {
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+      }
       console.log('[Trades] Content starts expanded');
     }
     btn.addEventListener('click', function() {
