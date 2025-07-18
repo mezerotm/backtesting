@@ -4,15 +4,21 @@
   Dynamic form fields: The report form fields will be shown/hidden based on the selected report type by JS.
 -->
 <!-- Report Action Bar -->
-<div class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2">
+<div id="reportActionBar" class="bg-slate-800 rounded-xl shadow flex items-center justify-between w-full p-6 mb-2">
+  <div class="flex items-center gap-2">
+    <span class="text-lg font-bold text-white">Reports</span>
+    <button id="reportMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Reports" style="transition: transform 0.2s;"><i id="reportMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
+  </div>
+  <div id="reportActionButtons" class="flex items-center gap-4">
     <button id="cleanResultsBtn" type="button" class="py-2 px-4 rounded border border-slate-600 text-white bg-slate-800 hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
-        <i class="fa-solid fa-trash"></i> Clean Results
+      <i class="fa-solid fa-trash"></i> Clean Results
     </button>
     <button id="openModalBtn" class="py-2 px-4 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 whitespace-nowrap">
-        <i class="fa-solid fa-plus"></i> Generate Report
+      <i class="fa-solid fa-plus"></i> Generate Report
     </button>
+  </div>
 </div>
-<div class="flex flex-col lg:flex-row gap-4 w-full items-start mt-2">
+<div id="reportContent" class="flex flex-col lg:flex-row gap-4 w-full items-start mt-2">
   <!-- Filters Section -->
   <div class="bg-slate-800 border border-slate-700 rounded-xl shadow flex flex-col gap-3 p-6 w-full lg:max-w-sm lg:flex-none">
     <div class="flex items-center gap-2 mb-4">
@@ -164,6 +170,22 @@
   </div>
 </div>
 <style>
+#reportActionBar {
+  overflow: hidden;
+  transition: opacity 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+#reportActionButtons {
+  transition: opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+.fade-scale-hide {
+  opacity: 0 !important;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+.fade-scale-show {
+  opacity: 1 !important;
+  transform: scale(1);
+}
 #genSymbol {
   text-transform: uppercase;
   letter-spacing: 0.5px;

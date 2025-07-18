@@ -477,3 +477,89 @@ export function cleanResults() {
     );
     console.log('[cleanResults] Confirmation modal should be shown');
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.getElementById('reportMinimizeBtn');
+  const icon = document.getElementById('reportMinimizeIcon');
+  const content = document.getElementById('reportContent');
+  const actionButtons = document.getElementById('reportActionButtons');
+  if (btn && content && actionButtons) {
+    // Always start open by default
+    content.style.maxHeight = 'none';
+    actionButtons.style.display = 'flex';
+    actionButtons.classList.remove('fade-scale-hide');
+    actionButtons.classList.add('fade-scale-show');
+    if (icon) {
+      icon.classList.remove('fa-chevron-down');
+      icon.classList.add('fa-chevron-up');
+    }
+    // Set initial max-height for open/closed
+    if (content.style.maxHeight === '0px' || (icon && icon.classList.contains('fa-chevron-down'))) {
+      content.style.maxHeight = '0px';
+      actionButtons.style.display = 'none';
+      actionButtons.classList.remove('fade-scale-show', 'fade-scale-hide');
+      if (icon) {
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+      }
+    } else {
+      actionButtons.style.maxHeight = actionButtons.scrollHeight + 'px';
+      setTimeout(() => { actionButtons.style.maxHeight = 'none'; }, 400);
+      actionButtons.style.display = 'flex';
+      actionButtons.classList.remove('fade-scale-hide');
+      actionButtons.classList.add('fade-scale-show');
+      content.style.maxHeight = content.scrollHeight + 'px';
+      setTimeout(() => { content.style.maxHeight = 'none'; }, 400);
+      if (icon) {
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+      }
+    }
+    btn.addEventListener('click', function() {
+      if (actionButtons.style.display === 'none' || content.style.maxHeight === '0px') {
+        actionButtons.style.display = 'flex';
+        actionButtons.classList.remove('fade-scale-show');
+        actionButtons.classList.add('fade-scale-hide');
+        void actionButtons.offsetWidth;
+        actionButtons.classList.remove('fade-scale-hide');
+        actionButtons.classList.add('fade-scale-show');
+        actionButtons.addEventListener('transitionend', function handler(e) {
+          if (e.target === actionButtons && (e.propertyName === 'opacity' || e.propertyName === 'transform')) {
+            actionButtons.classList.remove('fade-scale-show');
+            actionButtons.removeEventListener('transitionend', handler);
+          }
+        });
+        content.style.maxHeight = content.scrollHeight + 'px';
+        if (icon) {
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        }
+        content.addEventListener('transitionend', function handler(e) {
+          if (e.target === content) {
+            content.style.maxHeight = 'none';
+            content.removeEventListener('transitionend', handler);
+          }
+        });
+      } else {
+        actionButtons.classList.remove('fade-scale-show');
+        actionButtons.classList.add('fade-scale-hide');
+        actionButtons.addEventListener('transitionend', function handler(e) {
+          if (e.target === actionButtons && (e.propertyName === 'opacity' || e.propertyName === 'transform')) {
+            actionButtons.style.display = 'none';
+            actionButtons.classList.remove('fade-scale-hide');
+            actionButtons.removeEventListener('transitionend', handler);
+          }
+        });
+        content.style.maxHeight = content.scrollHeight + 'px';
+        void content.offsetWidth;
+        content.style.maxHeight = '0px';
+        if (icon) {
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+        }
+      }
+    });
+  }
+  if (actionButtons) actionButtons.style.transition = '';
+  if (content) content.style.transition = 'max-height 0.4s cubic-bezier(0.4,0,0.2,1)';
+});
