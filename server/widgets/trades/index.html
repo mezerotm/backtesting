@@ -1,3 +1,10 @@
+<!-- Trades Action Bar -->
+<div id="tradesActionBar" class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2">
+    <button id="addTradeBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
+        <i class="fa-solid fa-plus"></i> Add Trade
+    </button>
+</div>
+<!-- Trades Card -->
 <div class="bg-slate-800 rounded-xl shadow-sm widget-trades p-6 w-full">
   <div class="flex justify-between items-center mb-0">
     <h2 class="text-lg font-bold text-white flex items-center gap-2">
@@ -6,45 +13,6 @@
     </h2>
   </div>
   <div id="tradesContent" style="max-height:0px;overflow:hidden;">
-    <div class="mb-4">
-      <form id="tradeForm" class="flex flex-wrap gap-2 items-end">
-        <input type="hidden" id="tradeId">
-        <div>
-          <label class="block text-xs text-gray-300 mb-1" for="tradeSymbol">Symbol</label>
-          <input type="text" id="tradeSymbol" class="p-2 rounded bg-slate-700 text-white w-24" required>
-        </div>
-        <div>
-          <label class="block text-xs text-gray-300 mb-1" for="tradeType">Type</label>
-          <select id="tradeType" class="p-2 rounded bg-slate-700 text-white w-24" required>
-            <option value="buy">Buy</option>
-            <option value="sell">Sell</option>
-            <option value="dividend">Dividend</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs text-gray-300 mb-1" for="tradeQuantity">Quantity</label>
-          <input type="number" id="tradeQuantity" class="p-2 rounded bg-slate-700 text-white w-20" step="any" required>
-        </div>
-        <div>
-          <label class="block text-xs text-gray-300 mb-1" for="tradeBuyPrice">Buy Price</label>
-          <input type="number" id="tradeBuyPrice" class="p-2 rounded bg-slate-700 text-white w-24" step="any">
-        </div>
-        <div>
-          <label class="block text-xs text-gray-300 mb-1" for="tradeSellPrice">Sell Price</label>
-          <input type="number" id="tradeSellPrice" class="p-2 rounded bg-slate-700 text-white w-24" step="any">
-        </div>
-        <div>
-          <label class="block text-xs text-gray-300 mb-1" for="tradeDate">Date</label>
-          <input type="date" id="tradeDate" class="p-2 rounded bg-slate-700 text-white w-36" required>
-        </div>
-        <div>
-          <label class="block text-xs text-gray-300 mb-1" for="tradePL">P/L</label>
-          <input type="number" id="tradePL" class="p-2 rounded bg-slate-700 text-white w-24" step="any">
-        </div>
-        <button type="submit" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
-        <button type="button" id="cancelTradeBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
-      </form>
-    </div>
     <div>
       <table class="min-w-full divide-y divide-slate-700 text-sm">
         <thead>
@@ -66,4 +34,64 @@
       </table>
     </div>
   </div>
+</div>
+<!-- Add/Edit Trade Modal (hidden by default) -->
+<div id="tradeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+  <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
+    <h3 class="text-xl font-bold text-white mb-4" id="tradeModalTitle">Add Trade</h3>
+    <form id="tradeForm" class="space-y-4">
+      <input type="hidden" id="tradeId">
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="tradeSymbol">Symbol</label>
+        <input type="text" id="tradeSymbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="tradeType">Type</label>
+        <select id="tradeType" class="w-full p-2 rounded bg-slate-700 text-white" required>
+          <option value="buy">Buy</option>
+          <option value="sell">Sell</option>
+          <option value="dividend">Dividend</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="tradeQuantity">Quantity</label>
+        <input type="number" id="tradeQuantity" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="tradeBuyPrice">Buy Price</label>
+        <input type="number" id="tradeBuyPrice" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="tradeSellPrice">Sell Price</label>
+        <input type="number" id="tradeSellPrice" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="tradeDate">Date</label>
+        <input type="date" id="tradeDate" class="w-full p-2 rounded bg-slate-700 text-white" required>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="tradePL">P/L</label>
+        <input type="number" id="tradePL" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button type="button" id="cancelTradeModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+        <button type="submit" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+      </div>
+    </form>
+  </div>
 </div> 
+<style>
+#tradesActionBar {
+  overflow: hidden;
+  transition: opacity 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+.fade-scale-hide {
+  opacity: 0 !important;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+.fade-scale-show {
+  opacity: 1 !important;
+  transform: scale(1);
+}
+</style> 
