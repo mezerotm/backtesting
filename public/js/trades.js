@@ -1,6 +1,6 @@
 export function initTrades() {
   fetchAndRenderTrades();
-  setupTradeForm();
+  setupTradeModal();
 }
 
 async function fetchAndRenderTrades() {
@@ -52,85 +52,133 @@ function renderTrades(trades) {
   });
 }
 
-function setupTradeForm() {
+function setupTradeModal() {
+  const addBtn = document.getElementById('addTradeBtn');
+  const modal = document.getElementById('tradeModal');
   const form = document.getElementById('tradeForm');
-  const cancelBtn = document.getElementById('cancelTradeBtn');
-  if (!form) return;
-  form.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const id = document.getElementById('tradeId').value;
-    const symbol = document.getElementById('tradeSymbol').value.trim().toUpperCase();
-    const type = document.getElementById('tradeType').value;
-    const quantity = parseFloat(document.getElementById('tradeQuantity').value);
-    const buy_price = parseFloat(document.getElementById('tradeBuyPrice').value);
-    const sell_price = parseFloat(document.getElementById('tradeSellPrice').value);
-    const date = document.getElementById('tradeDate').value;
-    const pl = parseFloat(document.getElementById('tradePL').value);
-    const trade = { symbol, type, quantity, buy_price, sell_price, date, pl };
-    if (id) {
-      await fetch(`/api/trades/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(trade)
-      });
-    } else {
-      await fetch('/api/trades', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(trade)
-      });
-    }
-    form.reset();
-    document.getElementById('tradeId').value = '';
-    fetchAndRenderTrades();
-  });
-  cancelBtn.addEventListener('click', () => {
-    form.reset();
-    document.getElementById('tradeId').value = '';
-  });
-}
+  const cancelBtn = document.getElementById('cancelTradeModalBtn');
+  const modalTitle = document.getElementById('tradeModalTitle');
 
-function openEditTrade(trade) {
-  document.getElementById('tradeId').value = trade.id;
-  document.getElementById('tradeSymbol').value = trade.symbol;
-  document.getElementById('tradeType').value = trade.type;
-  document.getElementById('tradeQuantity').value = trade.quantity;
-  document.getElementById('tradeBuyPrice').value = trade.buy_price ?? '';
-  document.getElementById('tradeSellPrice').value = trade.sell_price ?? '';
-  document.getElementById('tradeDate').value = trade.date ?? '';
-  document.getElementById('tradePL').value = trade.pl ?? '';
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      openTradeModal();
+    });
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      closeTradeModal();
+    });
+  }
+
+  if (form) {
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const id = document.getElementById('tradeId').value;
+      const symbol = document.getElementById('tradeSymbol').value.trim().toUpperCase();
+      const type = document.getElementById('tradeType').value;
+      const quantity = parseFloat(document.getElementById('tradeQuantity').value);
+      const buy_price = parseFloat(document.getElementById('tradeBuyPrice').value);
+      const sell_price = parseFloat(document.getElementById('tradeSellPrice').value);
+      const date = document.getElementById('tradeDate').value;
+      const pl = parseFloat(document.getElementById('tradePL').value);
+      const trade = { symbol, type, quantity, buy_price, sell_price, date, pl };
+      if (id) {
+        await fetch(`/api/trades/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(trade)
+        });
+      } else {
+        await fetch('/api/trades', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(trade)
+        });
+      }
+      form.reset();
+      document.getElementById('tradeId').value = '';
+      closeTradeModal();
+      fetchAndRenderTrades();
+    });
+  }
+
+  if (modal) {
+    modal.addEventListener('mousedown', (e) => {
+      if (e.target === modal) {
+        closeTradeModal();
+      }
+    });
+  }
+
+  function openTradeModal(edit = false) {
+    if (modal) modal.classList.remove('hidden');
+    if (modalTitle) modalTitle.textContent = edit ? 'Edit Trade' : 'Add Trade';
+  }
+
+  function closeTradeModal() {
+    if (modal) modal.classList.add('hidden');
+    if (form) form.reset();
+    document.getElementById('tradeId').value = '';
+  }
+
+  window.openEditTrade = function(trade) {
+    openTradeModal(true);
+    document.getElementById('tradeId').value = trade.id;
+    document.getElementById('tradeSymbol').value = trade.symbol;
+    document.getElementById('tradeType').value = trade.type;
+    document.getElementById('tradeQuantity').value = trade.quantity;
+    document.getElementById('tradeBuyPrice').value = trade.buy_price ?? '';
+    document.getElementById('tradeSellPrice').value = trade.sell_price ?? '';
+    document.getElementById('tradeDate').value = trade.date ?? '';
+    document.getElementById('tradePL').value = trade.pl ?? '';
+  };
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[Trades] DOMContentLoaded');
   const btn = document.getElementById('tradesMinimizeBtn');
   const icon = document.getElementById('tradesMinimizeIcon');
+  const actionBar = document.getElementById('tradesActionBar');
   const content = document.getElementById('tradesContent');
-  if (btn && content) {
-    console.log('[Trades] Minimize button and content found');
-    // Set initial max-height based on visibility
+  if (btn && actionBar && content) {
+    // Set initial max-height for both to open or closed
     if (content.style.maxHeight === '0px' || (icon && icon.classList.contains('fa-chevron-down'))) {
       content.style.maxHeight = '0px';
+      actionBar.style.display = 'none';
+      actionBar.classList.remove('fade-scale-show', 'fade-scale-hide');
       if (icon) {
         icon.classList.remove('fa-chevron-up');
         icon.classList.add('fa-chevron-down');
       }
-      console.log('[Trades] Content starts collapsed (by style or icon)');
     } else {
+      actionBar.style.maxHeight = actionBar.scrollHeight + 'px';
+      setTimeout(() => { actionBar.style.maxHeight = 'none'; }, 400);
+      actionBar.style.display = 'flex';
+      actionBar.classList.remove('fade-scale-hide');
+      actionBar.classList.add('fade-scale-show');
       content.style.maxHeight = content.scrollHeight + 'px';
       setTimeout(() => { content.style.maxHeight = 'none'; }, 400);
       if (icon) {
         icon.classList.remove('fa-chevron-down');
         icon.classList.add('fa-chevron-up');
       }
-      console.log('[Trades] Content starts expanded');
     }
     btn.addEventListener('click', function() {
-      console.log('[Trades] Minimize button clicked. Current maxHeight:', content.style.maxHeight);
-      if (content.style.maxHeight === '0px') {
-        // Currently closed, so open
+      // If either is closed, open both
+      if (actionBar.style.display === 'none' || content.style.maxHeight === '0px') {
+        actionBar.style.display = 'flex';
+        actionBar.classList.remove('fade-scale-show');
+        actionBar.classList.add('fade-scale-hide');
+        void actionBar.offsetWidth;
+        actionBar.classList.remove('fade-scale-hide');
+        actionBar.classList.add('fade-scale-show');
+        actionBar.addEventListener('transitionend', function handler(e) {
+          if (e.target === actionBar && (e.propertyName === 'opacity' || e.propertyName === 'transform')) {
+            actionBar.classList.remove('fade-scale-show');
+            actionBar.removeEventListener('transitionend', handler);
+          }
+        });
         content.style.maxHeight = content.scrollHeight + 'px';
-        console.log('[Trades] Opening content');
         if (icon) {
           icon.classList.remove('fa-chevron-down');
           icon.classList.add('fa-chevron-up');
@@ -139,22 +187,34 @@ document.addEventListener('DOMContentLoaded', function() {
           if (e.target === content) {
             content.style.maxHeight = 'none';
             content.removeEventListener('transitionend', handler);
-            console.log('[Trades] Open animation complete, maxHeight set to none');
           }
         });
       } else {
-        // Currently open, so close
+        // Both are open, so close both
+        actionBar.classList.remove('fade-scale-show');
+        actionBar.classList.add('fade-scale-hide');
+        actionBar.addEventListener('transitionend', function handler(e) {
+          if (e.target === actionBar && (e.propertyName === 'opacity' || e.propertyName === 'transform')) {
+            actionBar.style.display = 'none';
+            actionBar.classList.remove('fade-scale-hide');
+            actionBar.removeEventListener('transitionend', handler);
+          }
+        });
         content.style.maxHeight = content.scrollHeight + 'px';
         void content.offsetWidth;
         content.style.maxHeight = '0px';
-        console.log('[Trades] Closing content');
         if (icon) {
           icon.classList.remove('fa-chevron-up');
           icon.classList.add('fa-chevron-down');
         }
+        content.addEventListener('transitionend', function handler(e) {
+          if (e.target === content) {
+            content.removeEventListener('transitionend', handler);
+          }
+        });
       }
     });
-  } else {
-    console.log('[Trades] Minimize button or content NOT found');
   }
+  if (actionBar) actionBar.style.transition = '';
+  if (content) content.style.transition = 'max-height 0.4s cubic-bezier(0.4,0,0.2,1)';
 }); 
