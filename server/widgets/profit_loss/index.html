@@ -7,12 +7,44 @@
   </div>
   <div id="profitLossContent" class="collapsed">
     <div class="mb-4 text-gray-400">Track your realized and unrealized profit/loss here.</div>
-    <div class="mb-4">
-      <h3 class="text-md font-semibold text-white mb-1">Summary</h3>
-      <div class="text-gray-300">Total P/L: <span id="plTotal">$0.00</span></div>
-      <div class="text-gray-300">Unrealized: <span id="plUnrealized">$0.00</span></div>
-      <div class="text-gray-300">Realized: <span id="plRealized">$0.00</span></div>
+    
+    <!-- Summary Section -->
+    <div class="mb-6">
+      <h3 class="text-md font-semibold text-white mb-3">Summary</h3>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="text-center">
+          <div class="text-2xl font-bold" id="plTotal">$0.00</div>
+          <div class="text-xs text-gray-400">Total P/L</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-green-400" id="plUnrealized">$0.00</div>
+          <div class="text-xs text-gray-400">Unrealized</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-blue-400" id="plRealized">$0.00</div>
+          <div class="text-xs text-gray-400">Realized</div>
+        </div>
+      </div>
     </div>
+
+    <!-- Chart Section -->
+    <div class="mb-6">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-md font-semibold text-white">Performance Chart</h3>
+        <div class="flex space-x-1">
+          <button class="time-btn px-3 py-1 text-xs rounded" data-period="1W">1W</button>
+          <button class="time-btn px-3 py-1 text-xs rounded" data-period="1M">1M</button>
+          <button class="time-btn px-3 py-1 text-xs rounded" data-period="3M">3M</button>
+          <button class="time-btn px-3 py-1 text-xs rounded active" data-period="YTD">YTD</button>
+          <button class="time-btn px-3 py-1 text-xs rounded" data-period="MAX">MAX</button>
+        </div>
+      </div>
+      <div class="bg-slate-700 rounded-lg p-4 h-48">
+        <canvas id="plChart" width="400" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- P/L Details Table -->
     <div>
       <h3 class="text-md font-semibold text-white mb-1">P/L Details</h3>
       <table class="min-w-full divide-y divide-slate-700 text-sm">

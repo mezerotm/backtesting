@@ -27,13 +27,20 @@ function renderOrders(orders) {
       <td class="px-3 py-2">${order.symbol}</td>
       <td class="px-3 py-2">${order.type}</td>
       <td class="px-3 py-2">${order.quantity}</td>
-      <td class="px-3 py-2">${order.buy_price ?? ''}</td>
-      <td class="px-3 py-2">${order.sell_price ?? ''}</td>
-      <td class="px-3 py-2">${order.date ?? ''}</td>
-      <td class="px-3 py-2">${order.pl ?? ''}</td>
+      <td class="px-3 py-2">${order.type === 'buy' ? order.price : ''}</td>
+      <td class="px-3 py-2">${order.type === 'sell' ? order.price : ''}</td>
+      <td class="px-3 py-2">${order.date ? new Date(order.date).toLocaleDateString() : ''}</td>
+      <td class="px-3 py-2">${order.pl ? `$${order.pl.toFixed(2)}` : ''}</td>
       <td class="px-3 py-2">
-        <button class="edit-btn text-blue-400 hover:text-blue-300 mr-2" data-id="${order.id}"><i class="fa-solid fa-pen"></i></button>
-        <button class="delete-btn text-red-400 hover:text-red-300" data-id="${order.id}"><i class="fa-solid fa-trash"></i></button>
+        ${order.source === 'robinhood' ? 
+          '<span class="rh-badge">RH</span>' : 
+          `<button class="edit-btn text-blue-400 hover:text-blue-300 mr-2" onclick="editOrder(${order.id})">
+            <i class="fa-solid fa-pencil"></i>
+          </button>
+          <button class="delete-btn text-red-400 hover:text-red-300" onclick="deleteOrder(${order.id})">
+            <i class="fa-solid fa-trash"></i>
+          </button>`
+        }
       </td>
     `;
     tbody.appendChild(tr);

@@ -105,15 +105,13 @@ async function renderPositions(positions) {
       console.log(`[Portfolio] Position ${pos.symbol}: source="${pos.source}", isRobinhood=${isRobinhoodPosition}`);
       
       // Only show action buttons for non-Robinhood positions
-      const actionButtons = isRobinhoodPosition ? '' : `
-        <button class="portfolio-edit-btn text-blue-400 hover:text-blue-300 mr-2" title="Edit" data-id="${pos.id}"><i class="fa-solid fa-pen"></i></button>
-        <button class="portfolio-delete-btn text-red-400 hover:text-red-300" title="Delete" data-id="${pos.id}"><i class="fa-solid fa-trash"></i></button>
-      `;
+      const actionButtons = isRobinhoodPosition ? 
+        '<span class="rh-badge">RH</span>' : 
+        `<button class="portfolio-edit-btn text-blue-400 hover:text-blue-300 mr-2" title="Edit" data-id="${pos.id}"><i class="fa-solid fa-pen"></i></button>
+        <button class="portfolio-delete-btn text-red-400 hover:text-red-300" title="Delete" data-id="${pos.id}"><i class="fa-solid fa-trash"></i></button>`;
       
-      // Add Robinhood indicator to notes
-      const notesWithSource = isRobinhoodPosition 
-        ? `<span class="text-xs bg-green-600 text-white px-1 py-0.5 rounded mr-1 font-bold">RH</span> ${pos.notes || ''}`
-        : pos.notes || '';
+      // Remove Robinhood indicator from notes - it's now in actions
+      const notes = pos.notes || '';
       
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -123,7 +121,7 @@ async function renderPositions(positions) {
         <td class="px-3 py-2 text-gray-200">${percent}%</td>
         <td class="px-3 py-2 text-gray-200"></td>
         <td class="px-3 py-2 text-gray-200"></td>
-        <td class="px-3 py-2 text-gray-400">${notesWithSource}</td>
+        <td class="px-3 py-2 text-gray-400">${notes}</td>
         <td class="px-3 py-2">
           ${actionButtons}
         </td>
