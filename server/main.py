@@ -33,8 +33,25 @@ if __name__ == '__main__':
     generate_dashboard()
     print('Dashboard generated.')
 
-    # Copy widget JS files to public/js with widget-prefixed names
+    # Copy main CSS and JS files
+    os.makedirs('public', exist_ok=True)
     os.makedirs('public/js', exist_ok=True)
+    
+    # Copy main.css to public/main.css
+    css_src = 'server/main.css'
+    css_dst = 'public/main.css'
+    if os.path.isfile(css_src):
+        shutil.copyfile(css_src, css_dst)
+        print(f'Copied {css_src} to {css_dst}')
+    
+    # Copy main.js to public/js/main.js
+    js_src = 'server/main.js'
+    js_dst = 'public/js/main.js'
+    if os.path.isfile(js_src):
+        shutil.copyfile(js_src, js_dst)
+        print(f'Copied {js_src} to {js_dst}')
+    
+    # Copy widget JS files to public/js with widget-prefixed names
     widgets_dir = 'server/widgets'
     for widget_name in os.listdir(widgets_dir):
         widget_path = os.path.join(widgets_dir, widget_name)
@@ -43,7 +60,7 @@ if __name__ == '__main__':
             js_dst = os.path.join('public/js', f'{widget_name}.js')
             shutil.copyfile(js_src, js_dst)
             print(f'Copied {js_src} to {js_dst}')
-    print('Copied widget JS files to public/js/')
+    print('Copied all CSS and JS files to public/')
 
     print('Starting FastAPI server...')
     proc = subprocess.Popen([

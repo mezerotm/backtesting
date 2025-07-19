@@ -168,34 +168,40 @@ export function deleteReport(reportDir) {
 }
 
 export function showConfirmationModal(message, confirmCallback) {
-    const modal = document.getElementById('reportConfirmModal');
-    const confirmBtn = document.getElementById('confirmReportModalBtn');
-    const cancelBtn = document.getElementById('cancelReportConfirmModalBtn');
-
-    if (modal && confirmBtn && cancelBtn) {
-        modal.classList.remove('hidden');
-        modal.querySelector('.modal-content p').textContent = message;
-
-        // Remove previous listeners to avoid stacking
-        confirmBtn.onclick = null;
-        cancelBtn.onclick = null;
-        modal.onmousedown = null;
-
-        confirmBtn.onclick = () => {
-            modal.classList.add('hidden');
-            confirmCallback();
-        };
-        cancelBtn.onclick = () => {
-            modal.classList.add('hidden');
-        };
-        // Optional: close modal on outside click
-        modal.onmousedown = (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-            }
-        };
+    // Use the global confirmation modal from WidgetUtils
+    if (window.WidgetUtils && window.WidgetUtils.showConfirmationModal) {
+        window.WidgetUtils.showConfirmationModal(message, confirmCallback);
     } else {
-        console.error('[showConfirmationModal] Modal or buttons not found:', {modal, confirmBtn, cancelBtn});
+        // Fallback to the original implementation
+        const modal = document.getElementById('reportConfirmModal');
+        const confirmBtn = document.getElementById('confirmReportModalBtn');
+        const cancelBtn = document.getElementById('cancelReportConfirmModalBtn');
+
+        if (modal && confirmBtn && cancelBtn) {
+            modal.classList.remove('hidden');
+            modal.querySelector('.modal-content p').textContent = message;
+
+            // Remove previous listeners to avoid stacking
+            confirmBtn.onclick = null;
+            cancelBtn.onclick = null;
+            modal.onmousedown = null;
+
+            confirmBtn.onclick = () => {
+                modal.classList.add('hidden');
+                confirmCallback();
+            };
+            cancelBtn.onclick = () => {
+                modal.classList.add('hidden');
+            };
+            // Optional: close modal on outside click
+            modal.onmousedown = (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            };
+        } else {
+            console.error('[showConfirmationModal] Modal or buttons not found:', {modal, confirmBtn, cancelBtn});
+        }
     }
 }
 
