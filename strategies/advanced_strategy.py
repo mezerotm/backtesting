@@ -183,38 +183,38 @@ class MACDRSIStrategy(Strategy):
         
         # Convert trade data to DataFrame for analysis
         if self.trade_data:
-            trades_df = pd.DataFrame(self.trade_data)
+            orders_df = pd.DataFrame(self.trade_data)
             
             # Print trade statistics
             print("\n=== Trade Statistics ===")
-            print(f"Total Trades: {len(trades_df)}")
-            print(f"Winning Trades: {len(trades_df[trades_df['profit_pct'] > 0])}")
-            print(f"Losing Trades: {len(trades_df[trades_df['profit_pct'] <= 0])}")
+            print(f"Total Orders: {len(orders_df)}")
+            print(f"Winning Orders: {len(orders_df[orders_df['profit_pct'] > 0])}")
+            print(f"Losing Orders: {len(orders_df[orders_df['profit_pct'] <= 0])}")
             
-            if len(trades_df) > 0:
-                win_rate = len(trades_df[trades_df['profit_pct'] > 0]) / len(trades_df) * 100
+            if len(orders_df) > 0:
+                win_rate = len(orders_df[orders_df['profit_pct'] > 0]) / len(orders_df) * 100
                 print(f"Win Rate: {win_rate:.2f}%")
-                print(f"Average Profit: {trades_df['profit_pct'].mean():.2f}%")
+                print(f"Average Profit: {orders_df['profit_pct'].mean():.2f}%")
                 
-                if len(trades_df[trades_df['profit_pct'] > 0]) > 0:
-                    print(f"Average Winner: {trades_df[trades_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
+                if len(orders_df[orders_df['profit_pct'] > 0]) > 0:
+                    print(f"Average Winner: {orders_df[orders_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
                 
-                if len(trades_df[trades_df['profit_pct'] <= 0]) > 0:
-                    print(f"Average Loser: {trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
+                if len(orders_df[orders_df['profit_pct'] <= 0]) > 0:
+                    print(f"Average Loser: {orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
                     
-                    # Calculate profit factor if there are losing trades
-                    profit_sum = trades_df[trades_df['profit_pct'] > 0]['profit_pct'].sum()
-                    loss_sum = abs(trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].sum())
+                    # Calculate profit factor if there are losing orders
+                    profit_sum = orders_df[orders_df['profit_pct'] > 0]['profit_pct'].sum()
+                    loss_sum = abs(orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].sum())
                     
                     if loss_sum > 0:
                         print(f"Profit Factor: {profit_sum / loss_sum:.2f}")
                 
-                print(f"Average Trade Duration: {trades_df['trade_duration'].mean():.2f} days")
+                print(f"Average Order Duration: {orders_df['trade_duration'].mean():.2f} days")
                 
                 # Compare to buy & hold
                 if self.buy_hold_return is not None:
                     print(f"\nBuy & Hold Return: {self.buy_hold_return:.2f}%")
-                    strategy_return = trades_df['profit_pct'].sum()
+                    strategy_return = orders_df['profit_pct'].sum()
                     print(f"Strategy Return: {strategy_return:.2f}%")
                     print(f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%")
 
@@ -374,37 +374,37 @@ class BollingerRSIStrategy(Strategy):
         
         # Convert trade data to DataFrame for analysis
         if self.trade_data:
-            trades_df = pd.DataFrame(self.trade_data)
+            orders_df = pd.DataFrame(self.trade_data)
             
             # Print trade statistics
             print("\n=== Trade Statistics ===")
-            print(f"Total Trades: {len(trades_df)}")
-            print(f"Winning Trades: {len(trades_df[trades_df['profit_pct'] > 0])}")
-            print(f"Losing Trades: {len(trades_df[trades_df['profit_pct'] <= 0])}")
+            print(f"Total Orders: {len(orders_df)}")
+            print(f"Winning Orders: {len(orders_df[orders_df['profit_pct'] > 0])}")
+            print(f"Losing Orders: {len(orders_df[orders_df['profit_pct'] <= 0])}")
             
-            if len(trades_df) > 0:
-                win_rate = len(trades_df[trades_df['profit_pct'] > 0]) / len(trades_df) * 100
+            if len(orders_df) > 0:
+                win_rate = len(orders_df[orders_df['profit_pct'] > 0]) / len(orders_df) * 100
                 print(f"Win Rate: {win_rate:.2f}%")
-                print(f"Average Profit: {trades_df['profit_pct'].mean():.2f}%")
+                print(f"Average Profit: {orders_df['profit_pct'].mean():.2f}%")
                 
-                if len(trades_df[trades_df['profit_pct'] > 0]) > 0:
-                    print(f"Average Winner: {trades_df[trades_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
+                if len(orders_df[orders_df['profit_pct'] > 0]) > 0:
+                    print(f"Average Winner: {orders_df[orders_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
                 
-                if len(trades_df[trades_df['profit_pct'] <= 0]) > 0:
-                    print(f"Average Loser: {trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
+                if len(orders_df[orders_df['profit_pct'] <= 0]) > 0:
+                    print(f"Average Loser: {orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
                     
-                    # Calculate profit factor if there are losing trades
-                    profit_sum = trades_df[trades_df['profit_pct'] > 0]['profit_pct'].sum()
-                    loss_sum = abs(trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].sum())
+                    # Calculate profit factor if there are losing orders
+                    profit_sum = orders_df[orders_df['profit_pct'] > 0]['profit_pct'].sum()
+                    loss_sum = abs(orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].sum())
                     
                     if loss_sum > 0:
                         print(f"Profit Factor: {profit_sum / loss_sum:.2f}")
                 
-                print(f"Average Trade Duration: {trades_df['trade_duration'].mean():.2f} days")
+                print(f"Average Order Duration: {orders_df['trade_duration'].mean():.2f} days")
                 
                 # Compare to buy & hold
                 if self.buy_hold_return is not None:
                     print(f"\nBuy & Hold Return: {self.buy_hold_return:.2f}%")
-                    strategy_return = trades_df['profit_pct'].sum()
+                    strategy_return = orders_df['profit_pct'].sum()
                     print(f"Strategy Return: {strategy_return:.2f}%")
                     print(f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%") 

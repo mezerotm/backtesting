@@ -19,9 +19,9 @@
     <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
         <div class="border-t border-slate-700 w-full"></div>
     </div>
-    <!-- Trades Widget Section -->
+    <!-- Orders Widget Section -->
     <div class="max-w-[85rem] mx-auto w-full">
-        {% include "widgets/trades/index.html" %}
+        {% include "widgets/orders/index.html" %}
     </div>
     <!-- Divider -->
     <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
@@ -57,12 +57,12 @@
 <script type="module">
   import { initReport } from "/js/report.js";
   import { initPortfolio } from "/js/portfolio.js?v=robinhood-fix";
-  import { initTrades } from "/js/trades.js";
+  import { initOrders } from "/js/orders.js";
   import { initDividends } from "/js/dividends.js";
   import { initProfitLoss } from "/js/profit_loss.js";
   initReport();
   initPortfolio();
-  initTrades();
+  initOrders();
   initDividends();
   initProfitLoss();
 </script>

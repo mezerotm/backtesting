@@ -1,0 +1,83 @@
+<!-- Orders Action Bar -->
+<div id="ordersActionBar" class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2 collapsed">
+    <button id="addOrderBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
+        <i class="fa-solid fa-plus"></i> Add Order
+    </button>
+</div>
+<!-- Orders Card -->
+<div class="bg-slate-800 rounded-xl shadow-sm widget-orders p-6 w-full">
+  <div class="flex justify-between items-center mb-0">
+    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+      Orders
+      <button id="ordersMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Orders" style="transition: transform 0.2s;"><i id="ordersMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
+    </h2>
+  </div>
+  <div id="ordersContent" class="collapsed">
+    <div>
+      <table class="min-w-full divide-y divide-slate-700 text-sm">
+        <thead>
+          <tr>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">ID</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Type</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Quantity</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Price</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Sell Price</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Date</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">P/L</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="ordersTbody">
+          <tr><td colspan="9" class="text-center text-gray-400 py-4">No orders found.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- Add/Edit Order Modal (hidden by default) -->
+<div id="orderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+  <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
+    <h3 class="text-xl font-bold text-white mb-4" id="orderModalTitle">Add Order</h3>
+    <form id="orderForm" class="space-y-4">
+      <input type="hidden" id="orderId">
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="orderSymbol">Symbol</label>
+        <input type="text" id="orderSymbol" class="w-full p-2 rounded bg-slate-700 text-white" required autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="orderType">Type</label>
+        <select id="orderType" class="w-full p-2 rounded bg-slate-700 text-white" required>
+          <option value="buy">Buy</option>
+          <option value="sell">Sell</option>
+          <option value="dividend">Dividend</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="orderQuantity">Quantity</label>
+        <input type="number" id="orderQuantity" class="w-full p-2 rounded bg-slate-700 text-white" step="any" required>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="orderBuyPrice">Buy Price</label>
+        <input type="number" id="orderBuyPrice" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="orderSellPrice">Sell Price</label>
+        <input type="number" id="orderSellPrice" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="orderDate">Date</label>
+        <input type="date" id="orderDate" class="w-full p-2 rounded bg-slate-700 text-white" required>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-1" for="orderPL">P/L</label>
+        <input type="number" id="orderPL" class="w-full p-2 rounded bg-slate-700 text-white" step="any">
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button type="button" id="cancelOrderModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
+        <button type="submit" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+      </div>
+    </form>
+  </div>
+</div> 
+ 
