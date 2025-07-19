@@ -26,6 +26,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="/main.css">
+    
     <style>
         /* Base styling */
         body {
@@ -213,72 +216,6 @@
     </div>
 </div>
 
-<style>
-#symbol {
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-#symbolDropdown {
-  position: relative;
-  z-index: 50;
-}
-#symbolDropdown > div {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-top: none;
-  border-radius: 0 0 0.5rem 0.5rem;
-  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.25);
-  margin-top: 0;
-  width: 100%;
-  max-height: 14rem;
-  overflow-y: auto;
-}
-#symbolDropdown .cursor-pointer {
-  font-size: 1rem;
-  color: #e5e7eb;
-  padding: 0.5em 1em;
-  background: none;
-  transition: background 0.15s;
-}
-#symbolDropdown .hover\:bg-blue-700:hover, #symbolDropdown .bg-blue-700 {
-  background: #1d4ed8 !important;
-  color: #fff !important;
-}
-#symbolDropdown .font-semibold {
-  font-weight: 600;
-}
-#symbolDropdown .text-xs {
-  font-size: 0.8em;
-}
-/* Style datalist dropdown for symbol */
-input[list="symbolOptions"]::-webkit-calendar-picker-indicator {
-  display: none;
-}
-datalist#symbolOptions option {
-  font-size: 1rem;
-  color: #222;
-  background: #fff;
-  padding: 0.5em 1em;
-}
-input[list="symbolOptions"] {
-  width: 100%;
-  box-sizing: border-box;
-}
-#portfolioActionBar {
-  overflow: hidden;
-  /* Remove max-height transition, handled by JS for content only */
-  transition: opacity 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1);
-}
-.fade-scale-hide {
-  opacity: 0 !important;
-  transform: scale(0.95);
-  pointer-events: none;
-}
-.fade-scale-show {
-  opacity: 1 !important;
-  transform: scale(1);
-}
-</style>
 <!-- Removed JS that formats cash input with commas. Input will now accept only plain whole numbers. --> 
     </div>
     <!-- Divider -->
@@ -301,7 +238,7 @@ input[list="symbolOptions"] {
       <button id="tradesMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Trades" style="transition: transform 0.2s;"><i id="tradesMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
     </h2>
   </div>
-  <div id="tradesContent" style="max-height:0px;overflow:hidden;">
+  <div id="tradesContent" class="collapsed">
     <div>
       <table class="min-w-full divide-y divide-slate-700 text-sm">
         <thead>
@@ -369,21 +306,7 @@ input[list="symbolOptions"] {
     </form>
   </div>
 </div> 
-<style>
-#tradesActionBar {
-  overflow: hidden;
-  transition: opacity 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1);
-}
-.fade-scale-hide {
-  opacity: 0 !important;
-  transform: scale(0.95);
-  pointer-events: none;
-}
-.fade-scale-show {
-  opacity: 1 !important;
-  transform: scale(1);
-}
-</style> 
+ 
     </div>
     <!-- Divider -->
     <div class="max-w-[85rem] mx-auto w-full flex justify-center py-2">
@@ -398,7 +321,7 @@ input[list="symbolOptions"] {
       <button id="dividendsMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Dividends" style="transition: transform 0.2s;"><i id="dividendsMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
     </h2>
   </div>
-  <div id="dividendsContent" style="max-height:0px;overflow:hidden;">
+  <div id="dividendsContent" class="collapsed">
     <div class="mb-4 text-gray-400">Track your upcoming and received dividends here.</div>
     <div class="mb-4">
       <h3 class="text-md font-semibold text-white mb-1">Upcoming Dividends</h3>
@@ -451,7 +374,7 @@ input[list="symbolOptions"] {
       <button id="profitLossMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Profit/Loss" style="transition: transform 0.2s;"><i id="profitLossMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
     </h2>
   </div>
-  <div id="profitLossContent" style="max-height:0px;overflow:hidden;">
+  <div id="profitLossContent" class="collapsed">
     <div class="mb-4 text-gray-400">Track your realized and unrealized profit/loss here.</div>
     <div class="mb-4">
       <h3 class="text-md font-semibold text-white mb-1">Summary</h3>
@@ -561,7 +484,7 @@ input[list="symbolOptions"] {
         <h2 class="text-lg font-bold text-white">Available Reports</h2>
       </div>
       <div class="text-sm text-gray-500">
-        Last updated: <span id="lastUpdated">2025-07-18 11:44:02</span>
+        Last updated: <span id="lastUpdated">2025-07-18 22:06:05</span>
       </div>
     </div>
     <div class="overflow-x-auto">
@@ -650,74 +573,7 @@ input[list="symbolOptions"] {
     </div>
   </div>
 </div>
-<style>
-#reportActionBar {
-  overflow: hidden;
-  transition: opacity 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1);
-}
-#reportActionButtons {
-  transition: opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1);
-}
-.fade-scale-hide {
-  opacity: 0 !important;
-  transform: scale(0.95);
-  pointer-events: none;
-}
-.fade-scale-show {
-  opacity: 1 !important;
-  transform: scale(1);
-}
-#genSymbol {
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-#genSymbolDropdown {
-  position: relative;
-  z-index: 50;
-}
-#genSymbolDropdown > div {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-top: none;
-  border-radius: 0 0 0.5rem 0.5rem;
-  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.25);
-  margin-top: 0;
-  width: 100%;
-  max-height: 14rem;
-  overflow-y: auto;
-}
-#genSymbolDropdown .cursor-pointer {
-  font-size: 1rem;
-  color: #e5e7eb;
-  padding: 0.5em 1em;
-  background: none;
-  transition: background 0.15s;
-}
-#genSymbolDropdown .hover\:bg-blue-700:hover, #genSymbolDropdown .bg-blue-700 {
-  background: #1d4ed8 !important;
-  color: #fff !important;
-}
-#genSymbolDropdown .font-semibold {
-  font-weight: 600;
-}
-#genSymbolDropdown .text-xs {
-  font-size: 0.8em;
-}
-/* Style datalist dropdown for genSymbol */
-input[list="genSymbolOptions"]::-webkit-calendar-picker-indicator {
-  display: none;
-}
-datalist#genSymbolOptions option {
-  font-size: 1rem;
-  color: #222;
-  background: #fff;
-  padding: 0.5em 1em;
-}
-input[list="genSymbolOptions"] {
-  width: 100%;
-  box-sizing: border-box;
-}
-</style> 
+ 
     </div>
 </div>
 
@@ -735,7 +591,7 @@ input[list="genSymbolOptions"] {
                     &copy;  Trading Strategy Suite. All rights reserved.
                 </div>
                 <div class="text-slate-400 text-sm">
-                    Generated on: 2025-07-18 11:44:02
+                    Generated on: 2025-07-18 22:06:05
                 </div>
             </div>
         </div>
@@ -743,6 +599,9 @@ input[list="genSymbolOptions"] {
     
     <!-- Preline UI JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.js"></script>
+    
+    <!-- Main JavaScript -->
+    <script src="/js/main.js"></script>
     
     
 <script type="module">

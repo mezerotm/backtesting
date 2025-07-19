@@ -12,7 +12,7 @@
       <button id="tradesMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Trades" style="transition: transform 0.2s;"><i id="tradesMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
     </h2>
   </div>
-  <div id="tradesContent" style="max-height:0px;overflow:hidden;">
+  <div id="tradesContent" class="collapsed">
     <div>
       <table class="min-w-full divide-y divide-slate-700 text-sm">
         <thead>
@@ -80,18 +80,4 @@
     </form>
   </div>
 </div> 
-<style>
-#tradesActionBar {
-  overflow: hidden;
-  transition: opacity 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1);
-}
-.fade-scale-hide {
-  opacity: 0 !important;
-  transform: scale(0.95);
-  pointer-events: none;
-}
-.fade-scale-show {
-  opacity: 1 !important;
-  transform: scale(1);
-}
-</style> 
+ 

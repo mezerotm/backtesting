@@ -155,28 +155,34 @@ function openAddModal() {
 }
 
 function showPortfolioConfirmationModal(message, confirmCallback) {
-  const modal = document.getElementById('portfolioConfirmModal');
-  const confirmBtn = document.getElementById('confirmPortfolioModalBtn');
-  const cancelBtn = document.getElementById('cancelPortfolioConfirmModalBtn');
-  const msg = document.getElementById('portfolioConfirmMessage');
-  if (modal && confirmBtn && cancelBtn && msg) {
-    modal.classList.remove('hidden');
-    msg.textContent = message;
-    confirmBtn.onclick = null;
-    cancelBtn.onclick = null;
-    modal.onmousedown = null;
-    confirmBtn.onclick = () => {
-      modal.classList.add('hidden');
-      confirmCallback();
-    };
-    cancelBtn.onclick = () => {
-      modal.classList.add('hidden');
-    };
-    modal.onmousedown = (e) => {
-      if (e.target === modal) {
+  // Use the global confirmation modal from WidgetUtils
+  if (window.WidgetUtils && window.WidgetUtils.showConfirmationModal) {
+    window.WidgetUtils.showConfirmationModal(message, confirmCallback);
+  } else {
+    // Fallback to the original implementation
+    const modal = document.getElementById('portfolioConfirmModal');
+    const confirmBtn = document.getElementById('confirmPortfolioModalBtn');
+    const cancelBtn = document.getElementById('cancelPortfolioConfirmModalBtn');
+    const msg = document.getElementById('portfolioConfirmMessage');
+    if (modal && confirmBtn && cancelBtn && msg) {
+      modal.classList.remove('hidden');
+      msg.textContent = message;
+      confirmBtn.onclick = null;
+      cancelBtn.onclick = null;
+      modal.onmousedown = null;
+      confirmBtn.onclick = () => {
         modal.classList.add('hidden');
-      }
-    };
+        confirmCallback();
+      };
+      cancelBtn.onclick = () => {
+        modal.classList.add('hidden');
+      };
+      modal.onmousedown = (e) => {
+        if (e.target === modal) {
+          modal.classList.add('hidden');
+        }
+      };
+    }
   }
 }
 
