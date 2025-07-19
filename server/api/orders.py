@@ -2,7 +2,7 @@ from fastapi import APIRouter, Body, HTTPException
 from typing import List, Dict
 import os, json
 
-router = APIRouter(prefix="/api/trades", tags=["trades"])
+router = APIRouter(prefix="/api/orders", tags=["orders"])
 TRADES_PATH = os.path.join("public", "data", "trades.json")
 
 # Helper: load/save trades

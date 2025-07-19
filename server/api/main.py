@@ -5,7 +5,7 @@ from server.api.report import router as report_router
 from server.api.portfolio import router as portfolio_router
 from server.api.dividends import router as dividends_router
 from server.api.profit_loss import router as profit_loss_router
-from server.api.trades import router as trades_router
+from server.api.orders import router as orders_router
 from server.api.robinhood import router as robinhood_router
 import webbrowser
 import logging
@@ -55,8 +55,8 @@ logger.info("Registering dividends_router at /api/dividends")
 app.include_router(dividends_router)
 logger.info("Registering profit_loss_router at /api/profit_loss")
 app.include_router(profit_loss_router)
-logger.info("Registering trades_router at /api/trades")
-app.include_router(trades_router)
+logger.info("Registering orders_router at /api/orders")
+app.include_router(orders_router)
 logger.info("Registering robinhood_router at /api/robinhood")
 app.include_router(robinhood_router)
 

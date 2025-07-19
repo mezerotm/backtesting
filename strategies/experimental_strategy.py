@@ -111,7 +111,7 @@ class CombinedStrategy(Strategy):
         # Initialize trade tracking
         self.trade_count = 0
         self.trade_data = []
-        self.trades = []  # For visualization
+        self.orders = []  # For visualization
         
         # Track entry information
         self.entry_price = 0
@@ -221,8 +221,8 @@ class CombinedStrategy(Strategy):
                 self.entry_time = self.data.index[-1]
                 self.entry_bar = len(self.data) - 1
                 
-                # Create a new trade object for visualization
-                new_trade = {
+                # Create a new order object for visualization
+                new_order = {
                     'entry_bar': self.entry_bar,
                     'entry_price': self.entry_price,
                     'entry_time': self.entry_time,
@@ -231,7 +231,7 @@ class CombinedStrategy(Strategy):
                     'exit_price': None,
                     'pl_pct': None
                 }
-                self.trades.append(new_trade)
+                self.orders.append(new_order)
         else:
             # Sell when score is below threshold
             if score <= self.sell_threshold:
@@ -252,17 +252,17 @@ class CombinedStrategy(Strategy):
                     'profit_loss': profit_loss,
                     'profit_pct': profit_pct,
                     'exit_score': score,
-                    'trade_duration': (self.data.index[-1] - self.entry_time).days
+                    'order_duration': (self.data.index[-1] - self.entry_time).days
                 })
                 
-                # Update the current trade for visualization
-                if self.trades:
-                    current_trade = self.trades[-1]
-                    current_trade['exit_bar'] = exit_bar
-                    current_trade['exit_price'] = exit_price
-                    current_trade['pl_pct'] = profit_pct
+                # Update the current order for visualization
+                if self.orders:
+                    current_order = self.orders[-1]
+                    current_order['exit_bar'] = exit_bar
+                    current_order['exit_price'] = exit_price
+                    current_order['pl_pct'] = profit_pct
                 
-                print(f"Trade #{self.trade_count}: P/L = {profit_loss:.2f} ({profit_pct:.2f}%)")
+                print(f"Order #{self.trade_count}: P/L = {profit_loss:.2f} ({profit_pct:.2f}%)")
                 
                 self.position.close()
                 self.trade_count += 1
@@ -272,24 +272,24 @@ class CombinedStrategy(Strategy):
         Perform post-backtest analysis.
         This method is called after the backtest is complete.
         """
-        # Add trade markers to the chart
-        StrategyUtils.add_trade_markers(self, self.trades)
+        # Add order markers to the chart
+        StrategyUtils.add_order_markers(self, self.orders)
         
         # Add key metrics annotation
         if self.trade_data:
-            trades_df = pd.DataFrame(self.trade_data)
-            win_rate = len(trades_df[trades_df['profit_pct'] > 0]) / len(trades_df) * 100 if len(trades_df) > 0 else 0
+            orders_df = pd.DataFrame(self.trade_data)
+            win_rate = len(orders_df[orders_df['profit_pct'] > 0]) / len(orders_df) * 100 if len(orders_df) > 0 else 0
             
             metrics = {
                 'Win Rate': f"{win_rate:.1f}%",
-                'Trades': len(trades_df),
+                'Total Orders': len(orders_df),
                 'Max DD': f"{self.max_dd_duration} days" 
             }
             
-            # Calculate profit factor if there are losing trades
-            if len(trades_df) > 0 and len(trades_df[trades_df['profit_pct'] <= 0]) > 0:
-                profit_sum = trades_df[trades_df['profit_pct'] > 0]['profit_pct'].sum()
-                loss_sum = abs(trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].sum())
+            # Calculate profit factor if there are losing orders
+            if len(orders_df) > 0 and len(orders_df[orders_df['profit_pct'] <= 0]) > 0:
+                profit_sum = orders_df[orders_df['profit_pct'] > 0]['profit_pct'].sum()
+                loss_sum = abs(orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].sum())
                 
                 if loss_sum > 0:
                     metrics['Profit Factor'] = f"{profit_sum / loss_sum:.2f}"
@@ -298,38 +298,38 @@ class CombinedStrategy(Strategy):
         
         # Print trade statistics
         if self.trade_data:
-            trades_df = pd.DataFrame(self.trade_data)
+            orders_df = pd.DataFrame(self.trade_data)
             
             # Print trade statistics
             print("\n=== Trade Statistics ===")
-            print(f"Total Trades: {len(trades_df)}")
-            print(f"Winning Trades: {len(trades_df[trades_df['profit_pct'] > 0])}")
-            print(f"Losing Trades: {len(trades_df[trades_df['profit_pct'] <= 0])}")
+            print(f"Total Orders: {len(orders_df)}")
+            print(f"Winning Orders: {len(orders_df[orders_df['profit_pct'] > 0])}")
+            print(f"Losing Orders: {len(orders_df[orders_df['profit_pct'] <= 0])}")
             
-            if len(trades_df) > 0:
-                win_rate = len(trades_df[trades_df['profit_pct'] > 0]) / len(trades_df) * 100
+            if len(orders_df) > 0:
+                win_rate = len(orders_df[orders_df['profit_pct'] > 0]) / len(orders_df) * 100
                 print(f"Win Rate: {win_rate:.2f}%")
-                print(f"Average Profit: {trades_df['profit_pct'].mean():.2f}%")
+                print(f"Average Profit: {orders_df['profit_pct'].mean():.2f}%")
                 
-                if len(trades_df[trades_df['profit_pct'] > 0]) > 0:
-                    print(f"Average Winner: {trades_df[trades_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
+                if len(orders_df[orders_df['profit_pct'] > 0]) > 0:
+                    print(f"Average Winner: {orders_df[orders_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
                 
-                if len(trades_df[trades_df['profit_pct'] <= 0]) > 0:
-                    print(f"Average Loser: {trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
+                if len(orders_df[orders_df['profit_pct'] <= 0]) > 0:
+                    print(f"Average Loser: {orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
                     
-                    # Calculate profit factor if there are losing trades
-                    profit_sum = trades_df[trades_df['profit_pct'] > 0]['profit_pct'].sum()
-                    loss_sum = abs(trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].sum())
+                    # Calculate profit factor if there are losing orders
+                    profit_sum = orders_df[orders_df['profit_pct'] > 0]['profit_pct'].sum()
+                    loss_sum = abs(orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].sum())
                     
                     if loss_sum > 0:
                         print(f"Profit Factor: {profit_sum / loss_sum:.2f}")
                 
-                print(f"Average Trade Duration: {trades_df['trade_duration'].mean():.2f} days")
+                print(f"Average Order Duration: {orders_df['order_duration'].mean():.2f} days")
                 
                 # Compare to buy & hold
                 if self.buy_hold_return is not None:
                     print(f"\nBuy & Hold Return: {self.buy_hold_return:.2f}%")
-                    strategy_return = trades_df['profit_pct'].sum()
+                    strategy_return = orders_df['profit_pct'].sum()
                     print(f"Strategy Return: {strategy_return:.2f}%")
                     print(f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%")
                 
