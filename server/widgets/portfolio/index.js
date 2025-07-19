@@ -99,6 +99,22 @@ async function renderPositions(positions) {
     positions.forEach(pos => {
       const amount = pos.quantity * pos.buy_price;
       const percent = amount > 0 ? ((amount / totalPortfolioValue) * 100).toFixed(2) : '0.00';
+      const isRobinhoodPosition = pos.source === 'robinhood';
+      
+      // Debug logging
+      console.log(`[Portfolio] Position ${pos.symbol}: source="${pos.source}", isRobinhood=${isRobinhoodPosition}`);
+      
+      // Only show action buttons for non-Robinhood positions
+      const actionButtons = isRobinhoodPosition ? '' : `
+        <button class="portfolio-edit-btn text-blue-400 hover:text-blue-300 mr-2" title="Edit" data-id="${pos.id}"><i class="fa-solid fa-pen"></i></button>
+        <button class="portfolio-delete-btn text-red-400 hover:text-red-300" title="Delete" data-id="${pos.id}"><i class="fa-solid fa-trash"></i></button>
+      `;
+      
+      // Add Robinhood indicator to notes
+      const notesWithSource = isRobinhoodPosition 
+        ? `${pos.notes || ''} <span class="text-xs bg-green-600 text-white px-1 py-0.5 rounded ml-1 font-bold">RH</span>`
+        : pos.notes || '';
+      
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="px-3 py-2 text-white font-semibold">${pos.symbol}</td>
@@ -107,10 +123,9 @@ async function renderPositions(positions) {
         <td class="px-3 py-2 text-gray-200">${percent}%</td>
         <td class="px-3 py-2 text-gray-200"></td>
         <td class="px-3 py-2 text-gray-200"></td>
-        <td class="px-3 py-2 text-gray-400">${pos.notes || ''}</td>
+        <td class="px-3 py-2 text-gray-400">${notesWithSource}</td>
         <td class="px-3 py-2">
-          <button class="portfolio-edit-btn text-blue-400 hover:text-blue-300 mr-2" title="Edit" data-id="${pos.id}"><i class="fa-solid fa-pen"></i></button>
-          <button class="portfolio-delete-btn text-red-400 hover:text-red-300" title="Delete" data-id="${pos.id}"><i class="fa-solid fa-trash"></i></button>
+          ${actionButtons}
         </td>
       `;
       tbody.appendChild(tr);
@@ -137,7 +152,11 @@ async function renderPositions(positions) {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
       const pos = positions.find(p => String(p.id) === String(id));
-      if (pos) openEditModal(pos);
+      if (pos && pos.source !== 'robinhood') {
+        openEditModal(pos);
+      } else if (pos && pos.source === 'robinhood') {
+        Utils.showNotification('Cannot edit Robinhood positions. They are read-only.', 'warning');
+      }
     });
   });
   tbody.querySelectorAll('.portfolio-delete-btn').forEach(btn => {

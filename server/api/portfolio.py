@@ -17,6 +17,7 @@ class Position(BaseModel):
     quantity: float
     buy_price: float
     notes: Optional[str] = None
+    source: Optional[str] = None
 
 def load_positions() -> List[dict]:
     if not os.path.exists(PORTFOLIO_PATH):
