@@ -63,3 +63,4 @@ websockets==14.2
 xyzservices==2025.1.0
 yfinance==0.2.54
 pytest==8.4.1
+robin-stocks==3.4.0

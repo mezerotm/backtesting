@@ -31,21 +31,46 @@ def save_positions(positions: List[dict]):
 # --- Portfolio Cash, BTC, and BTC Avg Buy Price Logic ---
 def load_portfolio_cash_btc() -> dict:
     if not os.path.exists(PORTFOLIO_CASH_PATH):
-        return {"total_portfolio_cash": 0.0, "total_portfolio_btc": 0.0, "btc_avg_buy_price": 0.0}
+        return {
+            "total_portfolio_cash": 0.0,
+            "total_portfolio_btc": 0.0,
+            "btc_avg_buy_price": 0.0,
+            "robinhood_enabled": False,
+            "robinhood_display": False,
+            "robinhood_username": "",
+            "robinhood_password": "",
+            "robinhood_mfa": ""
+        }
     with open(PORTFOLIO_CASH_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
+        # Set defaults for new fields if missing
         if "total_portfolio_btc" not in data:
             data["total_portfolio_btc"] = 0.0
         if "btc_avg_buy_price" not in data:
             data["btc_avg_buy_price"] = 0.0
+        if "robinhood_enabled" not in data:
+            data["robinhood_enabled"] = False
+        if "robinhood_display" not in data:
+            data["robinhood_display"] = False
+        if "robinhood_username" not in data:
+            data["robinhood_username"] = ""
+        if "robinhood_password" not in data:
+            data["robinhood_password"] = ""
+        if "robinhood_mfa" not in data:
+            data["robinhood_mfa"] = ""
         return data
 
 def save_portfolio_cash_btc(data: dict):
-    # Always write all fields
+    # Always write all fields, including new Robinhood settings
     out = {
         "total_portfolio_cash": float(data.get("total_portfolio_cash", 0.0)),
         "total_portfolio_btc": float(data.get("total_portfolio_btc", 0.0)),
         "btc_avg_buy_price": float(data.get("btc_avg_buy_price", 0.0)),
+        "robinhood_enabled": bool(data.get("robinhood_enabled", False)),
+        "robinhood_display": bool(data.get("robinhood_display", False)),
+        "robinhood_username": data.get("robinhood_username", ""),
+        "robinhood_password": data.get("robinhood_password", ""),
+        "robinhood_mfa": data.get("robinhood_mfa", "")
     }
     with open(PORTFOLIO_CASH_PATH, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2)
@@ -121,6 +146,50 @@ def get_latest_price(symbol: str):
     if not results:
         raise HTTPException(status_code=404, detail="No price data found")
     return {"price": results[0]["c"]}
+
+@router.get("/settings")
+def get_portfolio_settings():
+    """
+    Get the total portfolio cash, BTC (dollar value), BTC avg buy price, and Robinhood settings from portfolio.json.
+    Returns: {"total_portfolio_cash": float, "total_portfolio_btc": float, "btc_avg_buy_price": float, ...robinhood fields...}
+    """
+    return load_portfolio_cash_btc()
+
+@router.post("/settings")
+def set_portfolio_settings(data: dict):
+    """
+    Set the total portfolio cash, BTC (dollar value), BTC avg buy price, and Robinhood settings in portfolio.json.
+    Accepts any of: {"total_portfolio_cash": float, "total_portfolio_btc": float, "btc_avg_buy_price": float, ...robinhood fields...}
+    """
+    current = load_portfolio_cash_btc()
+    if "total_portfolio_cash" in data:
+        try:
+            current["total_portfolio_cash"] = float(data["total_portfolio_cash"] or 0)
+        except (ValueError, TypeError):
+            current["total_portfolio_cash"] = 0.0
+    if "total_portfolio_btc" in data:
+        try:
+            current["total_portfolio_btc"] = float(data["total_portfolio_btc"] or 0)
+        except (ValueError, TypeError):
+            current["total_portfolio_btc"] = 0.0
+    if "btc_avg_buy_price" in data:
+        try:
+            current["btc_avg_buy_price"] = float(data["btc_avg_buy_price"] or 0)
+        except (ValueError, TypeError):
+            current["btc_avg_buy_price"] = 0.0
+    # Robinhood settings
+    if "robinhood_enabled" in data:
+        current["robinhood_enabled"] = bool(data["robinhood_enabled"])
+    if "robinhood_display" in data:
+        current["robinhood_display"] = bool(data["robinhood_display"])
+    if "robinhood_username" in data:
+        current["robinhood_username"] = data["robinhood_username"] or ""
+    if "robinhood_password" in data:
+        current["robinhood_password"] = data["robinhood_password"] or ""
+    if "robinhood_mfa" in data:
+        current["robinhood_mfa"] = data["robinhood_mfa"] or ""
+    save_portfolio_cash_btc(current)
+    return {"status": "ok"}
 
 @router.get("/cash")
 def get_portfolio_cash():

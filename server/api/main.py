@@ -6,6 +6,7 @@ from server.api.portfolio import router as portfolio_router
 from server.api.dividends import router as dividends_router
 from server.api.profit_loss import router as profit_loss_router
 from server.api.trades import router as trades_router
+from server.api.robinhood import router as robinhood_router
 import webbrowser
 import logging
 import os
@@ -56,6 +57,8 @@ logger.info("Registering profit_loss_router at /api/profit_loss")
 app.include_router(profit_loss_router)
 logger.info("Registering trades_router at /api/trades")
 app.include_router(trades_router)
+logger.info("Registering robinhood_router at /api/robinhood")
+app.include_router(robinhood_router)
 
 # Health check endpoint
 @app.get("/api/dashboard/health")

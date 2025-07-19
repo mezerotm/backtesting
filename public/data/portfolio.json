@@ -1,5 +1,10 @@
 {
   "total_portfolio_cash": 100.0,
   "total_portfolio_btc": 1.0,
-  "btc_avg_buy_price": 100000.0
+  "btc_avg_buy_price": 100000.0,
+  "robinhood_enabled": false,
+  "robinhood_display": false,
+  "robinhood_username": "",
+  "robinhood_password": "",
+  "robinhood_mfa": ""
 }

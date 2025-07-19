@@ -76,24 +76,71 @@
             </form>
         </div>
     </div>
-    <!-- Portfolio Cash Modal (hidden by default) -->
+    <!-- Portfolio Settings Modal -->
     <div id="cashModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
         <div class="bg-slate-800 rounded-lg shadow-lg w-full max-w-md p-6">
             <h3 class="text-xl font-bold text-white mb-4">Portfolio Settings</h3>
             <form id="cashForm" class="space-y-4">
-                <div>
+                <div class="mb-4">
+                    <h4 class="text-sm font-bold text-white mb-2">Portfolio</h4>
                     <label for="cash" class="block text-sm text-green-400 font-semibold mb-2">Total Portfolio Cash ($):</label>
-                    <input type="text" id="cash" class="p-2 rounded bg-slate-700 text-white w-full" step="1" min="0" inputmode="numeric" autocomplete="off">
+                    <input type="text" id="cash" class="p-2 rounded bg-slate-700 text-white w-full" step="1" min="0" inputmode="numeric" autocomplete="off" value="0" onblur="if(this.value===''){this.value=0;}">
                 </div>
-                <div>
+                <div class="mb-4">
                     <label for="btcDollar" class="block text-sm text-yellow-300 font-semibold mb-2">Total Portfolio BTC ($):</label>
-                    <input type="text" id="btcDollar" class="p-2 rounded bg-slate-700 text-white w-full" step="any" min="0" inputmode="decimal" autocomplete="off" placeholder="Enter BTC value in dollars">
+                    <input type="text" id="btcDollar" class="p-2 rounded bg-slate-700 text-white w-full" step="any" min="0" inputmode="decimal" autocomplete="off" placeholder="Enter BTC value in dollars" value="0" onblur="if(this.value===''){this.value=0;}">
                 </div>
-                <div>
+                <div class="mb-4">
                     <label for="btcAvgBuyPrice" class="block text-sm text-yellow-300 font-semibold mb-2">BTC Avg Buy Price ($):</label>
-                    <input type="text" id="btcAvgBuyPrice" class="p-2 rounded bg-slate-700 text-white w-full" step="any" min="0" inputmode="decimal" autocomplete="off">
+                    <input type="text" id="btcAvgBuyPrice" class="p-2 rounded bg-slate-700 text-white w-full" step="any" min="0" inputmode="decimal" autocomplete="off" value="0" onblur="if(this.value===''){this.value=0;}">
                 </div>
-                <div class="flex justify-end gap-2 mt-4">
+                
+                <!-- Robinhood Integration Section -->
+                <div class="pt-2 border-t border-slate-700 mt-4 mb-2">
+                    <h4 class="text-sm font-bold text-white mb-2">Robinhood Integration</h4>
+                    <div class="mb-4">
+                        <label for="robinhoodUsername" class="block text-xs text-gray-300 mb-1">Robinhood Username/Email</label>
+                        <input type="text" id="robinhoodUsername" class="p-2 rounded bg-slate-700 text-white w-full" autocomplete="username" placeholder="Enter Robinhood username or email">
+                    </div>
+                    <div class="mb-4">
+                        <label for="robinhoodPassword" class="block text-xs text-gray-300 mb-1">Robinhood Password</label>
+                        <input type="password" id="robinhoodPassword" class="p-2 rounded bg-slate-700 text-white w-full" autocomplete="current-password" placeholder="Enter Robinhood password">
+                    </div>
+                    <div class="mb-4">
+                        <label for="robinhoodMFA" class="block text-xs text-gray-300 mb-1">Robinhood 2FA Code (if enabled)</label>
+                        <input type="text" id="robinhoodMFA" class="p-2 rounded bg-slate-700 text-white w-full" autocomplete="one-time-code" placeholder="Enter 2FA code (if required)">
+                    </div>
+                    <div class="mt-3 mb-2">
+                        <div class="flex items-center gap-1">
+                            <input type="checkbox" id="robinhoodEnabled" class="accent-green-600" checked>
+                            <label for="robinhoodEnabled" class="text-sm text-gray-200 select-none">Enable Robinhood</label>
+                        </div>
+                        <div class="flex items-center gap-1 mt-1">
+                            <input type="checkbox" id="robinhoodDisplay" class="accent-blue-600" checked>
+                            <label for="robinhoodDisplay" class="text-sm text-gray-200 select-none">Show Robinhood Data</label>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Pull Robinhood</label>
+                        <button id="pullRobinhoodBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors">
+                            Pull Robinhood
+                        </button>
+                    </div>
+                    
+                    <!-- Robinhood Status Display -->
+                    <div id="robinhoodStatus" class="mb-4 p-3 bg-slate-700 rounded-lg hidden">
+                        <h4 class="text-sm font-bold text-white mb-2">Robinhood Status</h4>
+                        <div class="text-xs text-slate-300 space-y-1">
+                            <div>Last Pull: <span id="lastPullTime">Never</span></div>
+                            <div>Positions: <span id="positionsCount">0</span></div>
+                            <div>Trades: <span id="tradesCount">0</span></div>
+                            <div>Dividends: <span id="dividendsCount">0</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr class="my-6 border-t border-slate-600">
+                <div class="flex justify-end gap-2">
                     <button type="button" id="cancelCashModalBtn" class="py-2 px-4 rounded bg-gray-600 text-white hover:bg-gray-500">Cancel</button>
                     <button type="submit" class="py-2 px-4 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
                 </div>
