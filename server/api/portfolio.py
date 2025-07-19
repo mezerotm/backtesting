@@ -37,7 +37,6 @@ def load_portfolio_cash_btc() -> dict:
             "total_portfolio_btc": 0.0,
             "btc_avg_buy_price": 0.0,
             "robinhood_enabled": False,
-            "robinhood_display": False,
             "robinhood_username": "",
             "robinhood_password": "",
             "robinhood_mfa": ""
@@ -51,14 +50,14 @@ def load_portfolio_cash_btc() -> dict:
             data["btc_avg_buy_price"] = 0.0
         if "robinhood_enabled" not in data:
             data["robinhood_enabled"] = False
-        if "robinhood_display" not in data:
-            data["robinhood_display"] = False
         if "robinhood_username" not in data:
             data["robinhood_username"] = ""
         if "robinhood_password" not in data:
             data["robinhood_password"] = ""
         if "robinhood_mfa" not in data:
             data["robinhood_mfa"] = ""
+        # Remove robinhood_display if present
+        data.pop("robinhood_display", None)
         return data
 
 def save_portfolio_cash_btc(data: dict):
@@ -68,7 +67,6 @@ def save_portfolio_cash_btc(data: dict):
         "total_portfolio_btc": float(data.get("total_portfolio_btc", 0.0)),
         "btc_avg_buy_price": float(data.get("btc_avg_buy_price", 0.0)),
         "robinhood_enabled": bool(data.get("robinhood_enabled", False)),
-        "robinhood_display": bool(data.get("robinhood_display", False)),
         "robinhood_username": data.get("robinhood_username", ""),
         "robinhood_password": data.get("robinhood_password", ""),
         "robinhood_mfa": data.get("robinhood_mfa", "")
@@ -181,14 +179,14 @@ def set_portfolio_settings(data: dict):
     # Robinhood settings
     if "robinhood_enabled" in data:
         current["robinhood_enabled"] = bool(data["robinhood_enabled"])
-    if "robinhood_display" in data:
-        current["robinhood_display"] = bool(data["robinhood_display"])
     if "robinhood_username" in data:
         current["robinhood_username"] = data["robinhood_username"] or ""
     if "robinhood_password" in data:
         current["robinhood_password"] = data["robinhood_password"] or ""
     if "robinhood_mfa" in data:
         current["robinhood_mfa"] = data["robinhood_mfa"] or ""
+    # Remove robinhood_display if present
+    current.pop("robinhood_display", None)
     save_portfolio_cash_btc(current)
     return {"status": "ok"}
 
