@@ -3,47 +3,47 @@ from typing import List, Dict
 import os, json
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
-TRADES_PATH = os.path.join("public", "data", "trades.json")
+ORDERS_PATH = os.path.join("public", "data", "orders.json")
 
-# Helper: load/save trades
-def load_trades():
-    if not os.path.exists(TRADES_PATH):
+# Helper: load/save orders
+def load_orders():
+    if not os.path.exists(ORDERS_PATH):
         return []
-    with open(TRADES_PATH, "r") as f:
+    with open(ORDERS_PATH, "r") as f:
         return json.load(f)
 
-def save_trades(trades):
-    with open(TRADES_PATH, "w") as f:
-        json.dump(trades, f, indent=2)
+def save_orders(orders):
+    with open(ORDERS_PATH, "w") as f:
+        json.dump(orders, f, indent=2)
 
 @router.get("")
-def get_trades() -> List[Dict]:
-    return load_trades()
+def get_orders() -> List[Dict]:
+    return load_orders()
 
 @router.post("")
-def add_trade(trade: dict = Body(...)):
-    trades = load_trades()
-    trade["id"] = trade.get("id") or (max([t["id"] for t in trades], default=0) + 1)
-    trades.append(trade)
-    save_trades(trades)
-    return {"status": "ok", "id": trade["id"]}
+def add_order(order: dict = Body(...)):
+    orders = load_orders()
+    order["id"] = order.get("id") or (max([o["id"] for o in orders], default=0) + 1)
+    orders.append(order)
+    save_orders(orders)
+    return {"status": "ok", "id": order["id"]}
 
-@router.put("/{trade_id}")
-def edit_trade(trade_id: int, trade: dict = Body(...)):
-    trades = load_trades()
-    for i, t in enumerate(trades):
-        if t["id"] == trade_id:
-            trade["id"] = trade_id
-            trades[i] = trade
-            save_trades(trades)
+@router.put("/{order_id}")
+def edit_order(order_id: int, order: dict = Body(...)):
+    orders = load_orders()
+    for i, o in enumerate(orders):
+        if o["id"] == order_id:
+            order["id"] = order_id
+            orders[i] = order
+            save_orders(orders)
             return {"status": "ok"}
-    raise HTTPException(status_code=404, detail="Trade not found")
+    raise HTTPException(status_code=404, detail="Order not found")
 
-@router.delete("/{trade_id}")
-def delete_trade(trade_id: int):
-    trades = load_trades()
-    new_trades = [t for t in trades if t["id"] != trade_id]
-    if len(new_trades) == len(trades):
-        raise HTTPException(status_code=404, detail="Trade not found")
-    save_trades(new_trades)
+@router.delete("/{order_id}")
+def delete_order(order_id: int):
+    orders = load_orders()
+    new_orders = [o for o in orders if o["id"] != order_id]
+    if len(new_orders) == len(orders):
+        raise HTTPException(status_code=404, detail="Order not found")
+    save_orders(new_orders)
     return {"status": "ok"} 

@@ -20,7 +20,7 @@ function renderDividends(upcoming, past, summary) {
     } else {
       upcoming.forEach(d => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="px-3 py-2">${d.symbol}</td><td class="px-3 py-2">${d.exDate}</td><td class="px-3 py-2">${d.payDate}</td><td class="px-3 py-2">$${d.amount.toFixed(2)}</td>`;
+        tr.innerHTML = `<td class="px-3 py-2">${d.symbol}</td><td class="px-3 py-2">${d.record_date}</td><td class="px-3 py-2">${d.payable_date}</td><td class="px-3 py-2">$${d.amount.toFixed(2)}</td>`;
         upcomingTbody.appendChild(tr);
       });
     }
@@ -33,7 +33,7 @@ function renderDividends(upcoming, past, summary) {
     } else {
       past.forEach(d => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="px-3 py-2">${d.symbol}</td><td class="px-3 py-2">${d.payDate}</td><td class="px-3 py-2">$${d.amount.toFixed(2)}</td>`;
+        tr.innerHTML = `<td class="px-3 py-2">${d.symbol}</td><td class="px-3 py-2">${d.payable_date}</td><td class="px-3 py-2">$${d.amount.toFixed(2)}</td>`;
         pastTbody.appendChild(tr);
       });
     }

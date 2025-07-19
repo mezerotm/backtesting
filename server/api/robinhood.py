@@ -4,14 +4,16 @@ import json
 import robin_stocks.robinhood as r
 import logging
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 PORTFOLIO_PATH = os.path.join("public", "data", "portfolio.json")
 POSITIONS_PATH = os.path.join("public", "data", "positions.json")
 ORDERS_PATH = os.path.join("public", "data", "orders.json")
 DIVIDENDS_PATH = os.path.join("public", "data", "dividends.json")
+UPCOMING_DIVIDENDS_PATH = os.path.join("public", "data", "upcoming-dividends.json")
 INSTRUMENT_SYMBOLS_PATH = os.path.join("public", "data", "instrument_symbols.json")
+POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 
 router = APIRouter(prefix="/api/robinhood", tags=["robinhood"])
 
@@ -150,6 +152,64 @@ def map_orders(raw_orders):
     logging.info(f"[ORDERS] Mapped {len(orders)} orders in total.")
     return orders
 
+def fetch_polygon_upcoming_dividends(portfolio_symbols):
+    """Fetch upcoming dividends from Polygon API for portfolio symbols"""
+    if not POLYGON_API_KEY:
+        print("[ROBINHOOD] No Polygon API key found, skipping upcoming dividends")
+        return []
+    
+    if not portfolio_symbols:
+        print("[ROBINHOOD] No portfolio symbols found for upcoming dividends")
+        return []
+    
+    upcoming_dividends = []
+    today = datetime.now()
+    # Look back 30 days and forward 90 days to catch recently announced dividends
+    start_date = today - timedelta(days=30)
+    end_date = today + timedelta(days=90)
+    
+    print(f"[ROBINHOOD] Fetching upcoming dividends for {len(portfolio_symbols)} symbols...")
+    
+    for symbol in portfolio_symbols:
+        try:
+            # Polygon Dividends API endpoint - get recently announced dividends
+            url = f"https://api.polygon.io/v3/reference/dividends"
+            params = {
+                "ticker": symbol,
+                "ex_dividend_date.gte": start_date.strftime("%Y-%m-%d"),
+                "ex_dividend_date.lte": end_date.strftime("%Y-%m-%d"),
+                "apiKey": POLYGON_API_KEY
+            }
+            
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                if data.get('results'):
+                    for dividend in data['results']:
+                        # Only include dividends with future pay dates
+                        pay_date = dividend.get('pay_date', '')
+                        if pay_date and pay_date >= today.strftime("%Y-%m-%d"):
+                            upcoming_dividends.append({
+                                "symbol": symbol,
+                                "record_date": dividend.get('ex_dividend_date', ''),
+                                "payable_date": dividend.get('pay_date', ''),
+                                "amount": dividend.get('cash_amount', 0.0),
+                                "source": "robinhood"  # Source as robinhood to maintain correlation
+                            })
+                    print(f"[ROBINHOOD] Found {len([d for d in data['results'] if d.get('pay_date', '') >= today.strftime('%Y-%m-%d')])} upcoming dividends for {symbol}")
+                else:
+                    print(f"[ROBINHOOD] No upcoming dividends found for {symbol}")
+            else:
+                print(f"[ROBINHOOD] Polygon API error for {symbol}: {response.status_code}")
+                
+        except Exception as e:
+            print(f"[ROBINHOOD] Error fetching upcoming dividends for {symbol}: {e}")
+            continue
+    
+    return upcoming_dividends
+
 @router.post("/pull")
 def pull_robinhood_data():
     settings = get_robinhood_settings()
@@ -159,7 +219,7 @@ def pull_robinhood_data():
         raise HTTPException(status_code=400, detail="Robinhood credentials are missing.")
     try:
         # Ensure all data files exist (create empty if missing)
-        for path in [DIVIDENDS_PATH, POSITIONS_PATH, ORDERS_PATH]:
+        for path in [DIVIDENDS_PATH, POSITIONS_PATH, ORDERS_PATH, UPCOMING_DIVIDENDS_PATH]:
             if not os.path.exists(path):
                 with open(path, 'w', encoding='utf-8') as f:
                     json.dump([], f)
@@ -181,12 +241,23 @@ def pull_robinhood_data():
         mapped_positions = map_positions(positions)
         mapped_orders = map_orders(raw_orders)
         mapped_dividends = map_dividends(dividends)
+        
+        # Get portfolio symbols for upcoming dividends
+        portfolio_symbols = [pos['symbol'] for pos in mapped_positions if pos['symbol']]
+        
+        # Fetch upcoming dividends from Polygon
+        upcoming_dividends = fetch_polygon_upcoming_dividends(portfolio_symbols)
+        
+        # Save all data
         with open(POSITIONS_PATH, 'w', encoding='utf-8') as f:
             json.dump(mapped_positions, f, indent=2)
         with open(ORDERS_PATH, 'w', encoding='utf-8') as f:
             json.dump(mapped_orders, f, indent=2)
         with open(DIVIDENDS_PATH, 'w', encoding='utf-8') as f:
             json.dump(mapped_dividends, f, indent=2)
+        with open(UPCOMING_DIVIDENDS_PATH, 'w', encoding='utf-8') as f:
+            json.dump(upcoming_dividends, f, indent=2)
+        
         # Logout
         r.logout()
         return {
@@ -194,7 +265,8 @@ def pull_robinhood_data():
             "positions_count": len(mapped_positions),
             "orders_count": len(mapped_orders),
             "dividends_count": len(mapped_dividends),
-            "message": f"Successfully pulled and mapped {len(mapped_positions)} positions, {len(mapped_orders)} orders, {len(mapped_dividends)} dividends"
+            "upcoming_dividends_count": len(upcoming_dividends),
+            "message": f"Successfully pulled and mapped {len(mapped_positions)} positions, {len(mapped_orders)} orders, {len(mapped_dividends)} dividends, {len(upcoming_dividends)} upcoming dividends"
         }
     except Exception as e:
         logging.error(f"[Robinhood] Error in pull_robinhood_data: {e}")
@@ -221,7 +293,8 @@ def get_robinhood_status():
             "last_pull": last_pull,
             "positions_count": len(json.load(open(POSITIONS_PATH, 'r')) if os.path.exists(POSITIONS_PATH) else []),
             "orders_count": len(json.load(open(ORDERS_PATH, 'r')) if os.path.exists(ORDERS_PATH) else []),
-            "dividends_count": len(json.load(open(DIVIDENDS_PATH, 'r')) if os.path.exists(DIVIDENDS_PATH) else [])
+            "dividends_count": len(json.load(open(DIVIDENDS_PATH, 'r')) if os.path.exists(DIVIDENDS_PATH) else []),
+            "upcoming_dividends_count": len(json.load(open(UPCOMING_DIVIDENDS_PATH, 'r')) if os.path.exists(UPCOMING_DIVIDENDS_PATH) else [])
         }
         
     except Exception as e:

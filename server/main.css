@@ -199,6 +199,7 @@ body {
 .fade-scale-show {
     opacity: 1 !important;
     transform: scale(1);
+    pointer-events: auto;
 }
 
 /* Symbol input styling */
@@ -285,7 +286,7 @@ input[list*="symbolOptions"] {
 
 /* Button styling */
 .primary-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #10b981;
     color: white;
     border: none;
     cursor: pointer;
@@ -293,6 +294,7 @@ input[list*="symbolOptions"] {
 }
 
 .primary-btn:hover {
+    background: #059669;
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
@@ -307,4 +309,71 @@ input[list*="symbolOptions"] {
 
 .reset-btn:hover {
     background: #64748b;
+}
+
+/* Badge styling */
+.rh-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background-color: #10b981;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    cursor: not-allowed;
+}
+
+/* Time period buttons for profit/loss chart */
+.time-btn {
+    background-color: #374151;
+    color: #9ca3af;
+    border: 1px solid #4b5563;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.time-btn:hover {
+    background-color: #4b5563;
+    color: #d1d5db;
+    border-color: #6b7280;
+}
+
+.time-btn.active {
+    background-color: #10b981;
+    color: white;
+    border-color: #10b981;
+}
+
+.time-btn.active:hover {
+    background-color: #059669;
+    border-color: #059669;
+}
+
+/* Chart container styles */
+#plChart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Profit/Loss summary grid */
+.grid-cols-3 > div {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background-color: rgba(55, 65, 81, 0.5);
+}
+
+/* Positive/negative value colors */
+.text-green-400 {
+    color: #4ade80;
+}
+
+.text-red-400 {
+    color: #f87171;
+}
+
+.text-blue-400 {
+    color: #60a5fa;
 } 
