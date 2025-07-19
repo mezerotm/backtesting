@@ -73,6 +73,21 @@ results/*.csv
 public/results/
 public/results/*
 
+# Generated data files
+public/data/
+public/data/*.json
+public/data/*.csv
+
+# Generated static files
+public/index.html
+public/js/
+public/main.css
+public/main.js
+
+# Cache directories
+public/cache/
+public/cache/*
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -98,7 +113,7 @@ logs/
 *.swp
 *~
 
-# Cache directories
+# Cache directories (keep structure but ignore data)
 public/cache/data/*
 !public/cache/data/.gitkeep
 !public/cache/data/market/.gitkeep

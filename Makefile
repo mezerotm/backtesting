@@ -32,6 +32,9 @@ install: ensure-venv
 	$(PIP) install -r requirements.txt
 	@echo "[SUCCESS] All dependencies installed! (requirements.txt is up to date)"
 
+# Quick dependency update (alias for install)
+deps: install
+
 # Test run with NVDA and custom parameters
 backtest-nvda: results-dir
 	$(PYTHON) backtest_workflow_cli.py --symbol NVDA --strategies sma --force-refresh || \
@@ -84,4 +87,4 @@ server: results-dir
 
 .PHONY: setup backtest-nvda backtest-smci \
 	compare-active clean results-dir server ensure-venv activate-venv backtest-active \
-	backtest-experimental compare-experimental dev debug-buy-hold market-check morning-check full-market-check debug-market-check install
+	backtest-experimental compare-experimental dev debug-buy-hold market-check morning-check full-market-check debug-market-check install deps

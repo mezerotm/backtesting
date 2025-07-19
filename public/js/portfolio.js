@@ -7,6 +7,15 @@ let btcPrice = null;
 let btcPriceFetched = false;
 let btcAvgBuyPrice = 0;
 
+async function fetchPortfolioSettings() {
+  const resp = await fetch('/api/portfolio/settings');
+  const data = await resp.json();
+  portfolioCash = data.total_portfolio_cash || 0;
+  portfolioBTCDollar = data.total_portfolio_btc || 0;
+  btcAvgBuyPrice = data.btc_avg_buy_price || 0;
+  window._portfolioSettings = data; // for debugging
+}
+
 async function fetchPortfolioCash() {
   const resp = await fetch('/api/portfolio/cash');
   const data = await resp.json();
@@ -28,6 +37,11 @@ async function setPortfolioCashAndBTC(cashVal, btcDollarVal, btcAvgVal) {
 
 async function fetchPositionsAndCash() {
   await fetchPortfolioCash();
+  fetchPositions();
+}
+
+async function fetchPositionsAndSettings() {
+  await fetchPortfolioSettings();
   fetchPositions();
 }
 
@@ -193,6 +207,60 @@ function deletePosition(id) {
   });
 }
 
+async function fetchRobinhoodStatus() {
+  try {
+    const resp = await fetch('/api/robinhood/status');
+    const data = await resp.json();
+    
+    const statusDiv = document.getElementById('robinhoodStatus');
+    const lastPullTime = document.getElementById('lastPullTime');
+    const positionsCount = document.getElementById('positionsCount');
+    const tradesCount = document.getElementById('tradesCount');
+    const dividendsCount = document.getElementById('dividendsCount');
+    
+    if (statusDiv && data.has_credentials) {
+      statusDiv.classList.remove('hidden');
+      
+      if (lastPullTime) {
+        if (data.last_pull) {
+          const date = new Date(data.last_pull);
+          lastPullTime.textContent = date.toLocaleString();
+        } else {
+          lastPullTime.textContent = 'Never';
+        }
+      }
+      
+      if (positionsCount) positionsCount.textContent = data.positions_count || 0;
+      if (tradesCount) tradesCount.textContent = data.trades_count || 0;
+      if (dividendsCount) dividendsCount.textContent = data.dividends_count || 0;
+    } else if (statusDiv) {
+      statusDiv.classList.add('hidden');
+    }
+  } catch (error) {
+    console.error('Error fetching Robinhood status:', error);
+  }
+}
+
+async function pullRobinhoodData(showSuccess = true) {
+  try {
+    const resp = await fetch('/api/robinhood/pull', { method: 'POST' });
+    const data = await resp.json();
+    
+    if (resp.ok) {
+      if (showSuccess) {
+        Utils.showNotification(`Successfully pulled ${data.positions_count} positions and ${data.trades_count} trades`, 'success');
+      }
+      await fetchRobinhoodStatus();
+      fetchPositionsAndSettings(); // Refresh portfolio data
+    } else {
+      Utils.showNotification(`Error: ${data.detail}`, 'error');
+    }
+  } catch (error) {
+    console.error('Error pulling Robinhood data:', error);
+    Utils.showNotification('Error pulling Robinhood data', 'error');
+  }
+}
+
 async function getBTCPrice() {
   if (btcPriceFetched && btcPrice !== null) return btcPrice;
   try {
@@ -219,15 +287,35 @@ export function initPortfolio() {
   console.log('[Portfolio] settingsBtn:', settingsBtn, '| cashModal:', cashModal, '| cancelCashModalBtn:', cancelCashModalBtn);
   if (settingsBtn && cashModal && cancelCashModalBtn) {
     settingsBtn.addEventListener('click', async () => {
-      await fetchPortfolioCash();
-      const cashInput = document.getElementById('cash');
-      const btcDollarInput = document.getElementById('btcDollar');
-      const btcAvgBuyPriceInput = document.getElementById('btcAvgBuyPrice');
-      console.log('[Portfolio] Opening cash modal. cashInput:', cashInput, '| btcDollarInput:', btcDollarInput, '| btcAvgBuyPriceInput:', btcAvgBuyPriceInput);
-      if (cashInput) cashInput.value = portfolioCash;
-      if (btcDollarInput) btcDollarInput.value = portfolioBTCDollar;
-      if (btcAvgBuyPriceInput) btcAvgBuyPriceInput.value = btcAvgBuyPrice || '';
-      cashModal.classList.remove('hidden');
+      try {
+        await fetchPortfolioSettings();
+        await fetchRobinhoodStatus();
+        
+        const cashInput = document.getElementById('cash');
+        const btcDollarInput = document.getElementById('btcDollar');
+        const btcAvgBuyPriceInput = document.getElementById('btcAvgBuyPrice');
+        const robinhoodEnabledInput = document.getElementById('robinhoodEnabled');
+        const robinhoodDisplayInput = document.getElementById('robinhoodDisplay');
+        const robinhoodUsernameInput = document.getElementById('robinhoodUsername');
+        const robinhoodPasswordInput = document.getElementById('robinhoodPassword');
+        const robinhoodMFAInput = document.getElementById('robinhoodMFA');
+        
+        const data = window._portfolioSettings || {};
+        
+        if (cashInput) cashInput.value = portfolioCash;
+        if (btcDollarInput) btcDollarInput.value = portfolioBTCDollar;
+        if (btcAvgBuyPriceInput) btcAvgBuyPriceInput.value = btcAvgBuyPrice || '';
+        if (robinhoodEnabledInput) robinhoodEnabledInput.checked = !!data.robinhood_enabled;
+        if (robinhoodDisplayInput) robinhoodDisplayInput.checked = !!data.robinhood_display;
+        if (robinhoodUsernameInput) robinhoodUsernameInput.value = data.robinhood_username || '';
+        if (robinhoodPasswordInput) robinhoodPasswordInput.value = data.robinhood_password || '';
+        if (robinhoodMFAInput) robinhoodMFAInput.value = data.robinhood_mfa || '';
+        
+        cashModal.classList.remove('hidden');
+      } catch (error) {
+        console.error('Error opening settings:', error);
+        Utils.showNotification('Error loading settings', 'error');
+      }
     });
     cancelCashModalBtn.addEventListener('click', () => {
       cashModal.classList.add('hidden');
@@ -243,12 +331,20 @@ export function initPortfolio() {
   if (cashForm) {
     cashForm.addEventListener('submit', async function(e) {
       e.preventDefault();
+      
       const cashInput = document.getElementById('cash');
       const btcDollarInput = document.getElementById('btcDollar');
       const btcAvgBuyPriceInput = document.getElementById('btcAvgBuyPrice');
+      const robinhoodEnabledInput = document.getElementById('robinhoodEnabled');
+      const robinhoodDisplayInput = document.getElementById('robinhoodDisplay');
+      const robinhoodUsernameInput = document.getElementById('robinhoodUsername');
+      const robinhoodPasswordInput = document.getElementById('robinhoodPassword');
+      const robinhoodMFAInput = document.getElementById('robinhoodMFA');
+      
       let cashVal = portfolioCash;
       let btcDollarVal = portfolioBTCDollar;
       let btcAvgVal = btcAvgBuyPrice;
+      
       if (cashInput) {
         const val = parseFloat(cashInput.value);
         if (!isNaN(val) && val >= 0) {
@@ -269,9 +365,32 @@ export function initPortfolio() {
           btcAvgVal = '';
         }
       }
-      await setPortfolioCashAndBTC(cashVal, btcDollarVal, btcAvgVal);
+      
+      // Collect Robinhood fields
+      const robinhoodEnabled = robinhoodEnabledInput ? robinhoodEnabledInput.checked : false;
+      const robinhoodDisplay = robinhoodDisplayInput ? robinhoodDisplayInput.checked : false;
+      const robinhoodUsername = robinhoodUsernameInput ? robinhoodUsernameInput.value : '';
+      const robinhoodPassword = robinhoodPasswordInput ? robinhoodPasswordInput.value : '';
+      const robinhoodMFA = robinhoodMFAInput ? robinhoodMFAInput.value : '';
+      
+      // Send all fields
+      await fetch('/api/portfolio/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          total_portfolio_cash: cashVal,
+          total_portfolio_btc: btcDollarVal,
+          btc_avg_buy_price: btcAvgVal,
+          robinhood_enabled: robinhoodEnabled,
+          robinhood_display: robinhoodDisplay,
+          robinhood_username: robinhoodUsername,
+          robinhood_password: robinhoodPassword,
+          robinhood_mfa: robinhoodMFA
+        })
+      });
+      
       cashModal.classList.add('hidden');
-      fetchPositionsAndCash(); // Refresh table
+      fetchPositionsAndSettings(); // Refresh table
     });
   }
   // Portfolio CRUD logic
@@ -418,6 +537,16 @@ export function initPortfolio() {
           }
       });
   }
+  
+  // Initialize Robinhood pull button
+  const pullBtn = document.getElementById('pullRobinhoodBtn');
+  if (pullBtn) {
+    pullBtn.addEventListener('click', () => pullRobinhoodData());
+  }
+  
+  // Auto-pull every 10 minutes
+  setInterval(() => pullRobinhoodData(false), 10 * 60 * 1000);
+  
   fetchPositionsAndCash();
 }
 
