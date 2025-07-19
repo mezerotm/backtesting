@@ -112,7 +112,7 @@ async function renderPositions(positions) {
       
       // Add Robinhood indicator to notes
       const notesWithSource = isRobinhoodPosition 
-        ? `${pos.notes || ''} <span class="text-xs bg-green-600 text-white px-1 py-0.5 rounded ml-1 font-bold">RH</span>`
+        ? `<span class="text-xs bg-green-600 text-white px-1 py-0.5 rounded mr-1 font-bold">RH</span> ${pos.notes || ''}`
         : pos.notes || '';
       
       const tr = document.createElement('tr');
@@ -314,7 +314,6 @@ export function initPortfolio() {
         const btcDollarInput = document.getElementById('btcDollar');
         const btcAvgBuyPriceInput = document.getElementById('btcAvgBuyPrice');
         const robinhoodEnabledInput = document.getElementById('robinhoodEnabled');
-        const robinhoodDisplayInput = document.getElementById('robinhoodDisplay');
         const robinhoodUsernameInput = document.getElementById('robinhoodUsername');
         const robinhoodPasswordInput = document.getElementById('robinhoodPassword');
         const robinhoodMFAInput = document.getElementById('robinhoodMFA');
@@ -325,7 +324,6 @@ export function initPortfolio() {
         if (btcDollarInput) btcDollarInput.value = portfolioBTCDollar;
         if (btcAvgBuyPriceInput) btcAvgBuyPriceInput.value = btcAvgBuyPrice || '';
         if (robinhoodEnabledInput) robinhoodEnabledInput.checked = !!data.robinhood_enabled;
-        if (robinhoodDisplayInput) robinhoodDisplayInput.checked = !!data.robinhood_display;
         if (robinhoodUsernameInput) robinhoodUsernameInput.value = data.robinhood_username || '';
         if (robinhoodPasswordInput) robinhoodPasswordInput.value = data.robinhood_password || '';
         if (robinhoodMFAInput) robinhoodMFAInput.value = data.robinhood_mfa || '';
@@ -355,7 +353,6 @@ export function initPortfolio() {
       const btcDollarInput = document.getElementById('btcDollar');
       const btcAvgBuyPriceInput = document.getElementById('btcAvgBuyPrice');
       const robinhoodEnabledInput = document.getElementById('robinhoodEnabled');
-      const robinhoodDisplayInput = document.getElementById('robinhoodDisplay');
       const robinhoodUsernameInput = document.getElementById('robinhoodUsername');
       const robinhoodPasswordInput = document.getElementById('robinhoodPassword');
       const robinhoodMFAInput = document.getElementById('robinhoodMFA');
@@ -387,7 +384,6 @@ export function initPortfolio() {
       
       // Collect Robinhood fields
       const robinhoodEnabled = robinhoodEnabledInput ? robinhoodEnabledInput.checked : false;
-      const robinhoodDisplay = robinhoodDisplayInput ? robinhoodDisplayInput.checked : false;
       const robinhoodUsername = robinhoodUsernameInput ? robinhoodUsernameInput.value : '';
       const robinhoodPassword = robinhoodPasswordInput ? robinhoodPasswordInput.value : '';
       const robinhoodMFA = robinhoodMFAInput ? robinhoodMFAInput.value : '';
@@ -401,7 +397,6 @@ export function initPortfolio() {
           total_portfolio_btc: btcDollarVal,
           btc_avg_buy_price: btcAvgVal,
           robinhood_enabled: robinhoodEnabled,
-          robinhood_display: robinhoodDisplay,
           robinhood_username: robinhoodUsername,
           robinhood_password: robinhoodPassword,
           robinhood_mfa: robinhoodMFA
