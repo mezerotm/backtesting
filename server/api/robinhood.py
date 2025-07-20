@@ -11,27 +11,26 @@ PORTFOLIO_PATH = os.path.join("public", "data", "portfolio.json")
 POSITIONS_PATH = os.path.join("public", "data", "positions.json")
 ORDERS_PATH = os.path.join("public", "data", "orders.json")
 DIVIDENDS_PATH = os.path.join("public", "data", "dividends.json")
-UPCOMING_DIVIDENDS_PATH = os.path.join("public", "data", "upcoming-dividends.json")
-INSTRUMENT_SYMBOLS_PATH = os.path.join("public", "data", "instrument_symbols.json")
+SYMBOLS_PATH = os.path.join("public", "data", "symbols.json")
 POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 
 router = APIRouter(prefix="/api/robinhood", tags=["robinhood"])
 
 # Ensure data directory exists
-os.makedirs(os.path.dirname(INSTRUMENT_SYMBOLS_PATH), exist_ok=True)
+os.makedirs(os.path.dirname(SYMBOLS_PATH), exist_ok=True)
 
-# Persistent instrument-symbol cache
-if os.path.exists(INSTRUMENT_SYMBOLS_PATH):
-    with open(INSTRUMENT_SYMBOLS_PATH, "r", encoding="utf-8") as f:
-        _instrument_cache = json.load(f)
+# Persistent symbol cache
+if os.path.exists(SYMBOLS_PATH):
+    with open(SYMBOLS_PATH, "r", encoding="utf-8") as f:
+        _symbol_cache = json.load(f)
 else:
-    _instrument_cache = {}
-    with open(INSTRUMENT_SYMBOLS_PATH, "w", encoding="utf-8") as f:
-        json.dump(_instrument_cache, f, indent=2)
+    _symbol_cache = {}
+    with open(SYMBOLS_PATH, "w", encoding="utf-8") as f:
+        json.dump(_symbol_cache, f, indent=2)
 
-def save_instrument_cache():
-    with open(INSTRUMENT_SYMBOLS_PATH, "w", encoding="utf-8") as f:
-        json.dump(_instrument_cache, f, indent=2)
+def save_symbol_cache():
+    with open(SYMBOLS_PATH, "w", encoding="utf-8") as f:
+        json.dump(_symbol_cache, f, indent=2)
 
 def get_robinhood_settings():
     if not os.path.exists(PORTFOLIO_PATH):
@@ -49,15 +48,15 @@ def get_robinhood_settings():
 def resolve_symbol_from_instrument(instrument_url: str) -> Optional[str]:
     if not instrument_url:
         return None
-    if instrument_url in _instrument_cache:
-        return _instrument_cache[instrument_url]
+    if instrument_url in _symbol_cache:
+        return _symbol_cache[instrument_url]
     try:
         # Use the correct robin_stocks function to get instrument data by URL
         instrument_data = r.get_instrument_by_url(instrument_url)
         if instrument_data and 'symbol' in instrument_data:
             symbol = instrument_data['symbol']
-            _instrument_cache[instrument_url] = symbol
-            save_instrument_cache()
+            _symbol_cache[instrument_url] = symbol
+            save_symbol_cache()
             print(f"[DEBUG] Cached symbol {symbol} for instrument {instrument_url}")
             return symbol
         print(f"[DEBUG] Could not resolve symbol for instrument {instrument_url}")
@@ -152,64 +151,6 @@ def map_orders(raw_orders):
     logging.info(f"[ORDERS] Mapped {len(orders)} orders in total.")
     return orders
 
-def fetch_polygon_upcoming_dividends(portfolio_symbols):
-    """Fetch upcoming dividends from Polygon API for portfolio symbols"""
-    if not POLYGON_API_KEY:
-        print("[ROBINHOOD] No Polygon API key found, skipping upcoming dividends")
-        return []
-    
-    if not portfolio_symbols:
-        print("[ROBINHOOD] No portfolio symbols found for upcoming dividends")
-        return []
-    
-    upcoming_dividends = []
-    today = datetime.now()
-    # Look back 30 days and forward 90 days to catch recently announced dividends
-    start_date = today - timedelta(days=30)
-    end_date = today + timedelta(days=90)
-    
-    print(f"[ROBINHOOD] Fetching upcoming dividends for {len(portfolio_symbols)} symbols...")
-    
-    for symbol in portfolio_symbols:
-        try:
-            # Polygon Dividends API endpoint - get recently announced dividends
-            url = f"https://api.polygon.io/v3/reference/dividends"
-            params = {
-                "ticker": symbol,
-                "ex_dividend_date.gte": start_date.strftime("%Y-%m-%d"),
-                "ex_dividend_date.lte": end_date.strftime("%Y-%m-%d"),
-                "apiKey": POLYGON_API_KEY
-            }
-            
-            response = requests.get(url, params=params, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                if data.get('results'):
-                    for dividend in data['results']:
-                        # Only include dividends with future pay dates
-                        pay_date = dividend.get('pay_date', '')
-                        if pay_date and pay_date >= today.strftime("%Y-%m-%d"):
-                            upcoming_dividends.append({
-                                "symbol": symbol,
-                                "record_date": dividend.get('ex_dividend_date', ''),
-                                "payable_date": dividend.get('pay_date', ''),
-                                "amount": dividend.get('cash_amount', 0.0),
-                                "source": "robinhood"  # Source as robinhood to maintain correlation
-                            })
-                    print(f"[ROBINHOOD] Found {len([d for d in data['results'] if d.get('pay_date', '') >= today.strftime('%Y-%m-%d')])} upcoming dividends for {symbol}")
-                else:
-                    print(f"[ROBINHOOD] No upcoming dividends found for {symbol}")
-            else:
-                print(f"[ROBINHOOD] Polygon API error for {symbol}: {response.status_code}")
-                
-        except Exception as e:
-            print(f"[ROBINHOOD] Error fetching upcoming dividends for {symbol}: {e}")
-            continue
-    
-    return upcoming_dividends
-
 @router.post("/pull")
 def pull_robinhood_data():
     settings = get_robinhood_settings()
@@ -219,7 +160,7 @@ def pull_robinhood_data():
         raise HTTPException(status_code=400, detail="Robinhood credentials are missing.")
     try:
         # Ensure all data files exist (create empty if missing)
-        for path in [DIVIDENDS_PATH, POSITIONS_PATH, ORDERS_PATH, UPCOMING_DIVIDENDS_PATH]:
+        for path in [DIVIDENDS_PATH, POSITIONS_PATH, ORDERS_PATH]:
             if not os.path.exists(path):
                 with open(path, 'w', encoding='utf-8') as f:
                     json.dump([], f)
@@ -237,16 +178,11 @@ def pull_robinhood_data():
         positions = r.account.build_holdings()
         raw_orders = r.orders.get_all_stock_orders()
         dividends = r.account.get_dividends()
+        
         # Map and save data directly
         mapped_positions = map_positions(positions)
         mapped_orders = map_orders(raw_orders)
         mapped_dividends = map_dividends(dividends)
-        
-        # Get portfolio symbols for upcoming dividends
-        portfolio_symbols = [pos['symbol'] for pos in mapped_positions if pos['symbol']]
-        
-        # Fetch upcoming dividends from Polygon
-        upcoming_dividends = fetch_polygon_upcoming_dividends(portfolio_symbols)
         
         # Save all data
         with open(POSITIONS_PATH, 'w', encoding='utf-8') as f:
@@ -255,8 +191,14 @@ def pull_robinhood_data():
             json.dump(mapped_orders, f, indent=2)
         with open(DIVIDENDS_PATH, 'w', encoding='utf-8') as f:
             json.dump(mapped_dividends, f, indent=2)
-        with open(UPCOMING_DIVIDENDS_PATH, 'w', encoding='utf-8') as f:
-            json.dump(upcoming_dividends, f, indent=2)
+        
+        # Refresh P/L cache with new data
+        try:
+            from server.api.profit_loss import calculate_all_periods
+            calculate_all_periods()
+            logging.info("[ROBINHOOD] P/L cache refreshed with new data")
+        except Exception as e:
+            logging.warning(f"[ROBINHOOD] Failed to refresh P/L cache: {e}")
         
         # Logout
         r.logout()
@@ -265,8 +207,7 @@ def pull_robinhood_data():
             "positions_count": len(mapped_positions),
             "orders_count": len(mapped_orders),
             "dividends_count": len(mapped_dividends),
-            "upcoming_dividends_count": len(upcoming_dividends),
-            "message": f"Successfully pulled and mapped {len(mapped_positions)} positions, {len(mapped_orders)} orders, {len(mapped_dividends)} dividends, {len(upcoming_dividends)} upcoming dividends"
+            "message": f"Successfully pulled and mapped {len(mapped_positions)} positions, {len(mapped_orders)} orders, {len(mapped_dividends)} dividends"
         }
     except Exception as e:
         logging.error(f"[Robinhood] Error in pull_robinhood_data: {e}")
@@ -294,7 +235,6 @@ def get_robinhood_status():
             "positions_count": len(json.load(open(POSITIONS_PATH, 'r')) if os.path.exists(POSITIONS_PATH) else []),
             "orders_count": len(json.load(open(ORDERS_PATH, 'r')) if os.path.exists(ORDERS_PATH) else []),
             "dividends_count": len(json.load(open(DIVIDENDS_PATH, 'r')) if os.path.exists(DIVIDENDS_PATH) else []),
-            "upcoming_dividends_count": len(json.load(open(UPCOMING_DIVIDENDS_PATH, 'r')) if os.path.exists(UPCOMING_DIVIDENDS_PATH) else [])
         }
         
     except Exception as e:
