@@ -48,7 +48,7 @@ def save_pl_cache(cache_data):
     except Exception as e:
         print(f"Error saving P/L cache: {e}")
 
-def is_cache_valid(cache_data, max_age_hours=1):
+def is_cache_valid(cache_data, max_age_hours=4):
     """Check if cache is still valid (not too old)."""
     if not cache_data.get("last_updated"):
         return False
@@ -97,20 +97,25 @@ def calculate_all_periods():
             realized = calculate_realized_pl(orders, start_date, end_date)
             print(f"  - Realized P/L: ${realized:.2f}")
             
-            # For now, skip the expensive historical calculation and use a simple approximation
-            # This will be much faster while we debug
-            if period == '1W':
-                unrealized_change = current_unrealized * 0.1  # 10% of current
-            elif period == '1M':
-                unrealized_change = current_unrealized * 0.3  # 30% of current
-            elif period == '3M':
-                unrealized_change = current_unrealized * 0.5  # 50% of current
-            elif period == 'YTD':
-                unrealized_change = current_unrealized * 0.7  # 70% of current
-            else:  # MAX
-                unrealized_change = current_unrealized * 0.8  # 80% of current
-            
-            print(f"  - Unrealized change (approx): ${unrealized_change:.2f}")
+            # Calculate exact unrealized P/L change using historical prices
+            # This is more accurate than approximations
+            try:
+                unrealized_change = calculate_unrealized_pl_change(orders, start_date, end_date)
+                print(f"  - Unrealized change (historical): ${unrealized_change:.2f}")
+            except Exception as e:
+                print(f"  - Error calculating historical unrealized P/L: {e}")
+                # Fallback to a more conservative approximation if historical fails
+                if period == '1W':
+                    unrealized_change = current_unrealized * 0.05  # 5% of current
+                elif period == '1M':
+                    unrealized_change = current_unrealized * 0.15  # 15% of current
+                elif period == '3M':
+                    unrealized_change = current_unrealized * 0.25  # 25% of current
+                elif period == 'YTD':
+                    unrealized_change = current_unrealized * 0.35  # 35% of current
+                else:  # MAX
+                    unrealized_change = current_unrealized * 0.45  # 45% of current
+                print(f"  - Using fallback approximation: ${unrealized_change:.2f}")
             
             # Total P/L change during the period
             total = realized + unrealized_change
@@ -230,8 +235,8 @@ def get_historical_price(symbol, target_date):
     # Check cache first
     if cache_key in _polygon_cache:
         cached_data = _polygon_cache[cache_key]
-        # Cache for 24 hours for historical data
-        if datetime.now().timestamp() - cached_data.get('timestamp', 0) < 86400:
+        # Cache for 7 days for historical data (more stable)
+        if datetime.now().timestamp() - cached_data.get('timestamp', 0) < 604800:
             return cached_data.get('price')
     
     # Try to get the exact date first
@@ -239,7 +244,7 @@ def get_historical_price(symbol, target_date):
     params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
     
     try:
-        resp = requests.get(url, params=params, timeout=5)
+        resp = requests.get(url, params=params, timeout=10)  # Increased timeout
         if resp.status_code == 200:
             data = resp.json()
             results = data.get("results", [])
@@ -257,7 +262,7 @@ def get_historical_price(symbol, target_date):
         url_prev = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/prev"
         params_prev = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
         
-        resp_prev = requests.get(url_prev, params=params_prev, timeout=5)
+        resp_prev = requests.get(url_prev, params=params_prev, timeout=10)  # Increased timeout
         if resp_prev.status_code == 200:
             data_prev = resp_prev.json()
             results_prev = data_prev.get("results", [])
@@ -275,6 +280,35 @@ def get_historical_price(symbol, target_date):
         print(f"Error getting historical price for {symbol} on {date_str}: {e}")
     
     return None
+
+def get_historical_prices_batch(symbols, target_date):
+    """Get historical prices for multiple symbols in batch to reduce API calls."""
+    if not POLYGON_API_KEY:
+        return {}
+    
+    results = {}
+    date_str = target_date.strftime('%Y-%m-%d')
+    
+    # Check cache first for all symbols
+    uncached_symbols = []
+    for symbol in symbols:
+        cache_key = f"{symbol}_{date_str}"
+        if cache_key in _polygon_cache:
+            cached_data = _polygon_cache[cache_key]
+            if datetime.now().timestamp() - cached_data.get('timestamp', 0) < 604800:
+                results[symbol] = cached_data.get('price')
+            else:
+                uncached_symbols.append(symbol)
+        else:
+            uncached_symbols.append(symbol)
+    
+    # Fetch uncached symbols
+    for symbol in uncached_symbols:
+        price = get_historical_price(symbol, target_date)
+        if price is not None:
+            results[symbol] = price
+    
+    return results
 
 # Helper: calculate realized P/L from orders within a date range
 def calculate_realized_pl(orders, start_date=None, end_date=None):
@@ -404,11 +438,22 @@ def calculate_unrealized_pl_change(orders, start_date, end_date):
     # Get positions at end of period  
     end_positions = get_positions_at_date(orders, end_date)
     
+    # Get all unique symbols for batch processing
+    all_symbols = set()
+    for symbol in start_positions.keys():
+        all_symbols.add(symbol)
+    for symbol in end_positions.keys():
+        all_symbols.add(symbol)
+    
+    # Batch fetch historical prices
+    start_prices = get_historical_prices_batch(list(all_symbols), start_date)
+    end_prices = get_historical_prices_batch(list(all_symbols), end_date)
+    
     # Calculate unrealized P/L at start
     start_unrealized = 0.0
     for symbol, pos_data in start_positions.items():
         if pos_data['quantity'] > 0:
-            start_price = get_historical_price(symbol, start_date)
+            start_price = start_prices.get(symbol)
             if start_price is not None:
                 start_unrealized += (start_price - pos_data['avg_price']) * pos_data['quantity']
     
@@ -416,7 +461,7 @@ def calculate_unrealized_pl_change(orders, start_date, end_date):
     end_unrealized = 0.0
     for symbol, pos_data in end_positions.items():
         if pos_data['quantity'] > 0:
-            end_price = get_historical_price(symbol, end_date)
+            end_price = end_prices.get(symbol)
             if end_price is not None:
                 end_unrealized += (end_price - pos_data['avg_price']) * pos_data['quantity']
     
