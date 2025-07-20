@@ -3,43 +3,61 @@ export function initDividends() {
 }
 
 async function fetchAndRenderDividends() {
-  const [upcoming, past, summary] = await Promise.all([
-    fetch('/api/dividends/upcoming').then(r => r.json()),
-    fetch('/api/dividends/past').then(r => r.json()),
-    fetch('/api/dividends/summary').then(r => r.json()),
-  ]);
-  renderDividends(upcoming, past, summary);
+  try {
+    const response = await fetch('/api/dividends/received');
+    const dividends = await response.json();
+    renderDividends(dividends);
+  } catch (error) {
+    console.error('Error fetching dividends:', error);
+  }
 }
 
-function renderDividends(upcoming, past, summary) {
-  const upcomingTbody = document.getElementById('upcomingDividendsTbody');
-  if (upcomingTbody) {
-    upcomingTbody.innerHTML = '';
-    if (!upcoming || upcoming.length === 0) {
-      upcomingTbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-4">No upcoming dividends.</td></tr>';
-    } else {
-      upcoming.forEach(d => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="px-3 py-2">${d.symbol}</td><td class="px-3 py-2">${d.record_date}</td><td class="px-3 py-2">${d.payable_date}</td><td class="px-3 py-2">$${d.amount.toFixed(2)}</td>`;
-        upcomingTbody.appendChild(tr);
-      });
-    }
+function renderDividends(dividends) {
+  const tbody = document.getElementById('receivedDividendsTbody');
+  
+  if (!tbody) return;
+  
+  if (!dividends || dividends.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400 py-4">No received dividends.</td></tr>';
+    return;
   }
-  const pastTbody = document.getElementById('pastDividendsTbody');
-  if (pastTbody) {
-    pastTbody.innerHTML = '';
-    if (!past || past.length === 0) {
-      pastTbody.innerHTML = '<tr><td colspan="3" class="text-center text-gray-400 py-4">No past dividends.</td></tr>';
-    } else {
-      past.forEach(d => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="px-3 py-2">${d.symbol}</td><td class="px-3 py-2">${d.payable_date}</td><td class="px-3 py-2">$${d.amount.toFixed(2)}</td>`;
-        pastTbody.appendChild(tr);
-      });
-    }
+  
+  tbody.innerHTML = '';
+  
+  // Sort by payable date (most recent first)
+  dividends.sort((a, b) => new Date(b.payable_date) - new Date(a.payable_date));
+  
+  dividends.forEach(dividend => {
+    const tr = document.createElement('tr');
+    tr.className = 'border-b border-slate-700 hover:bg-slate-700';
+    
+    const amount = parseFloat(dividend.amount || 0);
+    const amountClass = amount >= 0 ? 'text-green-400' : 'text-red-400';
+    
+    // Create actions cell with Robinhood badge if source is robinhood
+    const actionsCell = dividend.source === 'robinhood' 
+      ? '<span class="rh-badge">RH</span>'
+      : '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-700 text-gray-300 border border-gray-600 cursor-not-allowed">Manual</span>';
+    
+    tr.innerHTML = `
+      <td class="px-3 py-2 text-white font-semibold">${dividend.symbol || 'N/A'}</td>
+      <td class="px-3 py-2 ${amountClass}">$${amount.toFixed(2)}</td>
+      <td class="px-3 py-2 text-gray-200">${formatDate(dividend.record_date)}</td>
+      <td class="px-3 py-2 text-gray-200">${formatDate(dividend.payable_date)}</td>
+      <td class="px-3 py-2">${actionsCell}</td>
+    `;
+    
+    tbody.appendChild(tr);
+  });
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'N/A';
+  try {
+    return new Date(dateString).toLocaleDateString();
+  } catch {
+    return dateString;
   }
-  const totalSpan = document.getElementById('dividendsTotal');
-  if (totalSpan && summary && typeof summary.total === 'number') totalSpan.textContent = `$${summary.total.toFixed(2)}`;
 }
 
 document.addEventListener('DOMContentLoaded', function() {

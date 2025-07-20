@@ -7,13 +7,14 @@ export function initProfitLoss() {
 let plChart = null;
 let currentPeriod = 'YTD';
 
-async function fetchAndRenderProfitLoss() {
-  const [summary, details] = await Promise.all([
-    fetch('/api/profit_loss/summary').then(r => r.json()),
+async function fetchAndRenderProfitLoss(period = 'YTD') {
+  const [summary, details, chartData] = await Promise.all([
+    fetch(`/api/profit_loss/summary?period=${period}`).then(r => r.json()),
     fetch('/api/profit_loss/details').then(r => r.json()),
+    fetch(`/api/profit_loss/chart?period=${period}`).then(r => r.json()),
   ]);
   renderProfitLoss(summary, details);
-  updateChart();
+  updateChart(chartData);
 }
 
 function renderProfitLoss(summary, details) {
@@ -62,8 +63,8 @@ function setupTimeButtons() {
       this.classList.add('active');
       // Update current period
       currentPeriod = this.dataset.period;
-      // Update chart
-      updateChart();
+      // Fetch and update data for the new period
+      fetchAndRenderProfitLoss(currentPeriod);
     });
   });
 }
@@ -153,86 +154,19 @@ function initChart() {
   });
 }
 
-function updateChart() {
-  if (!plChart) return;
+function updateChart(chartData) {
+  if (!plChart || !chartData) return;
 
-  // Generate sample data based on current period
-  const data = generateChartData(currentPeriod);
-  
-  plChart.data.labels = data.labels;
-  plChart.data.datasets[0].data = data.values;
+  plChart.data.labels = chartData.labels || [];
+  plChart.data.datasets[0].data = chartData.values || [];
   
   // Update colors based on data
-  const lastValue = data.values[data.values.length - 1];
+  const lastValue = chartData.values && chartData.values.length > 0 ? chartData.values[chartData.values.length - 1] : 0;
   const color = lastValue >= 0 ? '#10b981' : '#f87171';
   plChart.data.datasets[0].borderColor = color;
   plChart.data.datasets[0].backgroundColor = color.replace(')', ', 0.1)').replace('rgb', 'rgba');
   
   plChart.update('none');
-}
-
-function generateChartData(period) {
-  const now = new Date();
-  let labels = [];
-  let values = [];
-  
-  switch (period) {
-    case '1W':
-      // Last 7 days
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-        values.push(Math.random() * 2000 - 1000); // Random P/L between -1000 and 1000
-      }
-      break;
-    case '1M':
-      // Last 30 days, weekly data points
-      for (let i = 4; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - (i * 7));
-        labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-        values.push(Math.random() * 3000 - 1500);
-      }
-      break;
-    case '3M':
-      // Last 3 months, bi-weekly data points
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - (i * 14));
-        labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-        values.push(Math.random() * 4000 - 2000);
-      }
-      break;
-    case 'YTD':
-      // Year to date, monthly data points
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const months = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24 * 30));
-      for (let i = months; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        labels.push(date.toLocaleDateString('en-US', { month: 'short' }));
-        values.push(Math.random() * 5000 - 2500);
-      }
-      break;
-    case 'MAX':
-      // Last 12 months
-      for (let i = 11; i >= 0; i--) {
-        const date = new Date(now);
-        date.setMonth(date.getMonth() - i);
-        labels.push(date.toLocaleDateString('en-US', { month: 'short' }));
-        values.push(Math.random() * 6000 - 3000);
-      }
-      break;
-  }
-  
-  // Create a cumulative effect
-  let cumulative = 0;
-  values = values.map(v => {
-    cumulative += v;
-    return cumulative;
-  });
-  
-  return { labels, values };
 }
 
 document.addEventListener('DOMContentLoaded', function() {
