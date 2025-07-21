@@ -5,11 +5,14 @@ import os
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 import requests
+import time
 
 # NOTE: This file is backend-only. Do NOT mount public/data as a static folder unless browser access is required.
 PORTFOLIO_PATH = os.path.join("public", "data", "positions.json")
 PORTFOLIO_CASH_PATH = os.path.join("public", "data", "portfolio.json")
 POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
+
+SYMBOL_DATA_PATH = os.path.join("public", "data", "symbol_data.json")
 
 class Position(BaseModel):
     id: int
@@ -73,6 +76,50 @@ def save_portfolio_cash_btc(data: dict):
     }
     with open(PORTFOLIO_CASH_PATH, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2)
+
+# Helper to get all unique symbols in the portfolio
+def get_portfolio_symbols():
+    positions = load_positions()
+    return sorted(set(p["symbol"] for p in positions if p.get("symbol")))
+
+# Helper to fetch raw symbol data from Polygon.io
+# Returns: {symbol: {"last_price": float, "previous_close": float, "timestamp": float, ...}}
+def fetch_symbol_data(symbols):
+    if not POLYGON_API_KEY:
+        raise Exception("Polygon API key not set")
+    result = {}
+    for symbol in symbols:
+        url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/prev"
+        params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
+        try:
+            resp = requests.get(url, params=params, timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                results = data.get("results", [])
+                if results:
+                    last_price = results[0].get("c")
+                    prev_close = results[0].get("c")  # fallback if o not present
+                    if "o" in results[0]:
+                        prev_close = results[0]["o"]
+                    result[symbol] = {
+                        "last_price": last_price,
+                        "previous_close": prev_close,
+                        "timestamp": time.time()
+                    }
+        except Exception as e:
+            result[symbol] = {"last_price": None, "previous_close": None, "timestamp": time.time(), "error": str(e)}
+    return result
+
+# Helper to load cached symbol data
+def load_symbol_data():
+    if not os.path.exists(SYMBOL_DATA_PATH):
+        return {}
+    with open(SYMBOL_DATA_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_symbol_data(data):
+    with open(SYMBOL_DATA_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
@@ -228,4 +275,46 @@ def set_portfolio_btc(data: dict):
     current = load_portfolio_cash_btc()
     current["total_portfolio_btc"] = float(data["total_portfolio_btc"])
     save_portfolio_cash_btc(current)
-    return {"status": "ok"} 
+    return {"status": "ok"}
+
+@router.post("/refresh-symbols")
+def refresh_symbol_data():
+    symbols = get_portfolio_symbols()
+    data = fetch_symbol_data(symbols)
+    save_symbol_data(data)
+    return {"status": "ok", "symbols": list(data.keys())}
+
+@router.get("/summary")
+def get_portfolio_summary():
+    positions = load_positions()
+    symbol_data = load_symbol_data()
+    summary = []
+    for pos in positions:
+        symbol = pos["symbol"]
+        quantity = pos["quantity"]
+        buy_price = pos["buy_price"]
+        last_price = symbol_data.get(symbol, {}).get("last_price")
+        prev_close = symbol_data.get(symbol, {}).get("previous_close")
+        # Calculated fields
+        market_value = quantity * last_price if last_price is not None else None
+        todays_return = None
+        if last_price is not None and prev_close and prev_close != 0:
+            todays_return = ((last_price - prev_close) / prev_close) * 100
+        total_return = None
+        if last_price is not None and buy_price and buy_price != 0:
+            total_return = ((last_price - buy_price) / buy_price) * 100
+        # Delta (for stocks/ETFs)
+        delta = quantity
+        # Beta (leave blank or fetch from fundamentals in future)
+        beta = None
+        summary.append({
+            **pos,
+            "market_value": market_value,
+            "todays_return": todays_return,
+            "total_return": total_return,
+            "delta": delta,
+            "beta": beta,
+            "last_price": last_price,
+            "previous_close": prev_close
+        })
+    return summary 

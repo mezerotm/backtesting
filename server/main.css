@@ -377,3 +377,8 @@ input[list*="symbolOptions"] {
 .text-blue-400 {
     color: #60a5fa;
 } 
+
+/* Custom max-height for portfolio scroll area */
+.max-h-750px {
+    max-height: 750px;
+} 

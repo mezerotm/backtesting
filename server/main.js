@@ -511,6 +511,24 @@ document.addEventListener('DOMContentLoaded', function() {
     Navigation.navigateTo('dashboard');
 });
 
+// Global 10-minute sync timer for integrations
+setInterval(async () => {
+    try {
+        console.log('[Global Sync] Triggering Robinhood pull...');
+        await Utils.apiRequest('/api/robinhood/pull', { method: 'POST' });
+        console.log('[Global Sync] Robinhood pull complete.');
+    } catch (err) {
+        console.error('[Global Sync] Robinhood pull failed:', err);
+    }
+    try {
+        console.log('[Global Sync] Triggering Polygon symbol data refresh...');
+        await Utils.apiRequest('/api/portfolio/refresh-symbols', { method: 'POST' });
+        console.log('[Global Sync] Polygon symbol data refresh complete.');
+    } catch (err) {
+        console.error('[Global Sync] Polygon symbol data refresh failed:', err);
+    }
+}, 10 * 60 * 1000); // 10 minutes in ms
+
 // Export for use in other modules
 window.AppState = AppState;
 window.Utils = Utils;

@@ -259,22 +259,37 @@ async function fetchRobinhoodStatus() {
 }
 
 async function pullRobinhoodData(showSuccess = true) {
+  const pullBtn = document.getElementById('pullRobinhoodBtn');
+  const originalText = pullBtn ? pullBtn.textContent : '';
+  if (pullBtn) {
+    pullBtn.disabled = true;
+    pullBtn.textContent = 'Pulling...';
+    pullBtn.classList.add('opacity-60', 'cursor-not-allowed');
+  }
   try {
     const resp = await fetch('/api/robinhood/pull', { method: 'POST' });
     const data = await resp.json();
-    
     if (resp.ok) {
       if (showSuccess) {
-        Utils.showNotification(`Successfully pulled ${data.positions_count} positions and ${data.trades_count} trades`, 'success');
+        Utils.showNotification(`Successfully pulled ${data.positions_count} positions and ${data.trades_count || data.orders_count || 0} trades`, 'success');
       }
       await fetchRobinhoodStatus();
       fetchPositionsAndSettings(); // Refresh portfolio data
+      // Close the modal after successful pull
+      const cashModal = document.getElementById('cashModal');
+      if (cashModal) cashModal.classList.add('hidden');
     } else {
       Utils.showNotification(`Error: ${data.detail}`, 'error');
     }
   } catch (error) {
     console.error('Error pulling Robinhood data:', error);
     Utils.showNotification('Error pulling Robinhood data', 'error');
+  } finally {
+    if (pullBtn) {
+      pullBtn.disabled = false;
+      pullBtn.textContent = originalText;
+      pullBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
   }
 }
 
