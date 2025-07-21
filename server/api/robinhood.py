@@ -191,7 +191,9 @@ def pull_robinhood_data():
             json.dump(mapped_orders, f, indent=2)
         with open(DIVIDENDS_PATH, 'w', encoding='utf-8') as f:
             json.dump(mapped_dividends, f, indent=2)
-        
+
+        # (Removed) Symbol data refresh logic. Now handled by frontend/global timer.
+
         # Refresh P/L cache with new data
         try:
             from server.api.profit_loss import calculate_all_periods
