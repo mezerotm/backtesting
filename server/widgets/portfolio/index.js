@@ -46,7 +46,7 @@ async function fetchPositionsAndSettings() {
 }
 
 function fetchPositions() {
-  fetch(API_PORTFOLIO + '/')
+  fetch(API_PORTFOLIO + '/summary')
     .then(r => r.json())
     .then(data => renderPositions(data))
     .catch(() => renderPositions([]));
@@ -58,7 +58,7 @@ async function renderPositions(positions) {
   tbody.innerHTML = '';
   let totalValue = 0;
   positions.forEach(pos => {
-    totalValue += pos.quantity * pos.buy_price;
+    totalValue += pos.market_value || (pos.quantity * pos.buy_price);
   });
   let btcValueForTotal = portfolioBTCDollar > 0 ? portfolioBTCDollar : 0;
   let cashLeft = portfolioCash - totalValue;
@@ -67,7 +67,7 @@ async function renderPositions(positions) {
   if (totalValue > 0) totalPortfolioValue += totalValue;
   if (btcValueForTotal > 0) totalPortfolioValue += btcValueForTotal;
   if (cashLeft > 0) totalPortfolioValue += cashLeft;
-  if (totalPortfolioValue === 0) totalPortfolioValue = 1; // Prevent divide by zero, will show 0.00%
+  if (totalPortfolioValue === 0) totalPortfolioValue = 1; // Prevent divide by zero
 
   // --- BTC row at the top ---
   let btcPercent = '-';
@@ -84,9 +84,12 @@ async function renderPositions(positions) {
     <td class="px-3 py-2 text-yellow-400 font-bold">BTC</td>
     <td class="px-3 py-2 text-gray-200">$${portfolioBTCDollar.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
     <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
     <td class="px-3 py-2 text-yellow-300">${btcPercent}</td>
-    <td class="px-3 py-2 text-gray-200"></td>
-    <td class="px-3 py-2 text-gray-200"></td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
     <td class="px-3 py-2 text-gray-400">${btcNotes}</td>
     <td class="px-3 py-2"></td>
   `;
@@ -94,37 +97,36 @@ async function renderPositions(positions) {
 
   // --- Positions ---
   if (!positions.length) {
-    tbody.innerHTML += '<tr><td colspan="8" class="text-center text-gray-400 py-4">No positions found.</td></tr>';
+    tbody.innerHTML += '<tr><td colspan="11" class="text-center text-gray-400 py-4">No positions found.</td></tr>';
   } else {
     positions.forEach(pos => {
       const amount = pos.quantity * pos.buy_price;
-      const percent = amount > 0 ? ((amount / totalPortfolioValue) * 100).toFixed(2) : '0.00';
+      const amountFormatted = amount !== undefined && amount !== null ? `$${amount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}` : '-';
+      const percent = pos.market_value && totalPortfolioValue > 0 ? ((pos.market_value / totalPortfolioValue) * 100).toFixed(2) : '0.00';
       const isRobinhoodPosition = pos.source === 'robinhood';
-      
-      // Debug logging
-      console.log(`[Portfolio] Position ${pos.symbol}: source="${pos.source}", isRobinhood=${isRobinhoodPosition}`);
-      
-      // Only show action buttons for non-Robinhood positions
       const actionButtons = isRobinhoodPosition ? 
         '<span class="rh-badge">RH</span>' : 
         `<button class="portfolio-edit-btn text-blue-400 hover:text-blue-300 mr-2" title="Edit" data-id="${pos.id}"><i class="fa-solid fa-pen"></i></button>
         <button class="portfolio-delete-btn text-red-400 hover:text-red-300" title="Delete" data-id="${pos.id}"><i class="fa-solid fa-trash"></i></button>`;
-      
-      // Remove Robinhood indicator from notes - it's now in actions
       const notes = pos.notes || '';
-      
+      const marketValue = pos.market_value !== undefined && pos.market_value !== null ? `$${pos.market_value.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}` : '-';
+      const todaysReturn = pos.todays_return !== undefined && pos.todays_return !== null ? `${pos.todays_return.toFixed(2)}%` : '-';
+      const totalReturn = pos.total_return !== undefined && pos.total_return !== null ? `${pos.total_return.toFixed(2)}%` : '-';
+      const beta = pos.beta !== undefined && pos.beta !== null ? pos.beta.toFixed(2) : '-';
+      const delta = pos.delta !== undefined && pos.delta !== null ? pos.delta.toFixed(2) : '-';
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="px-3 py-2 text-white font-semibold">${pos.symbol}</td>
-        <td class="px-3 py-2 text-gray-200">$${amount.toFixed(2)}</td>
+        <td class="px-3 py-2 text-gray-200">${amountFormatted}</td>
         <td class="px-3 py-2 text-gray-200">$${pos.buy_price.toFixed(2)}</td>
+        <td class="px-3 py-2 text-gray-200">${marketValue}</td>
         <td class="px-3 py-2 text-gray-200">${percent}%</td>
-        <td class="px-3 py-2 text-gray-200"></td>
-        <td class="px-3 py-2 text-gray-200"></td>
+        <td class="px-3 py-2 text-gray-200">${todaysReturn}</td>
+        <td class="px-3 py-2 text-gray-200">${totalReturn}</td>
+        <td class="px-3 py-2 text-gray-200">${beta}</td>
+        <td class="px-3 py-2 text-gray-200">${delta}</td>
         <td class="px-3 py-2 text-gray-400">${notes}</td>
-        <td class="px-3 py-2">
-          ${actionButtons}
-        </td>
+        <td class="px-3 py-2">${actionButtons}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -137,9 +139,12 @@ async function renderPositions(positions) {
     <td class="px-3 py-2 text-green-400 font-bold">CASH</td>
     <td class="px-3 py-2 text-gray-200">$${cashLeft.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
     <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
     <td class="px-3 py-2 text-green-300">${cashPercent}%</td>
-    <td class="px-3 py-2 text-gray-200"></td>
-    <td class="px-3 py-2 text-gray-200"></td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
     <td class="px-3 py-2 text-gray-400">$${cashLeft.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
     <td class="px-3 py-2"></td>
   `;

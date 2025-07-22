@@ -1,11 +1,16 @@
-from fastapi import APIRouter, HTTPException
-import os
-import json
-import robin_stocks.robinhood as r
-import logging
-import requests
+import os, json, requests, time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import List, Dict, Optional
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from utils.logger import get_widget_logger
+
+# Initialize logger for robinhood widget
+logger = get_widget_logger('robinhood')
+
+router = APIRouter(prefix="/api/robinhood", tags=["robinhood"])
 
 PORTFOLIO_PATH = os.path.join("public", "data", "portfolio.json")
 POSITIONS_PATH = os.path.join("public", "data", "positions.json")
@@ -13,8 +18,6 @@ ORDERS_PATH = os.path.join("public", "data", "orders.json")
 DIVIDENDS_PATH = os.path.join("public", "data", "dividends.json")
 SYMBOLS_PATH = os.path.join("public", "data", "symbols.json")
 POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
-
-router = APIRouter(prefix="/api/robinhood", tags=["robinhood"])
 
 # Ensure data directory exists
 os.makedirs(os.path.dirname(SYMBOLS_PATH), exist_ok=True)
@@ -57,12 +60,12 @@ def resolve_symbol_from_instrument(instrument_url: str) -> Optional[str]:
             symbol = instrument_data['symbol']
             _symbol_cache[instrument_url] = symbol
             save_symbol_cache()
-            print(f"[DEBUG] Cached symbol {symbol} for instrument {instrument_url}")
+            logger.debug(f"Cached symbol {symbol} for instrument {instrument_url}")
             return symbol
-        print(f"[DEBUG] Could not resolve symbol for instrument {instrument_url}")
+        logger.debug(f"Could not resolve symbol for instrument {instrument_url}")
         return None
     except Exception as e:
-        logging.error(f"[Robinhood] Error resolving symbol for {instrument_url}: {e}")
+        logger.error(f"[Robinhood] Error resolving symbol for {instrument_url}: {e}")
         return None
 
 def map_dividends(raw_dividends):
@@ -81,7 +84,7 @@ def map_dividends(raw_dividends):
             'state': d.get('state'),
             'source': 'robinhood'
         })
-    print(f"[DEBUG] Mapped {len(mapped)} dividends.")
+    logger.debug(f"Mapped {len(mapped)} dividends.")
     return mapped
 
 def map_positions(raw_positions):
@@ -95,7 +98,7 @@ def map_positions(raw_positions):
             'notes': pos.get('name', ''),
             'source': 'robinhood'
         })
-    print(f"[DEBUG] Mapped {len(mapped)} positions.")
+    logger.debug(f"Mapped {len(mapped)} positions.")
     return mapped
 
 def map_orders(raw_orders):
@@ -104,21 +107,21 @@ def map_orders(raw_orders):
     for order in raw_orders:
         try:
             if order.get('type') not in ('market', 'limit'):
-                logging.info(f"[ORDERS] Skipping order {order.get('id', '')}: type {order.get('type')} not market/limit.")
+                # logging.info(f"[ORDERS] Skipping order {order.get('id', '')}: type {order.get('type')} not market/limit.")
                 continue
             instrument_url = order.get('instrument')
             if not instrument_url:
-                logging.warning(f"[ORDERS] Skipping order {order.get('id', '')}: missing instrument URL.")
+                # logging.warning(f"[ORDERS] Skipping order {order.get('id', '')}: missing instrument URL.")
                 continue
             symbol = resolve_symbol_from_instrument(instrument_url)
             if not symbol:
-                logging.warning(f"[ORDERS] Skipping order {order.get('id', '')}: could not resolve symbol for instrument {instrument_url}.")
+                # logging.warning(f"[ORDERS] Skipping order {order.get('id', '')}: could not resolve symbol for instrument {instrument_url}.")
                 continue
             side = order.get('side', 'buy')
             order_id = order.get('id', '')
             executions = order.get('executions', [])
             if not executions:
-                logging.info(f"[ORDERS] Skipping order {order_id}: no executions present.")
+                # logging.info(f"[ORDERS] Skipping order {order_id}: no executions present.")
                 continue
             for execution in executions:
                 try:
@@ -140,15 +143,15 @@ def map_orders(raw_orders):
                         'source': 'robinhood'
                     }
                     orders.append(mapped_order)
-                    logging.info(f"[ORDERS] Mapped order: {mapped_order}")
+                    # logging.info(f"[ORDERS] Mapped order: {mapped_order}")
                     order_id_counter += 1
                 except Exception as e:
-                    logging.error(f"[ORDERS] Error mapping execution in order {order_id}: {e}")
+                    logger.error(f"[ORDERS] Error mapping execution in order {order_id}: {e}")
                     continue
         except Exception as e:
-            logging.error(f"[ORDERS] Error processing order: {e}")
+            logger.error(f"[ORDERS] Error processing order: {e}")
             continue
-    logging.info(f"[ORDERS] Mapped {len(orders)} orders in total.")
+    # logging.info(f"[ORDERS] Mapped {len(orders)} orders in total.")
     return orders
 
 @router.post("/pull")
@@ -198,9 +201,9 @@ def pull_robinhood_data():
         try:
             from server.api.profit_loss import calculate_all_periods
             calculate_all_periods()
-            logging.info("[ROBINHOOD] P/L cache refreshed with new data")
+            logger.info("[ROBINHOOD] P/L cache refreshed with new data")
         except Exception as e:
-            logging.warning(f"[ROBINHOOD] Failed to refresh P/L cache: {e}")
+            logger.warning(f"[ROBINHOOD] Failed to refresh P/L cache: {e}")
         
         # Logout
         r.logout()
@@ -212,7 +215,7 @@ def pull_robinhood_data():
             "message": f"Successfully pulled and mapped {len(mapped_positions)} positions, {len(mapped_orders)} orders, {len(mapped_dividends)} dividends"
         }
     except Exception as e:
-        logging.error(f"[Robinhood] Error in pull_robinhood_data: {e}")
+        logger.error(f"[Robinhood] Error in pull_robinhood_data: {e}")
         raise HTTPException(status_code=500, detail=f"Robinhood error: {e}")
 
 @router.get("/status")
@@ -240,5 +243,5 @@ def get_robinhood_status():
         }
         
     except Exception as e:
-        logging.error(f"[Robinhood] Error getting status: {e}")
+        logger.error(f"[Robinhood] Error getting status: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting status: {e}") 

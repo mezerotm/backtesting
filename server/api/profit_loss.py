@@ -1,7 +1,16 @@
-from fastapi import APIRouter, Body, HTTPException, Query
-from typing import List, Dict
-from datetime import datetime, timedelta
 import os, json, requests
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+from typing import List, Dict
+from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi.responses import JSONResponse
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from utils.logger import get_widget_logger
+
+# Initialize logger for profit_loss widget
+logger = get_widget_logger('profit_loss')
 
 router = APIRouter(prefix="/api/profit_loss", tags=["profit_loss"])
 
@@ -37,7 +46,7 @@ def load_pl_cache():
         with open(PL_SUMMARY_CACHE_PATH, "r") as f:
             return json.load(f)
     except Exception as e:
-        print(f"Error loading P/L cache: {e}")
+        logger.error(f"Error loading P/L cache: {e}")
         return {"last_updated": None, "periods": {}}
 
 def save_pl_cache(cache_data):
@@ -46,7 +55,7 @@ def save_pl_cache(cache_data):
         with open(PL_SUMMARY_CACHE_PATH, "w") as f:
             json.dump(cache_data, f, indent=2)
     except Exception as e:
-        print(f"Error saving P/L cache: {e}")
+        logger.error(f"Error saving P/L cache: {e}")
 
 def is_cache_valid(cache_data, max_age_hours=4):
     """Check if cache is still valid (not too old)."""
@@ -67,70 +76,54 @@ def should_recalculate():
 
 def calculate_all_periods():
     """Calculate P/L for all time periods and cache the results."""
-    print("Calculating P/L for all periods...")
-    
     periods = ['1W', '1M', '3M', 'YTD', 'MAX']
     results = {}
-    
+    trading_days = get_polygon_trading_days(400)  # Use a large enough window for all periods
     for period in periods:
-        print(f"Calculating {period}...")
         try:
-            # Calculate P/L for this period
             positions = get_positions()
             orders = get_orders()
             start_date, end_date = get_date_range(period)
-            
-            print(f"  - Date range: {start_date} to {end_date}")
-            print(f"  - Positions: {len(positions)}")
-            print(f"  - Orders: {len(orders)}")
-            
-            # Calculate current unrealized P/L
+            # Get trading days in range
+            period_days = [d for d in trading_days if start_date.date() <= datetime.strptime(d, '%Y-%m-%d').date() <= end_date.date()]
+            # Calculate current unrealized P/L using closes for the last trading day in range
             current_unrealized = 0.0
-            for pos in positions:
-                latest = get_latest_price(pos["symbol"])
-                if latest is not None:
-                    current_unrealized += (latest - pos["buy_price"]) * pos["quantity"]
-            
-            print(f"  - Current unrealized: ${current_unrealized:.2f}")
-            
-            # Calculate realized P/L
-            realized = calculate_realized_pl(orders, start_date, end_date)
-            print(f"  - Realized P/L: ${realized:.2f}")
-            
-            # Calculate exact unrealized P/L change using historical prices
-            # This is more accurate than approximations
+            if period_days:
+                last_day = period_days[-1]
+                for pos in positions:
+                    closes = fetch_closes_for_trading_days(pos["symbol"], [last_day])
+                    if not closes.empty:
+                        latest = closes.iloc[-1]
+                        if isinstance(latest, (int, float)):
+                            current_unrealized += (latest - pos["buy_price"]) * pos["quantity"]
+            # Calculate realized P/L using closes for each trading day in range
+            realized = 0.0
+            for d in period_days:
+                day_orders = [o for o in orders if o.get('date', '').startswith(d)]
+                realized += calculate_realized_pl(day_orders, start_date, end_date)
+            # Calculate exact unrealized P/L change using historical closes
             try:
-                unrealized_change = calculate_unrealized_pl_change(orders, start_date, end_date)
-                print(f"  - Unrealized change (historical): ${unrealized_change:.2f}")
+                if period_days:
+                    start_day = period_days[0]
+                    end_day = period_days[-1]
+                    start_prices = {pos["symbol"]: fetch_closes_for_trading_days(pos["symbol"], [start_day]) for pos in positions}
+                    end_prices = {pos["symbol"]: fetch_closes_for_trading_days(pos["symbol"], [end_day]) for pos in positions}
+                    start_unrealized = sum((start_prices[s].iloc[-1] - pos["buy_price"]) * pos["quantity"] for s, pos in zip(start_prices, positions) if not start_prices[s].empty and isinstance(start_prices[s].iloc[-1], (int, float)))
+                    end_unrealized = sum((end_prices[s].iloc[-1] - pos["buy_price"]) * pos["quantity"] for s, pos in zip(end_prices, positions) if not end_prices[s].empty and isinstance(end_prices[s].iloc[-1], (int, float)))
+                    unrealized_change = end_unrealized - start_unrealized
+                else:
+                    unrealized_change = 0.0
             except Exception as e:
-                print(f"  - Error calculating historical unrealized P/L: {e}")
-                # Fallback to a more conservative approximation if historical fails
-                if period == '1W':
-                    unrealized_change = current_unrealized * 0.05  # 5% of current
-                elif period == '1M':
-                    unrealized_change = current_unrealized * 0.15  # 15% of current
-                elif period == '3M':
-                    unrealized_change = current_unrealized * 0.25  # 25% of current
-                elif period == 'YTD':
-                    unrealized_change = current_unrealized * 0.35  # 35% of current
-                else:  # MAX
-                    unrealized_change = current_unrealized * 0.45  # 45% of current
-                print(f"  - Using fallback approximation: ${unrealized_change:.2f}")
-            
-            # Total P/L change during the period
+                unrealized_change = 0.0
             total = realized + unrealized_change
-            
+            # Format decimals
             results[period] = {
-                "total": total,
-                "unrealized": current_unrealized,
-                "realized": realized,
+                "total": round(total, 2),
+                "unrealized": round(current_unrealized, 2),
+                "realized": round(realized, 2),
                 "calculated_at": datetime.now().isoformat()
             }
-            
-            print(f"  - Total P/L: ${total:.2f}")
-            
         except Exception as e:
-            print(f"Error calculating {period}: {e}")
             results[period] = {
                 "total": 0.0,
                 "unrealized": 0.0,
@@ -138,14 +131,11 @@ def calculate_all_periods():
                 "calculated_at": datetime.now().isoformat(),
                 "error": str(e)
             }
-    
-    # Save to cache
     cache_data = {
         "last_updated": datetime.now().isoformat(),
         "periods": results
     }
     save_pl_cache(cache_data)
-    
     return cache_data
 
 # Helper: get all positions
@@ -182,7 +172,7 @@ def save_polygon_cache():
         with open(_polygon_cache_file, "w") as f:
             json.dump(_polygon_cache, f, indent=2)
     except Exception as e:
-        print(f"Error saving Polygon cache: {e}")
+        logger.error(f"Error saving Polygon cache: {e}")
 
 # Load cache on startup
 _polygon_cache = load_polygon_cache()
@@ -218,7 +208,7 @@ def get_latest_price(symbol):
                 save_polygon_cache()
                 return price
     except Exception as e:
-        print(f"Error getting latest price for {symbol}: {e}")
+        logger.error(f"Error getting latest price for {symbol}: {e}")
     
     return None
 
@@ -277,7 +267,7 @@ def get_historical_price(symbol, target_date):
                 return price
                 
     except Exception as e:
-        print(f"Error getting historical price for {symbol} on {date_str}: {e}")
+        logger.error(f"Error getting historical price for {symbol} on {date_str}: {e}")
     
     return None
 
@@ -493,6 +483,135 @@ def get_date_range(period):
     
     return start_date, end_date
 
+# --- Polygon Trading Days Helper (with file-based cache for closes) ---
+def get_polygon_trading_days(n_days=365):
+    """
+    Fetch the most recent n_days trading days (YYYY-MM-DD) from Polygon, skipping weekends/holidays.
+    Returns a list of date strings, most recent first.
+    """
+    url = f"https://api.polygon.io/v1/marketstatus/upcoming"
+    params = {"apiKey": POLYGON_API_KEY}
+    holidays = set()
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            for h in data.get("marketHolidays", []):
+                if h.get("date"):
+                    holidays.add(h["date"])
+    except Exception as e:
+        logger.debug(f"Could not fetch holidays from Polygon: {e}")
+    # Build list of trading days
+    trading_days = []
+    today = datetime.now().date()
+    days_checked = 0
+    while len(trading_days) < n_days and days_checked < n_days * 3:
+        d = today - timedelta(days=days_checked)
+        if d.weekday() < 5 and d.strftime('%Y-%m-%d') not in holidays:
+            trading_days.append(d.strftime('%Y-%m-%d'))
+        days_checked += 1
+    logger.debug(f"Using {len(trading_days)} trading days (most recent: {trading_days[0]}, oldest: {trading_days[-1]})")
+    return trading_days
+
+POLYGON_CACHE_PATH = os.path.join("public", "data", "polygon_cache.json")
+
+def load_polygon_close_cache():
+    if not os.path.exists(POLYGON_CACHE_PATH):
+        return {}
+    try:
+        with open(POLYGON_CACHE_PATH, "r") as f:
+            cache = json.load(f)
+            # Convert old format to new format if needed
+            if cache and isinstance(next(iter(cache.values())), dict) and 'price' in next(iter(cache.values())):
+                logger.debug("Converting old cache format to new format")
+                new_cache = {}
+                for key, value in cache.items():
+                    if '_' in key:
+                        parts = key.split('_', 1)
+                        if len(parts) == 2:
+                            symbol, date = parts
+                            if symbol not in new_cache:
+                                new_cache[symbol] = {}
+                            if isinstance(value, dict) and 'price' in value:
+                                new_cache[symbol][date] = {
+                                    'price': value['price'],
+                                    'timestamp': value.get('timestamp', 0),
+                                    'date': date
+                                }
+                            else:
+                                new_cache[symbol][date] = {
+                                    'price': value,
+                                    'timestamp': 0,
+                                    'date': date
+                                }
+                # Save the converted cache
+                save_polygon_close_cache(new_cache)
+                return new_cache
+            return cache
+    except Exception:
+        return {}
+
+def save_polygon_close_cache(cache):
+    try:
+        with open(POLYGON_CACHE_PATH, "w") as f:
+            json.dump(cache, f, indent=2)
+    except Exception as e:
+        logger.error(f"Error saving polygon close cache: {e}")
+
+# --- Trading Day-Aware Close Fetcher (with cache) ---
+def fetch_closes_for_trading_days(symbol, trading_days):
+    """
+    Fetch closes for a symbol for the given list of trading days (YYYY-MM-DD).
+    Uses file-based cache in public/data/polygon_cache.json.
+    Returns a pandas Series indexed by date.
+    """
+    cache = load_polygon_close_cache()
+    closes = {}
+    updated = False
+    
+    # Initialize symbol in cache if not exists
+    if symbol not in cache:
+        cache[symbol] = {}
+    
+    for date in trading_days:
+        if date in cache[symbol]:
+            cached_entry = cache[symbol][date]
+            closes[date] = cached_entry['price']
+            logger.debug(f"{symbol} {date}: cache hit")
+        else:
+            url = f"https://api.polygon.io/v1/open-close/{symbol}/{date}"
+            params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
+            try:
+                resp = requests.get(url, params=params, timeout=5)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    close = data.get("close")
+                    if close is not None:
+                        closes[date] = close
+                        cache[symbol][date] = {
+                            'price': close,
+                            'timestamp': datetime.now().timestamp(),
+                            'date': date
+                        }
+                        updated = True
+                        logger.debug(f"{symbol} {date}: cache miss, fetched and saved")
+            except Exception as e:
+                continue
+    
+    if updated:
+        save_polygon_close_cache(cache)
+    
+    s = pd.Series(closes)
+    s.index = pd.to_datetime(s.index)
+    s = s.sort_index()
+    logger.debug(f"{symbol}: fetched {len(s)} closes for trading days, sample: {s.head() if not s.empty else 'empty'}")
+    return s
+
+# NOTE: These helpers can be used for:
+# - Making P/L calculations trading-day aware
+# - Generating accurate P/L/performance charts
+# - Any feature that needs to align with real market/trading days
+
 @router.get("/summary")
 def get_profit_loss_summary(period: str = Query('YTD', description="Time period: 1W, 1M, 3M, YTD, MAX")) -> Dict:
     # Check cache first
@@ -549,111 +668,28 @@ def get_profit_loss_chart(period: str = Query('YTD', description="Time period: 1
     orders = get_orders()
     positions = get_positions()
     start_date, end_date = get_date_range(period)
-    
-    # Generate chart data points
+    trading_days = get_polygon_trading_days(400)
+    period_days = [d for d in trading_days if start_date.date() <= datetime.strptime(d, '%Y-%m-%d').date() <= end_date.date()]
     labels = []
     values = []
-    
-    if period == '1W':
-        # Daily data points for last 7 days
-        for i in range(7):
-            date = end_date - timedelta(days=6-i)
-            labels.append(date.strftime('%m/%d'))
-            
-            # Calculate total P/L up to this date (realized + unrealized)
-            period_end = date + timedelta(days=1)
-            realized_pl = calculate_realized_pl(orders, start_date, period_end)
-            
-            # For unrealized, we use current position values (Robinhood approach)
-            unrealized_pl = 0.0
-            for pos in positions:
-                latest = get_latest_price(pos["symbol"])
-                if latest is not None:
+    if not period_days:
+        return {"labels": [], "values": [], "period": period}
+    for d in period_days:
+        labels.append(d)
+        day_orders = [o for o in orders if o.get('date', '').startswith(d)]
+        realized_pl = calculate_realized_pl(day_orders, start_date, end_date)
+        unrealized_pl = 0.0
+        for pos in positions:
+            closes = fetch_closes_for_trading_days(pos["symbol"], [d])
+            if not closes.empty:
+                latest = closes.iloc[-1]  # Get the actual close price value
+                logger.debug(f"{pos['symbol']} {d}: latest={latest}, type={type(latest)}")
+                if isinstance(latest, (int, float)):
                     unrealized_pl += (latest - pos["buy_price"]) * pos["quantity"]
-            
-            total_pl = realized_pl + unrealized_pl
-            values.append(total_pl)
-    
-    elif period == '1M':
-        # Weekly data points for last 30 days
-        for i in range(5):
-            date = end_date - timedelta(days=28-i*7)
-            labels.append(date.strftime('%m/%d'))
-            
-            period_end = date + timedelta(days=7)
-            realized_pl = calculate_realized_pl(orders, start_date, period_end)
-            
-            # Unrealized P/L (current positions)
-            unrealized_pl = 0.0
-            for pos in positions:
-                latest = get_latest_price(pos["symbol"])
-                if latest is not None:
-                    unrealized_pl += (latest - pos["buy_price"]) * pos["quantity"]
-            
-            total_pl = realized_pl + unrealized_pl
-            values.append(total_pl)
-    
-    elif period == '3M':
-        # Bi-weekly data points for last 3 months
-        for i in range(6):
-            date = end_date - timedelta(days=84-i*14)
-            labels.append(date.strftime('%m/%d'))
-            
-            period_end = date + timedelta(days=14)
-            realized_pl = calculate_realized_pl(orders, start_date, period_end)
-            
-            # Unrealized P/L (current positions)
-            unrealized_pl = 0.0
-            for pos in positions:
-                latest = get_latest_price(pos["symbol"])
-                if latest is not None:
-                    unrealized_pl += (latest - pos["buy_price"]) * pos["quantity"]
-            
-            total_pl = realized_pl + unrealized_pl
-            values.append(total_pl)
-    
-    elif period == 'YTD':
-        # Monthly data points for current year
-        current_month = end_date.month
-        for i in range(current_month + 1):
-            date = datetime(end_date.year, i + 1, 1)  # Fix: i + 1 instead of i
-            labels.append(date.strftime('%b'))
-            
-            if i == 0:
-                values.append(0)
-            else:
-                period_end = datetime(end_date.year, i + 1, 1)  # Fix: i + 1 instead of i
-                realized_pl = calculate_realized_pl(orders, start_date, period_end)
-                
-                # Unrealized P/L (current positions)
-                unrealized_pl = 0.0
-                for pos in positions:
-                    latest = get_latest_price(pos["symbol"])
-                    if latest is not None:
-                        unrealized_pl += (latest - pos["buy_price"]) * pos["quantity"]
-                
-                total_pl = realized_pl + unrealized_pl
-                values.append(total_pl)
-    
-    elif period == 'MAX':
-        # Monthly data points for last 12 months
-        for i in range(12):
-            date = end_date - timedelta(days=365-i*30)
-            labels.append(date.strftime('%b'))
-            
-            period_end = date + timedelta(days=30)
-            realized_pl = calculate_realized_pl(orders, start_date, period_end)
-            
-            # Unrealized P/L (current positions)
-            unrealized_pl = 0.0
-            for pos in positions:
-                latest = get_latest_price(pos["symbol"])
-                if latest is not None:
-                    unrealized_pl += (latest - pos["buy_price"]) * pos["quantity"]
-            
-            total_pl = realized_pl + unrealized_pl
-            values.append(total_pl)
-    
+                else:
+                    logger.debug(f"Skipping {pos['symbol']} - latest is not numeric: {latest}")
+        total_pl = realized_pl + unrealized_pl
+        values.append(round(total_pl, 2))
     return {"labels": labels, "values": values, "period": period}
 
 @router.get("/details")

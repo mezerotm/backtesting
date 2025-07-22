@@ -1,7 +1,15 @@
-from fastapi import APIRouter, HTTPException, Body
-from typing import List, Dict
-import os, json, requests
+import os, json
 from datetime import datetime, timedelta
+from typing import List, Dict, Optional
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from utils.logger import get_widget_logger
+
+# Initialize logger for dividends widget
+logger = get_widget_logger('dividends')
 
 router = APIRouter(prefix="/api/dividends", tags=["dividends"])
 
@@ -16,7 +24,7 @@ def get_dividends() -> List[Dict]:
         with open(DIVIDENDS_PATH, "r") as f:
             return json.load(f)
     except Exception as e:
-        print(f"Error loading dividends: {e}")
+        logger.debug(f"Error loading dividends: {e}")
         return []
 
 @router.get("/")

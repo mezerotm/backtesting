@@ -1,6 +1,15 @@
-from fastapi import APIRouter, Body, HTTPException
-from typing import List, Dict
 import os, json
+from datetime import datetime, timedelta
+from typing import List, Dict, Optional
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from utils.logger import get_widget_logger
+
+# Initialize logger for orders widget
+logger = get_widget_logger('orders')
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 ORDERS_PATH = os.path.join("public", "data", "orders.json")
@@ -18,6 +27,7 @@ def save_orders(orders):
 
 @router.get("")
 def get_orders() -> List[Dict]:
+    logger.debug("Fetching all orders")
     return load_orders()
 
 @router.post("")
