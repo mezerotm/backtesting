@@ -55,15 +55,63 @@
 
 {% block scripts %}
 <script type="module">
-  import { initReport } from "/js/report.js";
-  import { initPortfolio } from "/js/portfolio.js?v=robinhood-fix";
-  import { initOrders } from "/js/orders.js";
-  import { initDividends } from "/js/dividends.js";
-  import { initProfitLoss } from "/js/profit_loss.js";
-  initReport();
-  initPortfolio();
-  initOrders();
-  initDividends();
-  initProfitLoss();
+  // Ensure DOM is fully loaded before initializing widgets
+  document.addEventListener('DOMContentLoaded', async function() {
+    try {
+      console.log('Initializing dashboard widgets...');
+      
+      // Import and initialize widgets with error handling
+      const { initReport } = await import("/js/report.js");
+      const { initPortfolio } = await import("/js/portfolio.js?v=robinhood-fix");
+      const { initOrders } = await import("/js/orders.js");
+      const { initDividends } = await import("/js/dividends.js");
+      const { initProfitLoss } = await import("/js/profit_loss.js");
+      
+      // Initialize widgets
+      console.log('Initializing Report widget...');
+      initReport();
+      
+      console.log('Initializing Portfolio widget...');
+      initPortfolio();
+      
+      console.log('Initializing Orders widget...');
+      initOrders();
+      
+      console.log('Initializing Dividends widget...');
+      initDividends();
+      
+      console.log('Initializing Profit/Loss widget...');
+      initProfitLoss();
+      
+      console.log('All dashboard widgets initialized successfully');
+    } catch (error) {
+      console.error('Error initializing dashboard widgets:', error);
+    }
+  });
+</script>
+
+<!-- Fallback script to ensure widgets load -->
+<script>
+  // Fallback: if modules fail to load, try to initialize widgets after a delay
+  setTimeout(function() {
+    if (typeof window.initPortfolio === 'undefined') {
+      console.log('Modules not loaded, trying fallback initialization...');
+      // Try to load widgets via script tags as fallback
+      const scripts = [
+        '/js/report.js',
+        '/js/portfolio.js?v=robinhood-fix',
+        '/js/orders.js',
+        '/js/dividends.js',
+        '/js/profit_loss.js'
+      ];
+      
+      scripts.forEach(src => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.type = 'module';
+        document.head.appendChild(script);
+      });
+    }
+  }, 2000); // Wait 2 seconds before trying fallback
 </script>
 {% endblock %} 

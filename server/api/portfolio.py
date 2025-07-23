@@ -172,11 +172,24 @@ def get_current_symbol_data(symbol):
     most_recent_date = dates[0]
     data = cache[symbol][most_recent_date]
     
+    # Handle different data formats
+    if isinstance(data, dict):
+        # New format with dictionary
+        last_price = data.get("price")
+        timestamp = data.get("timestamp", time.time())
+    elif isinstance(data, (int, float)):
+        # Old format with direct price value
+        last_price = data
+        timestamp = time.time()
+    else:
+        logger.warning(f"[DEBUG] get_current_symbol_data: unknown data format for {symbol}: {type(data)}")
+        return None
+    
     # Convert to the expected format
     current_data = {
-        "last_price": data.get("price"),
-        "previous_close": data.get("price"),  # Use same price for now
-        "timestamp": data.get("timestamp", time.time()),
+        "last_price": last_price,
+        "previous_close": last_price,  # Use same price for now
+        "timestamp": timestamp,
         "beta": None  # Beta will be fetched separately
     }
     
@@ -213,10 +226,24 @@ def load_symbol_data():
         if dates:
             most_recent_date = dates[0]
             price_data = data[most_recent_date]
+            
+            # Handle different data formats
+            if isinstance(price_data, dict):
+                # New format with dictionary
+                last_price = price_data.get("price")
+                timestamp = price_data.get("timestamp", time.time())
+            elif isinstance(price_data, (int, float)):
+                # Old format with direct price value
+                last_price = price_data
+                timestamp = time.time()
+            else:
+                logger.warning(f"[DEBUG] load_symbol_data: unknown price_data format for {symbol}: {type(price_data)}")
+                continue
+                
             symbol_data = {
-                "last_price": price_data.get("price"),
-                "previous_close": price_data.get("price"),  # Use same price for now
-                "timestamp": price_data.get("timestamp", time.time()),
+                "last_price": last_price,
+                "previous_close": last_price,  # Use same price for now
+                "timestamp": timestamp,
                 "beta": None  # Beta will be fetched separately
             }
             result[symbol] = symbol_data

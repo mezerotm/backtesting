@@ -46,7 +46,9 @@ async function fetchPositionsAndSettings() {
 }
 
 function fetchPositions() {
-  fetch(API_PORTFOLIO + '/summary')
+  // Add cache-busting parameter to ensure fresh data
+  const timestamp = new Date().getTime();
+  fetch(API_PORTFOLIO + '/summary?t=' + timestamp)
     .then(r => r.json())
     .then(data => renderPositions(data))
     .catch(() => renderPositions([]));
