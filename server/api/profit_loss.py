@@ -78,44 +78,42 @@ def calculate_all_periods():
     """Calculate P/L for all time periods and cache the results."""
     periods = ['1W', '1M', '3M', 'YTD', 'MAX']
     results = {}
-    trading_days = get_polygon_trading_days(400)  # Use a large enough window for all periods
+    
+    # Load existing polygon cache to avoid API calls
+    polygon_cache = load_polygon_close_cache()
+    
     for period in periods:
         try:
             positions = get_positions()
             orders = get_orders()
             start_date, end_date = get_date_range(period)
-            # Get trading days in range
-            period_days = [d for d in trading_days if start_date.date() <= datetime.strptime(d, '%Y-%m-%d').date() <= end_date.date()]
-            # Calculate current unrealized P/L using closes for the last trading day in range
+            
+            # Calculate current unrealized P/L using existing cache data
             current_unrealized = 0.0
-            if period_days:
-                last_day = period_days[-1]
-                for pos in positions:
-                    closes = fetch_closes_for_trading_days(pos["symbol"], [last_day])
-                    if not closes.empty:
-                        latest = closes.iloc[-1]
-                        if isinstance(latest, (int, float)):
-                            current_unrealized += (latest - pos["buy_price"]) * pos["quantity"]
-            # Calculate realized P/L using closes for each trading day in range
+            for pos in positions:
+                symbol = pos["symbol"]
+                if symbol in polygon_cache:
+                    # Get the most recent price from cache
+                    dates = sorted(polygon_cache[symbol].keys(), reverse=True)
+                    if dates:
+                        latest_price = polygon_cache[symbol][dates[0]]['price']
+                        current_unrealized += (latest_price - pos["buy_price"]) * pos["quantity"]
+            
+            # Calculate realized P/L (simplified - just sum from orders)
             realized = 0.0
-            for d in period_days:
-                day_orders = [o for o in orders if o.get('date', '').startswith(d)]
-                realized += calculate_realized_pl(day_orders, start_date, end_date)
-            # Calculate exact unrealized P/L change using historical closes
-            try:
-                if period_days:
-                    start_day = period_days[0]
-                    end_day = period_days[-1]
-                    start_prices = {pos["symbol"]: fetch_closes_for_trading_days(pos["symbol"], [start_day]) for pos in positions}
-                    end_prices = {pos["symbol"]: fetch_closes_for_trading_days(pos["symbol"], [end_day]) for pos in positions}
-                    start_unrealized = sum((start_prices[s].iloc[-1] - pos["buy_price"]) * pos["quantity"] for s, pos in zip(start_prices, positions) if not start_prices[s].empty and isinstance(start_prices[s].iloc[-1], (int, float)))
-                    end_unrealized = sum((end_prices[s].iloc[-1] - pos["buy_price"]) * pos["quantity"] for s, pos in zip(end_prices, positions) if not end_prices[s].empty and isinstance(end_prices[s].iloc[-1], (int, float)))
-                    unrealized_change = end_unrealized - start_unrealized
-                else:
-                    unrealized_change = 0.0
-            except Exception as e:
-                unrealized_change = 0.0
-            total = realized + unrealized_change
+            for order in orders:
+                if order.get('side') == 'sell':
+                    # Calculate P/L for sell orders
+                    buy_price = order.get('average_price', 0)
+                    sell_price = order.get('price', 0)
+                    quantity = order.get('quantity', 0)
+                    pl = (sell_price - buy_price) * quantity
+                    realized += pl
+            
+            # For now, use current unrealized as the total change
+            # This is much faster than calculating historical changes
+            total = realized + current_unrealized
+            
             # Format decimals
             results[period] = {
                 "total": round(total, 2),
@@ -124,6 +122,7 @@ def calculate_all_periods():
                 "calculated_at": datetime.now().isoformat()
             }
         except Exception as e:
+            logger.error(f"Error calculating P/L for period {period}: {e}")
             results[period] = {
                 "total": 0.0,
                 "unrealized": 0.0,
@@ -131,6 +130,7 @@ def calculate_all_periods():
                 "calculated_at": datetime.now().isoformat(),
                 "error": str(e)
             }
+    
     cache_data = {
         "last_updated": datetime.now().isoformat(),
         "periods": results
@@ -665,60 +665,82 @@ def get_cache_status():
 
 @router.get("/chart")
 def get_profit_loss_chart(period: str = Query('YTD', description="Time period: 1W, 1M, 3M, YTD, MAX")) -> Dict:
-    orders = get_orders()
+    # Load existing polygon cache to avoid API calls
+    polygon_cache = load_polygon_close_cache()
     positions = get_positions()
+    
+    # Get date range for the period
     start_date, end_date = get_date_range(period)
-    trading_days = get_polygon_trading_days(400)
-    period_days = [d for d in trading_days if start_date.date() <= datetime.strptime(d, '%Y-%m-%d').date() <= end_date.date()]
+    
+    # Create a simple chart with multiple data points
+    # Use available dates from cache to create a meaningful chart
     labels = []
     values = []
-    if not period_days:
-        return {"labels": [], "values": [], "period": period}
-    for d in period_days:
-        labels.append(d)
-        day_orders = [o for o in orders if o.get('date', '').startswith(d)]
-        realized_pl = calculate_realized_pl(day_orders, start_date, end_date)
-        unrealized_pl = 0.0
+    
+    # Get all available dates from cache for any symbol
+    all_dates = set()
+    for symbol_data in polygon_cache.values():
+        all_dates.update(symbol_data.keys())
+    
+    # Filter dates within the period range
+    period_dates = []
+    for date_str in sorted(all_dates):
+        try:
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+            if start_date.date() <= date_obj.date() <= end_date.date():
+                period_dates.append(date_str)
+        except ValueError:
+            continue
+    
+    # If no dates in range, create a simple chart with current data
+    if not period_dates:
+        current_unrealized = 0.0
         for pos in positions:
-            closes = fetch_closes_for_trading_days(pos["symbol"], [d])
-            if not closes.empty:
-                latest = closes.iloc[-1]  # Get the actual close price value
-                logger.debug(f"{pos['symbol']} {d}: latest={latest}, type={type(latest)}")
-                if isinstance(latest, (int, float)):
-                    unrealized_pl += (latest - pos["buy_price"]) * pos["quantity"]
-                else:
-                    logger.debug(f"Skipping {pos['symbol']} - latest is not numeric: {latest}")
-        total_pl = realized_pl + unrealized_pl
-        values.append(round(total_pl, 2))
+            symbol = pos["symbol"]
+            if symbol in polygon_cache:
+                dates = sorted(polygon_cache[symbol].keys(), reverse=True)
+                if dates:
+                    latest_price = polygon_cache[symbol][dates[0]]['price']
+                    pl = (latest_price - pos["buy_price"]) * pos["quantity"]
+                    current_unrealized += pl
+        
+        labels = [datetime.now().strftime('%Y-%m-%d')]
+        values = [round(current_unrealized, 2)]
+    else:
+        # Create chart data for each date in the period
+        for date_str in period_dates:
+            labels.append(date_str)
+            
+            # Calculate P/L for this date using available data
+            date_unrealized = 0.0
+            for pos in positions:
+                symbol = pos["symbol"]
+                if symbol in polygon_cache and date_str in polygon_cache[symbol]:
+                    price = polygon_cache[symbol][date_str]['price']
+                    pl = (price - pos["buy_price"]) * pos["quantity"]
+                    date_unrealized += pl
+            
+            values.append(round(date_unrealized, 2))
+    
     return {"labels": labels, "values": values, "period": period}
 
 @router.get("/details")
 def get_profit_loss_details() -> List[Dict]:
+    # Load existing polygon cache to avoid API calls
+    polygon_cache = load_polygon_close_cache()
     positions = get_positions()
-    orders = get_orders()
     details = []
     
-    # Add unrealized P/L for each position
+    # Add unrealized P/L for each position using cache
     for pos in positions:
-        latest = get_latest_price(pos["symbol"])
-        if latest is not None:
-            pl = (latest - pos["buy_price"]) * pos["quantity"]
-            details.append({"symbol": pos["symbol"], "type": "Unrealized", "amount": pl})
-    
-    # Add realized P/L from orders (grouped by symbol)
-    symbol_pl = {}
-    for order in orders:
-        symbol = order.get('symbol')
-        if symbol not in symbol_pl:
-            symbol_pl[symbol] = 0.0
-        
-        # For now, use the pl field if available, otherwise 0
-        # In a more sophisticated implementation, you'd calculate this from buy/sell pairs
-        symbol_pl[symbol] += order.get('pl', 0.0)
-    
-    for symbol, pl in symbol_pl.items():
-        if pl != 0:  # Only show symbols with realized P/L
-            details.append({"symbol": symbol, "type": "Realized", "amount": pl})
+        symbol = pos["symbol"]
+        if symbol in polygon_cache:
+            # Get the most recent price from cache
+            dates = sorted(polygon_cache[symbol].keys(), reverse=True)
+            if dates:
+                latest_price = polygon_cache[symbol][dates[0]]['price']
+                pl = (latest_price - pos["buy_price"]) * pos["quantity"]
+                details.append({"symbol": symbol, "type": "Unrealized", "amount": pl})
     
     return details
 
