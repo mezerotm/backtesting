@@ -177,10 +177,12 @@ def get_current_symbol_data(symbol):
         # New format with dictionary
         last_price = data.get("price")
         timestamp = data.get("timestamp", time.time())
+        beta = data.get("beta")  # Get beta from cache
     elif isinstance(data, (int, float)):
         # Old format with direct price value
         last_price = data
         timestamp = time.time()
+        beta = None
     else:
         logger.warning(f"[DEBUG] get_current_symbol_data: unknown data format for {symbol}: {type(data)}")
         return None
@@ -190,7 +192,7 @@ def get_current_symbol_data(symbol):
         "last_price": last_price,
         "previous_close": last_price,  # Use same price for now
         "timestamp": timestamp,
-        "beta": None  # Beta will be fetched separately
+        "beta": beta  # Use beta from cache
     }
     
     logger.debug(f"[DEBUG] Retrieved current data for {symbol} from {most_recent_date}: {current_data}")
@@ -207,7 +209,8 @@ def set_current_symbol_data(symbol, data):
     cache[symbol][today] = {
         "price": data.get("last_price"),
         "timestamp": data.get("timestamp", time.time()),
-        "date": today
+        "date": today,
+        "beta": data.get("beta")  # Include beta in cache
     }
     save_polygon_close_cache(cache)
     logger.debug(f"[DEBUG] Saved current data for {symbol} with date {today}: {data}")
@@ -232,10 +235,12 @@ def load_symbol_data():
                 # New format with dictionary
                 last_price = price_data.get("price")
                 timestamp = price_data.get("timestamp", time.time())
+                beta = price_data.get("beta")  # Get beta from cache
             elif isinstance(price_data, (int, float)):
                 # Old format with direct price value
                 last_price = price_data
                 timestamp = time.time()
+                beta = None
             else:
                 logger.warning(f"[DEBUG] load_symbol_data: unknown price_data format for {symbol}: {type(price_data)}")
                 continue
@@ -244,7 +249,7 @@ def load_symbol_data():
                 "last_price": last_price,
                 "previous_close": last_price,  # Use same price for now
                 "timestamp": timestamp,
-                "beta": None  # Beta will be fetched separately
+                "beta": beta  # Use beta from cache
             }
             result[symbol] = symbol_data
             logger.debug(f"[DEBUG] load_symbol_data: found data for {symbol} from {most_recent_date}: {symbol_data}")
@@ -263,7 +268,8 @@ def save_symbol_data(data):
         cache[symbol][today] = {
             "price": symbol_data.get("last_price"),
             "timestamp": symbol_data.get("timestamp", time.time()),
-            "date": today
+            "date": today,
+            "beta": symbol_data.get("beta")  # Include beta in cache
         }
     save_polygon_close_cache(cache)
 
@@ -278,13 +284,19 @@ def fetch_symbol_data(symbols):
         if current_data and 'timestamp' in current_data:
             cache_age = time.time() - current_data['timestamp']
         
-        # Use cache if less than 5 minutes old
-        if current_data and cache_age < 300:
+        # Use cache if less than 10 minutes old (matches global timer for Robinhood pulls)
+        if current_data and cache_age < 600:  # 10 minutes = 600 seconds
             result[symbol] = current_data
             logger.debug(f"[DEBUG] {symbol}: using cached current data (age: {cache_age:.1f}s)")
             continue
         
-        # Fetch fresh data from Polygon
+        # If we have cached data, use it even if old (better than no data)
+        if current_data:
+            result[symbol] = current_data
+            logger.debug(f"[DEBUG] {symbol}: using old cached data (age: {cache_age:.1f}s)")
+            continue
+        
+        # Only try to fetch fresh data if we have no cached data at all
         try:
             # Get previous day's data (most reliable)
             prev_url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/prev"
@@ -331,9 +343,9 @@ def fetch_symbol_data(symbols):
             set_current_symbol_data(symbol, symbol_data)
             logger.debug(f"[DATABASE] {symbol}: market data updated")
         except Exception as e:
+            # If API call fails, return None values
             symbol_data = {"last_price": None, "previous_close": None, "timestamp": time.time(), "beta": None, "error": str(e)}
             result[symbol] = symbol_data
-            set_current_symbol_data(symbol, symbol_data)
             logger.error(f"[DATABASE] {symbol}: market data fetch failed")
     return result
 

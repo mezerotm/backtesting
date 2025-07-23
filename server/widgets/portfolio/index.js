@@ -267,12 +267,43 @@ async function fetchRobinhoodStatus() {
 
 async function pullRobinhoodData(showSuccess = true) {
   const pullBtn = document.getElementById('pullRobinhoodBtn');
+  const cashModal = document.getElementById('cashModal');
+  const cancelCashModalBtn = document.getElementById('cancelCashModalBtn');
   const originalText = pullBtn ? pullBtn.textContent : '';
+  
   if (pullBtn) {
     pullBtn.disabled = true;
     pullBtn.textContent = 'Pulling...';
     pullBtn.classList.add('opacity-60', 'cursor-not-allowed');
   }
+  
+  // Disable modal closing while pulling
+  if (cancelCashModalBtn) {
+    cancelCashModalBtn.disabled = true;
+    cancelCashModalBtn.classList.add('opacity-60', 'cursor-not-allowed');
+  }
+  
+  // Add visual feedback that modal is locked
+  if (cashModal) {
+    cashModal.classList.add('cursor-not-allowed');
+    // Add a subtle overlay to indicate the modal is locked
+    const overlay = document.createElement('div');
+    overlay.className = 'absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center z-10';
+    overlay.innerHTML = '<div class="text-white text-sm font-medium">Pulling Robinhood data...<br><span class="text-xs opacity-75">Please wait, modal is locked</span></div>';
+    overlay.id = 'robinhoodPullOverlay';
+    const modalContent = cashModal.querySelector('.bg-slate-800');
+    if (modalContent) {
+      modalContent.style.position = 'relative';
+      modalContent.appendChild(overlay);
+    }
+  }
+  
+  // Store original click handler and remove it temporarily
+  const originalClickHandler = cashModal ? cashModal._originalClickHandler : null;
+  if (cashModal && originalClickHandler) {
+    cashModal.removeEventListener('mousedown', originalClickHandler);
+  }
+  
   try {
     const resp = await fetch('/api/robinhood/pull', { method: 'POST' });
     const data = await resp.json();
@@ -283,7 +314,6 @@ async function pullRobinhoodData(showSuccess = true) {
       await fetchRobinhoodStatus();
       fetchPositionsAndSettings(); // Refresh portfolio data
       // Close the modal after successful pull
-      const cashModal = document.getElementById('cashModal');
       if (cashModal) cashModal.classList.add('hidden');
     } else {
       Utils.showNotification(`Error: ${data.detail}`, 'error');
@@ -292,6 +322,26 @@ async function pullRobinhoodData(showSuccess = true) {
     console.error('Error pulling Robinhood data:', error);
     Utils.showNotification('Error pulling Robinhood data', 'error');
   } finally {
+    // Re-enable modal closing
+    if (cancelCashModalBtn) {
+      cancelCashModalBtn.disabled = false;
+      cancelCashModalBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
+    
+    // Remove visual feedback
+    if (cashModal) {
+      cashModal.classList.remove('cursor-not-allowed');
+      const overlay = document.getElementById('robinhoodPullOverlay');
+      if (overlay) {
+        overlay.remove();
+      }
+    }
+    
+    // Restore original click handler
+    if (cashModal && originalClickHandler) {
+      cashModal.addEventListener('mousedown', originalClickHandler);
+    }
+    
     if (pullBtn) {
       pullBtn.disabled = false;
       pullBtn.textContent = originalText;
@@ -357,11 +407,16 @@ export function initPortfolio() {
     cancelCashModalBtn.addEventListener('click', () => {
       cashModal.classList.add('hidden');
     });
-    cashModal.addEventListener('mousedown', (e) => {
+    
+    // Store the original click handler function
+    const originalModalClickHandler = (e) => {
       if (e.target === cashModal) {
         cashModal.classList.add('hidden');
       }
-    });
+    };
+    
+    cashModal.addEventListener('mousedown', originalModalClickHandler);
+    cashModal._originalClickHandler = originalModalClickHandler;
   }
   // Handle cash form submission
   const cashForm = document.getElementById('cashForm');

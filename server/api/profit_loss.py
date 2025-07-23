@@ -717,8 +717,9 @@ def get_profit_loss_chart(period: str = Query('YTD', description="Time period: 1
                 symbol = pos["symbol"]
                 if symbol in polygon_cache and date_str in polygon_cache[symbol]:
                     price = polygon_cache[symbol][date_str]['price']
-                    pl = (price - pos["buy_price"]) * pos["quantity"]
-                    date_unrealized += pl
+                    if price is not None:  # Check for None before arithmetic
+                        pl = (price - pos["buy_price"]) * pos["quantity"]
+                        date_unrealized += pl
             
             values.append(round(date_unrealized, 2))
     
@@ -739,8 +740,9 @@ def get_profit_loss_details() -> List[Dict]:
             dates = sorted(polygon_cache[symbol].keys(), reverse=True)
             if dates:
                 latest_price = polygon_cache[symbol][dates[0]]['price']
-                pl = (latest_price - pos["buy_price"]) * pos["quantity"]
-                details.append({"symbol": symbol, "type": "Unrealized", "amount": pl})
+                if latest_price is not None:  # Check for None before arithmetic
+                    pl = (latest_price - pos["buy_price"]) * pos["quantity"]
+                    details.append({"symbol": symbol, "type": "Unrealized", "amount": pl})
     
     return details
 
