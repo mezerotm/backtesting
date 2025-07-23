@@ -77,5 +77,10 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print('Received Ctrl+C, shutting down server...')
         proc.send_signal(signal.SIGINT)
-        proc.wait()
+        try:
+            proc.wait(timeout=10)  # Wait up to 10 seconds for clean shutdown
+        except subprocess.TimeoutExpired:
+            print('Server not responding, forcing shutdown...')
+            proc.kill()  # Force kill if it doesn't respond
+            proc.wait()
         print('Server stopped.')

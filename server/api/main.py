@@ -46,14 +46,7 @@ app.include_router(dividends_router)
 app.include_router(report_router)
 app.include_router(dashboard_router)
 
-# Logging middleware - only log errors to terminal, everything else goes to log files
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    response = await call_next(request)
-    # Only log errors to terminal
-    if response.status_code >= 400:
-        logger.error(f"HTTP {response.status_code}: {request.method} {request.url}")
-    return response
+
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -75,6 +68,8 @@ async def startup_event():
             print(f"🧹 Cleaned up {deleted_count} old log files on startup")
     except Exception as e:
         print(f"⚠️  Log cleanup failed: {e}")
+
+
 
 @app.get("/logs")
 async def list_logs():

@@ -576,8 +576,8 @@ export function initPortfolio() {
     pullBtn.addEventListener('click', () => pullRobinhoodData());
   }
   
-  // Auto-pull every 10 minutes
-  setInterval(() => pullRobinhoodData(false), 10 * 60 * 1000);
+  // Auto-pull handled by global timer in main.js
+  // setInterval(() => pullRobinhoodData(false), 10 * 60 * 1000);
   
   // Initial data load with symbol refresh
   fetchPositionsAndCash();
