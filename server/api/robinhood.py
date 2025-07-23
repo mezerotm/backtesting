@@ -1,4 +1,5 @@
 import os, json, requests, time
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from fastapi import APIRouter, HTTPException, Query
@@ -7,10 +8,16 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from utils.logger import get_widget_logger
 from utils.config import POLYGON_API_KEY
+
+# Suppress robin_stocks verbose logging
+logging.getLogger('robin_stocks').setLevel(logging.ERROR)
+logging.getLogger('urllib3').setLevel(logging.ERROR)
+logging.getLogger('requests').setLevel(logging.ERROR)
+
 import robin_stocks.robinhood as r
 
 # Initialize logger for robinhood widget
-logger = get_widget_logger('robinhood')
+logger = get_widget_logger('robinhood', level=logging.INFO)
 
 router = APIRouter(prefix="/api/robinhood", tags=["robinhood"])
 
@@ -196,18 +203,31 @@ def pull_robinhood_data():
         with open(DIVIDENDS_PATH, 'w', encoding='utf-8') as f:
             json.dump(mapped_dividends, f, indent=2)
 
-        # (Removed) Symbol data refresh logic. Now handled by frontend/global timer.
+        # Refresh symbol data with new positions
+        try:
+            from server.api.portfolio import get_portfolio_symbols, fetch_symbol_data, save_symbol_data, calculate_and_save_betas
+            symbols = get_portfolio_symbols()
+            if symbols:
+                logger.info(f"[DATABASE] Fetching market data for {len(symbols)} symbols")
+                symbol_data = fetch_symbol_data(symbols)
+                save_symbol_data(symbol_data)
+                # Calculate betas for new symbols
+                calculate_and_save_betas(symbols)
+                logger.info(f"[DATABASE] Market data updated for {len(symbols)} symbols")
+        except Exception as e:
+            logger.error(f"[DATABASE] Market data refresh failed: {e}")
 
         # Refresh P/L cache with new data
         try:
             from server.api.profit_loss import calculate_all_periods
             calculate_all_periods()
-            logger.info("[ROBINHOOD] P/L cache refreshed with new data")
+            logger.info("[DATABASE] P/L cache updated with new data")
         except Exception as e:
-            logger.warning(f"[ROBINHOOD] Failed to refresh P/L cache: {e}")
+            logger.error(f"[DATABASE] P/L cache update failed: {e}")
         
         # Logout
         r.logout()
+        logger.info(f"[DATABASE] Robinhood data saved: {len(mapped_positions)} positions, {len(mapped_orders)} orders, {len(mapped_dividends)} dividends")
         return {
             "status": "success",
             "positions_count": len(mapped_positions),

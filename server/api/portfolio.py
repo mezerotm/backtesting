@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 import json
 import os
+import logging
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 import requests
@@ -15,7 +16,7 @@ from utils.logger import get_widget_logger
 from utils.config import POLYGON_API_KEY
 
 # Initialize logger for portfolio widget
-logger = get_widget_logger('portfolio')
+logger = get_widget_logger('portfolio', level=logging.INFO)
 
 # File paths
 PORTFOLIO_PATH = os.path.join("public", "data", "positions.json")
@@ -156,48 +157,87 @@ def save_polygon_close_cache(cache):
         logger.debug(f"[DEBUG] Error saving polygon close cache: {e}")
 
 def get_current_symbol_data(symbol):
-    """Get current symbol data from unified cache."""
+    """Get current symbol data from unified cache using most recent date."""
     cache = load_polygon_close_cache()
-    if symbol in cache and 'current' in cache[symbol]:
-        data = cache[symbol]['current']
-        logger.debug(f"[DEBUG] Retrieved current data for {symbol}: {data}")
-        return data
-    logger.debug(f"[DEBUG] No current data found for {symbol}")
-    return None
+    if symbol not in cache:
+        logger.debug(f"[DEBUG] No data found for {symbol}")
+        return None
+    
+    # Get the most recent date available
+    dates = sorted(cache[symbol].keys(), reverse=True)
+    if not dates:
+        logger.debug(f"[DEBUG] No dates found for {symbol}")
+        return None
+    
+    most_recent_date = dates[0]
+    data = cache[symbol][most_recent_date]
+    
+    # Convert to the expected format
+    current_data = {
+        "last_price": data.get("price"),
+        "previous_close": data.get("price"),  # Use same price for now
+        "timestamp": data.get("timestamp", time.time()),
+        "beta": None  # Beta will be fetched separately
+    }
+    
+    logger.debug(f"[DEBUG] Retrieved current data for {symbol} from {most_recent_date}: {current_data}")
+    return current_data
 
 def set_current_symbol_data(symbol, data):
-    """Set current symbol data in unified cache."""
+    """Set current symbol data in unified cache using today's date."""
     cache = load_polygon_close_cache()
     if symbol not in cache:
         cache[symbol] = {}
-    cache[symbol]['current'] = data
+    
+    # Use today's date as the key
+    today = datetime.now().strftime('%Y-%m-%d')
+    cache[symbol][today] = {
+        "price": data.get("last_price"),
+        "timestamp": data.get("timestamp", time.time()),
+        "date": today
+    }
     save_polygon_close_cache(cache)
-    logger.debug(f"[DEBUG] Saved current data for {symbol}: {data}")
+    logger.debug(f"[DEBUG] Saved current data for {symbol} with date {today}: {data}")
 
 
 
 # Updated functions to use unified cache
 def load_symbol_data():
-    """Load symbol data from unified cache (for backward compatibility)."""
+    """Load symbol data from unified cache using most recent dates."""
     cache = load_polygon_close_cache()
     result = {}
     logger.debug(f"[DEBUG] load_symbol_data: cache keys: {list(cache.keys())}")
     for symbol, data in cache.items():
-        if 'current' in data:
-            result[symbol] = data['current']
-            logger.debug(f"[DEBUG] load_symbol_data: found current data for {symbol}: {data['current']}")
+        # Get the most recent date available
+        dates = sorted(data.keys(), reverse=True)
+        if dates:
+            most_recent_date = dates[0]
+            price_data = data[most_recent_date]
+            symbol_data = {
+                "last_price": price_data.get("price"),
+                "previous_close": price_data.get("price"),  # Use same price for now
+                "timestamp": price_data.get("timestamp", time.time()),
+                "beta": None  # Beta will be fetched separately
+            }
+            result[symbol] = symbol_data
+            logger.debug(f"[DEBUG] load_symbol_data: found data for {symbol} from {most_recent_date}: {symbol_data}")
         else:
-            logger.debug(f"[DEBUG] load_symbol_data: no current data for {symbol}")
+            logger.debug(f"[DEBUG] load_symbol_data: no dates found for {symbol}")
     logger.debug(f"[DEBUG] load_symbol_data: returning {len(result)} symbols")
     return result
 
 def save_symbol_data(data):
-    """Save symbol data to unified cache (for backward compatibility)."""
+    """Save symbol data to unified cache using today's date."""
     cache = load_polygon_close_cache()
+    today = datetime.now().strftime('%Y-%m-%d')
     for symbol, symbol_data in data.items():
         if symbol not in cache:
             cache[symbol] = {}
-        cache[symbol]['current'] = symbol_data
+        cache[symbol][today] = {
+            "price": symbol_data.get("last_price"),
+            "timestamp": symbol_data.get("timestamp", time.time()),
+            "date": today
+        }
     save_polygon_close_cache(cache)
 
 def fetch_symbol_data(symbols):
@@ -218,37 +258,36 @@ def fetch_symbol_data(symbols):
             continue
         
         # Fetch fresh data from Polygon
-        # First get previous day's data
-        prev_url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/prev"
-        prev_params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
-        
-        # Then get current day's data
-        current_url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/minute/{datetime.now().strftime('%Y-%m-%d')}/{datetime.now().strftime('%Y-%m-%d')}"
-        current_params = {"adjusted": "true", "apiKey": POLYGON_API_KEY, "sort": "desc", "limit": 1}
-        
         try:
-            # Get previous close
-            prev_resp = requests.get(prev_url, params=prev_params, timeout=5)
+            # Get previous day's data (most reliable)
+            prev_url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/prev"
+            prev_params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
+            
+            prev_resp = requests.get(prev_url, params=prev_params, timeout=10)
             prev_close = None
+            last_price = None
+            
             if prev_resp.status_code == 200:
                 prev_data = prev_resp.json()
                 prev_results = prev_data.get("results", [])
                 if prev_results:
                     prev_close = prev_results[0].get("c")
+                    # Use previous close as current price if market is closed
+                    last_price = prev_close
+                    logger.debug(f"[DEBUG] {symbol}: got previous close: {prev_close}")
             
-            # Get current price
-            current_resp = requests.get(current_url, params=current_params, timeout=5)
-            last_price = None
-            if current_resp.status_code == 200:
-                current_data = current_resp.json()
-                current_results = current_data.get("results", [])
-                if current_results:
-                    last_price = current_results[0].get("c")
-            
-            # If no current price, try using previous close as current price
-            if last_price is None and prev_close is not None:
-                last_price = prev_close
-                logger.debug(f"[DEBUG] {symbol}: using previous close as current price")
+            # Try to get current day's data if available
+            if not last_price:
+                current_url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/minute/{datetime.now().strftime('%Y-%m-%d')}/{datetime.now().strftime('%Y-%m-%d')}"
+                current_params = {"adjusted": "true", "apiKey": POLYGON_API_KEY, "sort": "desc", "limit": 1}
+                
+                current_resp = requests.get(current_url, params=current_params, timeout=10)
+                if current_resp.status_code == 200:
+                    current_data = current_resp.json()
+                    current_results = current_data.get("results", [])
+                    if current_results:
+                        last_price = current_results[0].get("c")
+                        logger.debug(f"[DEBUG] {symbol}: got current price: {last_price}")
             
             # Fetch beta from ticker details
             ticker_details = fetch_ticker_details(symbol)
@@ -263,12 +302,12 @@ def fetch_symbol_data(symbols):
             result[symbol] = symbol_data
             # Save to unified cache
             set_current_symbol_data(symbol, symbol_data)
-            logger.debug(f"[DEBUG] {symbol}: fetched fresh current data - last_price={last_price}, prev_close={prev_close}, beta={beta}")
+            logger.debug(f"[DATABASE] {symbol}: market data updated")
         except Exception as e:
             symbol_data = {"last_price": None, "previous_close": None, "timestamp": time.time(), "beta": None, "error": str(e)}
             result[symbol] = symbol_data
             set_current_symbol_data(symbol, symbol_data)
-            logger.debug(f"[DEBUG] {symbol}: error fetching data - {e}")
+            logger.error(f"[DATABASE] {symbol}: market data fetch failed")
     return result
 
 def fetch_daily_closes(symbol, start_date, end_date):
@@ -631,8 +670,9 @@ def get_portfolio_summary():
             total_return = ((last_price - buy_price) / buy_price) * 100
         # Delta (for stocks/ETFs)
         delta = quantity
-        # Debug logging for all columns
-        logger.debug(f"[DEBUG] {symbol}: last_price={last_price}, prev_close={prev_close}, buy_price={buy_price}, market_value={market_value}, todays_return={todays_return}, total_return={total_return}, beta={beta}, delta={delta}")
+        # Log only if there's an issue with data
+        if market_value is None:
+            logger.warning(f"[DATABASE] {symbol}: missing market data")
 
         # Format decimals to 0.00 precision
         todays_return = round(todays_return, 2) if todays_return is not None else None

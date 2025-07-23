@@ -527,7 +527,7 @@ setInterval(async () => {
     } catch (err) {
         console.error('[Global Sync] Polygon symbol data refresh failed:', err);
     }
-}, 10 * 60 * 1000); // 10 minutes in ms
+}, 30 * 60 * 1000); // 30 minutes in ms
 
 // Initial sync on page load
 setTimeout(async () => {
