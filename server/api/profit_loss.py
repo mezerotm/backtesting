@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from utils.logger import get_widget_logger
+from utils.config import POLYGON_API_KEY
 
 # Initialize logger for profit_loss widget
 logger = get_widget_logger('profit_loss')
@@ -16,7 +17,6 @@ router = APIRouter(prefix="/api/profit_loss", tags=["profit_loss"])
 
 PORTFOLIO_PATH = os.path.join("public", "data", "positions.json")
 ORDERS_PATH = os.path.join("public", "data", "orders.json")
-POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 
 # Cache paths for P/L data
 PL_CACHE_PATH = os.path.join("public", "data", "pl_cache.json")

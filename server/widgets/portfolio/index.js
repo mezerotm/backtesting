@@ -579,7 +579,19 @@ export function initPortfolio() {
   // Auto-pull every 10 minutes
   setInterval(() => pullRobinhoodData(false), 10 * 60 * 1000);
   
+  // Initial data load with symbol refresh
   fetchPositionsAndCash();
+  
+  // Refresh symbol data to get current market prices
+  fetch('/api/portfolio/refresh-symbols', { method: 'POST' })
+    .then(() => {
+      console.log('[Portfolio] Symbol data refreshed');
+      fetchPositionsAndCash(); // Reload with fresh market data
+    })
+    .catch(err => {
+      console.error('[Portfolio] Failed to refresh symbol data:', err);
+      // Still load positions even if symbol refresh fails
+    });
 }
 
 console.log('[Portfolio] portfolio/index.js script loaded');

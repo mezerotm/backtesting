@@ -529,6 +529,17 @@ setInterval(async () => {
     }
 }, 10 * 60 * 1000); // 10 minutes in ms
 
+// Initial sync on page load
+setTimeout(async () => {
+    try {
+        console.log('[Initial Sync] Triggering Polygon symbol data refresh...');
+        await Utils.apiRequest('/api/portfolio/refresh-symbols', { method: 'POST' });
+        console.log('[Initial Sync] Polygon symbol data refresh complete.');
+    } catch (err) {
+        console.error('[Initial Sync] Polygon symbol data refresh failed:', err);
+    }
+}, 2000); // Wait 2 seconds after page load
+
 // Export for use in other modules
 window.AppState = AppState;
 window.Utils = Utils;

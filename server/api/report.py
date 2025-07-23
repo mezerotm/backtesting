@@ -7,6 +7,9 @@ import requests
 from datetime import datetime
 from market_workflow_cli import run_market_report
 import logging
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from utils.config import POLYGON_API_KEY
 
 # This module provides endpoints for report management (listing, cleaning, deleting).
 # Report metadata schema: see get_report_metadata in dashboard_server.py
@@ -17,7 +20,6 @@ import logging
 #   GET /api/report/search-symbols - Search for symbols (Polygon API)
 
 REPORTS_DIR = os.path.join("public", "results")
-POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 
 router = APIRouter(prefix="/api/report", tags=["report"])
 
