@@ -28,6 +28,7 @@ app.add_middleware(
 # Mount static files
 app.mount("/static", StaticFiles(directory="server"), name="static")
 app.mount("/js", StaticFiles(directory="public/js"), name="js")
+app.mount("/results", StaticFiles(directory="public/results"), name="results")
 
 # Import and include routers
 from server.api.portfolio import router as portfolio_router
