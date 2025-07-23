@@ -1,12 +1,13 @@
 import os, json
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Body
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from utils.logger import get_widget_logger
+from utils.config import POLYGON_API_KEY
 
 # Initialize logger for dividends widget
 logger = get_widget_logger('dividends')
@@ -14,7 +15,6 @@ logger = get_widget_logger('dividends')
 router = APIRouter(prefix="/api/dividends", tags=["dividends"])
 
 DIVIDENDS_PATH = os.path.join("public", "data", "dividends.json")
-POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 
 # Helper: get all dividends
 def get_dividends() -> List[Dict]:

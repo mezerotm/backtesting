@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from utils.logger import get_widget_logger
+from utils.config import POLYGON_API_KEY
+import robin_stocks.robinhood as r
 
 # Initialize logger for robinhood widget
 logger = get_widget_logger('robinhood')
@@ -17,7 +19,6 @@ POSITIONS_PATH = os.path.join("public", "data", "positions.json")
 ORDERS_PATH = os.path.join("public", "data", "orders.json")
 DIVIDENDS_PATH = os.path.join("public", "data", "dividends.json")
 SYMBOLS_PATH = os.path.join("public", "data", "symbols.json")
-POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 
 # Ensure data directory exists
 os.makedirs(os.path.dirname(SYMBOLS_PATH), exist_ok=True)

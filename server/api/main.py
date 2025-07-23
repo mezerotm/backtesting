@@ -3,14 +3,18 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from utils.logger import get_widget_logger, list_log_files, cleanup_old_logs
+from utils.logger import get_widget_logger, list_log_files, cleanup_old_logs, auto_cleanup_logs, get_log_stats
 
 # Initialize logger for main server
 logger = get_widget_logger('server')
 
 app = FastAPI(title="Backtesting Dashboard", version="1.0.0")
+
+# Initialize Jinja2 templates
+templates = Jinja2Templates(directory="server")
 
 # Add CORS middleware
 app.add_middleware(
@@ -42,19 +46,35 @@ app.include_router(dividends_router)
 app.include_router(report_router)
 app.include_router(dashboard_router)
 
-# Logging middleware
+# Logging middleware - only log errors to terminal, everything else goes to log files
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    logger.info(f"Incoming request: {request.method} {request.url}")
     response = await call_next(request)
-    logger.info(f"Response status: {response.status_code} for {request.method} {request.url}")
+    # Only log errors to terminal
+    if response.status_code >= 400:
+        logger.error(f"HTTP {response.status_code}: {request.method} {request.url}")
     return response
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root():
+async def read_root(request: Request):
     logger.debug("Serving main dashboard page")
-    with open("server/dashboard.html", "r") as f:
-        return f.read()
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+# Add startup event to show server is running
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 Backtesting Dashboard server is running on http://localhost:8000/")
+    print("📊 Dashboard: http://localhost:8000/")
+    print("📝 Logs: ./logs/")
+    print("Press Ctrl+C to stop the server")
+    
+    # Run automatic log cleanup on startup
+    try:
+        deleted_count = auto_cleanup_logs()
+        if deleted_count > 0:
+            print(f"🧹 Cleaned up {deleted_count} old log files on startup")
+    except Exception as e:
+        print(f"⚠️  Log cleanup failed: {e}")
 
 @app.get("/logs")
 async def list_logs():
@@ -98,10 +118,30 @@ async def get_log_content(log_name: str, lines: int = 100):
 async def cleanup_logs(days_to_keep: int = 7):
     """Clean up old log files."""
     try:
-        cleanup_old_logs(days_to_keep)
-        return {"message": f"Cleaned up logs older than {days_to_keep} days"}
+        deleted_count = cleanup_old_logs(days_to_keep)
+        return {"message": f"Cleaned up {deleted_count} log files older than {days_to_keep} days"}
     except Exception as e:
         logger.error(f"Error cleaning up logs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/logs/auto-cleanup")
+async def auto_cleanup():
+    """Run automatic log cleanup (age + size based)."""
+    try:
+        deleted_count = auto_cleanup_logs()
+        return {"message": f"Auto cleanup complete. Deleted {deleted_count} files."}
+    except Exception as e:
+        logger.error(f"Error in auto cleanup: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/logs/stats")
+async def get_logs_stats():
+    """Get log file statistics."""
+    try:
+        stats = get_log_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Error getting log stats: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

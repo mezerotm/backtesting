@@ -64,7 +64,7 @@ if __name__ == '__main__':
 
     print('Starting FastAPI server...')
     proc = subprocess.Popen([
-        sys.executable, '-m', 'uvicorn', 'server.api.main:app', '--reload', '--host', '0.0.0.0', '--port', '8000'
+        sys.executable, '-m', 'uvicorn', 'server.api.main:app', '--host', '0.0.0.0', '--port', '8000', '--log-level', 'error'
     ])
 
     # Optionally open browser
