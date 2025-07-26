@@ -6,8 +6,10 @@ import os
 import json
 import plotly.graph_objects as go
 import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Any, List, Optional
 import logging
 import re
 import plotly.io as pio
@@ -18,6 +20,7 @@ logger = logging.getLogger(__name__)
 # Remove the debug print
 # print("[DEBUG] market_chart_generator.py loaded, go is:", 'go' in globals())
 
+
 def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
     """Generate GDP chart using Plotly."""
     try:
@@ -26,19 +29,20 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
             print("ERROR - GDP data is empty or missing labels/values")
             return None
         # Convert data for plotly
-        chart_data = []
         labels = []
         values = []
         colors = []
-        
-        for i, (label, value) in enumerate(zip(data['labels'], data['values'])):
+
+        for i, (label, value) in enumerate(
+                zip(data['labels'], data['values'])):
             try:
                 if label and value is not None:
                     quarter = int(label[1])
                     year = int(label.split()[1])
                     labels.append(f"Q{quarter} {year}")
                     values.append(float(value))
-                    colors.append('rgb(34, 197, 94)' if float(value) >= 0 else 'rgb(239, 68, 68)')
+                    colors.append('rgb(34, 197, 94)' if float(
+                        value) >= 0 else 'rgb(239, 68, 68)')
             except Exception as e:
                 print(f"Error processing GDP data point {i}: {e}")
 
@@ -48,12 +52,14 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
                 x=labels,
                 y=values,
                 marker_color=colors,
-                text=[f"{v:+.1f}%" for v in values],  # Show values with + or - sign
+                # Show values with + or - sign
+                text=[f"{v:+.1f}%" for v in values],
                 textposition='outside',  # Place text above bars
-                textfont={'size': 14, 'color': '#94a3b8'},  # Larger, visible text
-                hovertemplate="<b>%{x}</b><br>" +
-                            "GDP Growth: %{text}<br>" +
-                            "<extra></extra>"  # Remove secondary box
+                textfont={
+                    'size': 14,
+                    'color': '#94a3b8'},
+                # Larger, visible text
+                hovertemplate="<b>%{x}</b><br>GDP Growth: %{text}<br><extra></extra>"
             )
         ])
 
@@ -107,7 +113,8 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
         # Add healthy growth range (2-3%)
         fig.add_hrect(
             y0=2, y1=3,
-            fillcolor="rgba(59, 130, 246, 0.1)",  # Light blue for the target range
+            # Light blue for the target range
+            fillcolor="rgba(59, 130, 246, 0.1)",
             line_width=0
         )
 
@@ -122,7 +129,7 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
         charts_dir = os.path.join(output_dir, 'charts')
         os.makedirs(charts_dir, exist_ok=True)
         chart_path = os.path.join(charts_dir, 'gdp_chart.html')
-        
+
         fig.write_html(
             chart_path,
             include_plotlyjs=True,
@@ -132,23 +139,23 @@ def generate_gdp_chart(data: Dict, output_dir: str) -> Optional[str]:
                 'responsive': True
             }
         )
-        
+
         return os.path.relpath(chart_path, output_dir)
-        
+
     except Exception as e:
         print(f"ERROR - Failed to generate GDP chart: {e}")
         return None
+
 
 def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
     """Generate inflation chart as a bar chart using Plotly."""
     try:
         labels = data['labels']
         values = data['values']
-        # Color coding: green for target (2-2.5%), yellow for below target, red for above target
-        colors = [
-            'rgb(34, 197, 94)' if 2.0 <= v <= 2.5 else ('rgb(234, 179, 8)' if v < 2.0 else 'rgb(239, 68, 68)')
-            for v in values
-        ]
+        # Color coding: green for target (2-2.5%), yellow for below target, red
+        # for above target
+        colors = ['rgb(34, 197, 94)' if 2.0 <= v <= 2.5 else (
+            'rgb(234, 179, 8)' if v < 2.0 else 'rgb(239, 68, 68)') for v in values]
         fig = go.Figure(data=[
             go.Bar(
                 x=labels,
@@ -167,20 +174,29 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
                 'x': 0.5,
                 'xanchor': 'center',
                 'yanchor': 'top',
-                'font': {'color': 'rgb(148, 163, 184)', 'size': 28}
-            },
+                'font': {
+                    'color': 'rgb(148, 163, 184)',
+                    'size': 28}},
             plot_bgcolor='rgb(13, 18, 30)',
             paper_bgcolor='rgb(13, 18, 30)',
-            font={'color': 'rgb(148, 163, 184)', 'size': 14, 'family': 'system-ui'},
+            font={
+                'color': 'rgb(148, 163, 184)',
+                'size': 14,
+                'family': 'system-ui'},
             showlegend=False,
-            margin=dict(t=60, l=50, r=30, b=80),
+            margin=dict(
+                t=60,
+                l=50,
+                r=30,
+                b=80),
             xaxis=dict(
                 showgrid=True,
                 gridcolor='rgba(148, 163, 184, 0.1)',
-                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
+                tickfont={
+                    'size': 12,
+                    'color': 'rgb(148, 163, 184)'},
                 title=None,
-                tickangle=45
-            ),
+                tickangle=45),
             yaxis=dict(
                 showgrid=True,
                 gridcolor='rgba(148, 163, 184, 0.1)',
@@ -188,13 +204,19 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
                 zerolinecolor='rgba(148, 163, 184, 0.5)',
                 zerolinewidth=1,
                 ticksuffix='%',
-                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
-                title={'text': 'Inflation Rate', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}},
-                range=[min(values) - 0.5, max(values) + 0.5],
-                tickformat='.1f'
-            ),
-            autosize=True
-        )
+                tickfont={
+                    'size': 12,
+                    'color': 'rgb(148, 163, 184)'},
+                title={
+                    'text': 'Inflation Rate',
+                    'font': {
+                        'size': 14,
+                        'color': 'rgb(148, 163, 184)'}},
+                range=[
+                    min(values) - 0.5,
+                    max(values) + 0.5],
+                tickformat='.1f'),
+            autosize=True)
         # Add target inflation line
         fig.add_hline(
             y=2,
@@ -225,16 +247,15 @@ def generate_inflation_chart(data: Dict, output_dir: str) -> Optional[str]:
         print(f"ERROR - Failed to generate inflation chart: {e}")
         return None
 
+
 def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
     """Generate unemployment chart as a bar chart using Plotly."""
     try:
         labels = data['labels']
         values = data['values']
         # Color coding: green for <=4.0, yellow for <=4.4, red for >4.4
-        colors = [
-            'rgb(34, 197, 94)' if v <= 4.0 else ('rgb(234, 179, 8)' if v <= 4.4 else 'rgb(239, 68, 68)')
-            for v in values
-        ]
+        colors = ['rgb(34, 197, 94)' if v <= 4.0 else (
+            'rgb(234, 179, 8)' if v <= 4.4 else 'rgb(239, 68, 68)') for v in values]
         fig = go.Figure(data=[
             go.Bar(
                 x=labels,
@@ -253,20 +274,29 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
                 'x': 0.5,
                 'xanchor': 'center',
                 'yanchor': 'top',
-                'font': {'color': 'rgb(148, 163, 184)', 'size': 28}
-            },
+                'font': {
+                    'color': 'rgb(148, 163, 184)',
+                    'size': 28}},
             plot_bgcolor='rgb(13, 18, 30)',
             paper_bgcolor='rgb(13, 18, 30)',
-            font={'color': 'rgb(148, 163, 184)', 'size': 14, 'family': 'system-ui'},
+            font={
+                'color': 'rgb(148, 163, 184)',
+                'size': 14,
+                'family': 'system-ui'},
             showlegend=False,
-            margin=dict(t=60, l=50, r=30, b=80),
+            margin=dict(
+                t=60,
+                l=50,
+                r=30,
+                b=80),
             xaxis=dict(
                 showgrid=True,
                 gridcolor='rgba(148, 163, 184, 0.1)',
-                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
+                tickfont={
+                    'size': 12,
+                    'color': 'rgb(148, 163, 184)'},
                 title=None,
-                tickangle=45
-            ),
+                tickangle=45),
             yaxis=dict(
                 showgrid=True,
                 gridcolor='rgba(148, 163, 184, 0.1)',
@@ -274,13 +304,19 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
                 zerolinecolor='rgba(148, 163, 184, 0.5)',
                 zerolinewidth=1,
                 ticksuffix='%',
-                tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'},
-                title={'text': 'Unemployment Rate', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}},
-                range=[min(values) - 0.5, max(values) + 0.5],
-                tickformat='.1f'
-            ),
-            autosize=True
-        )
+                tickfont={
+                    'size': 12,
+                    'color': 'rgb(148, 163, 184)'},
+                title={
+                    'text': 'Unemployment Rate',
+                    'font': {
+                        'size': 14,
+                        'color': 'rgb(148, 163, 184)'}},
+                range=[
+                    min(values) - 0.5,
+                    max(values) + 0.5],
+                tickformat='.1f'),
+            autosize=True)
         # Add full employment line
         fig.add_hline(
             y=4,
@@ -311,6 +347,7 @@ def generate_unemployment_chart(data: Dict, output_dir: str) -> Optional[str]:
         print(f"ERROR - Failed to generate unemployment chart: {e}")
         return None
 
+
 def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
     """Generate bond yield chart as a line chart using Plotly, highlighting yield curve inversion, with debugging and robust length handling."""
     try:
@@ -322,14 +359,21 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
         if values_2y:
             n = min(n, len(values_10y), len(values_2y))
             if not (len(labels) == len(values_10y) == len(values_2y)):
-                print(f"[DEBUG] Mismatched lengths: labels={len(labels)}, 10Y={len(values_10y)}, 2Y={len(values_2y)}. Trimming to {n}.")
+                print(
+                    f"[DEBUG] Mismatched lengths: labels={
+                        len(labels)}, 10Y={
+                        len(values_10y)}, 2Y={
+                        len(values_2y)}. Trimming to {n}.")
             labels = labels[:n]
             values_10y = values_10y[:n]
             values_2y = values_2y[:n]
         else:
             n = min(n, len(values_10y))
             if not (len(labels) == len(values_10y)):
-                print(f"[DEBUG] Mismatched lengths: labels={len(labels)}, 10Y={len(values_10y)}. Trimming to {n}.")
+                print(
+                    f"[DEBUG] Mismatched lengths: labels={
+                        len(labels)}, 10Y={
+                        len(values_10y)}. Trimming to {n}.")
             labels = labels[:n]
             values_10y = values_10y[:n]
         print(f"[DEBUG] Chart labels: {labels}")
@@ -367,9 +411,9 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
                 else:
                     if in_inversion:
                         in_inversion = False
-                        inversion_regions.append((start_idx, i-1))
+                        inversion_regions.append((start_idx, i - 1))
             if in_inversion:
-                inversion_regions.append((start_idx, n-1))
+                inversion_regions.append((start_idx, n - 1))
             for start, end in inversion_regions:
                 fig.add_vrect(
                     x0=labels[start],
@@ -443,7 +487,11 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
         print(f"ERROR - Failed to generate bond chart: {e}")
         return None
 
-def generate_market_index_chart(data: Dict, output_dir: str, index_name: str) -> Optional[str]:
+
+def generate_market_index_chart(
+        data: Dict,
+        output_dir: str,
+        index_name: str) -> Optional[str]:
     """Generate a chart HTML file for a market index ETF. Use Plotly for Dollar Index, TradingView for others."""
     # Special case for Dollar Index
     if index_name == 'Dollar Index' and data and data.get('labels'):
@@ -451,7 +499,9 @@ def generate_market_index_chart(data: Dict, output_dir: str, index_name: str) ->
         os.makedirs(charts_dir, exist_ok=True)
         chart_path = os.path.join(charts_dir, 'dollar_index_chart.html')
         # Use OHLC data if available
-        if 'ohlc' in data and all(k in data['ohlc'] for k in ['open', 'high', 'low', 'close']):
+        if 'ohlc' in data and all(
+            k in data['ohlc'] for k in [
+                'open', 'high', 'low', 'close']):
             df = pd.DataFrame({
                 'date': data['labels'],
                 'open': data['ohlc']['open'],
@@ -477,17 +527,48 @@ def generate_market_index_chart(data: Dict, output_dir: str, index_name: str) ->
             decreasing_line_color='rgb(239, 68, 68)'
         )])
         fig.update_layout(
-            title={'text': 'Dollar Index (DXY)', 'y': 0.95, 'x': 0.5, 'xanchor': 'center', 'yanchor': 'top', 'font': {'color': 'rgb(148, 163, 184)', 'size': 28}},
+            title={
+                'text': 'Dollar Index (DXY)',
+                'y': 0.95,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {
+                    'color': 'rgb(148, 163, 184)',
+                    'size': 28}},
             plot_bgcolor='rgba(15,23,42,1)',
             paper_bgcolor='rgba(15,23,42,1)',
-            font=dict(color='rgb(226,232,240)', size=16),
-            margin=dict(l=30, r=30, t=60, b=30),
-            xaxis=dict(title='', showgrid=False, zeroline=False, rangeslider=dict(visible=True), type='date'),
-            yaxis=dict(title='', showgrid=True, gridcolor='rgba(51,65,85,0.4)', zeroline=False),
+            font=dict(
+                color='rgb(226,232,240)',
+                size=16),
+            margin=dict(
+                l=30,
+                r=30,
+                t=60,
+                b=30),
+            xaxis=dict(
+                title='',
+                showgrid=False,
+                zeroline=False,
+                rangeslider=dict(
+                    visible=True),
+                type='date'),
+            yaxis=dict(
+                title='',
+                showgrid=True,
+                gridcolor='rgba(51,65,85,0.4)',
+                zeroline=False),
             hovermode='x unified',
-            autosize=True
-        )
-        pio.write_html(fig, file=chart_path, auto_open=False, include_plotlyjs='cdn', full_html=True, config={'displayModeBar': False, 'responsive': True})
+            autosize=True)
+        pio.write_html(
+            fig,
+            file=chart_path,
+            auto_open=False,
+            include_plotlyjs='cdn',
+            full_html=True,
+            config={
+                'displayModeBar': False,
+                'responsive': True})
         return os.path.relpath(chart_path, output_dir)
     # Otherwise, use TradingView as before
     logger.debug(f"Generating TradingView chart for {index_name}")
@@ -520,10 +601,12 @@ def generate_market_index_chart(data: Dict, output_dir: str, index_name: str) ->
             tv_symbol = v
             break
     if not tv_symbol:
-        # Fallback: try to extract ticker from data or index_name and use AMEX as default
+        # Fallback: try to extract ticker from data or index_name and use AMEX
+        # as default
         ticker = re.sub(r'[^A-Z]', '', index_name.upper())
         tv_symbol = f'AMEX:{ticker}'
-        logger.debug(f"Fallback TradingView symbol: {tv_symbol} for index {index_name}")
+        logger.debug(f"Fallback TradingView symbol: {
+                     tv_symbol} for index {index_name}")
     logger.debug(f"Final TradingView symbol for {index_name}: {tv_symbol}")
     safe_name = index_name.lower().replace(' ', '_').replace('&', 'and')
     charts_dir = os.path.join(output_dir, 'charts')
@@ -535,11 +618,12 @@ def generate_market_index_chart(data: Dict, output_dir: str, index_name: str) ->
 <head></head>
 <body style="height:900px; margin:0; padding:0;">
 <div class="tradingview-widget-container" style="height:900px;">
-  <div id="tradingview_{safe_name}"></div>
+  <div id="tradingview_{
+        safe_name}"></div>
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <script type="text/javascript">
-  new TradingView.widget({{
-    "width": "100%",
+  new TradingView.widget({
+        "width": "100%",
     "height": 900,
     "symbol": "{tv_symbol}",
     "interval": "D",
@@ -552,7 +636,7 @@ def generate_market_index_chart(data: Dict, output_dir: str, index_name: str) ->
     "hide_top_toolbar": false,
     "save_image": false,
     "container_id": "tradingview_{safe_name}"
-  }});
+  } );
   </script>
 </div>
 </body>
@@ -562,13 +646,20 @@ def generate_market_index_chart(data: Dict, output_dir: str, index_name: str) ->
     try:
         with open(chart_path, 'w', encoding='utf-8') as f:
             f.write(widget_html)
-        logger.info(f"TradingView chart for {index_name} saved to {chart_path}")
+        logger.info(f"TradingView chart for {
+                    index_name} saved to {chart_path}")
         return os.path.relpath(chart_path, output_dir)
     except Exception as e:
-        logger.error(f"Failed to generate TradingView chart for {index_name}: {e}")
+        logger.error(
+            f"Failed to generate TradingView chart for {index_name}: {e}")
         return None
 
-def generate_single_bond_chart(data: Dict, output_dir: str, filename: str, title: str) -> Optional[str]:
+
+def generate_single_bond_chart(
+        data: Dict,
+        output_dir: str,
+        filename: str,
+        title: str) -> Optional[str]:
     try:
         labels = data['labels']
         values = data['values']
@@ -583,16 +674,55 @@ def generate_single_bond_chart(data: Dict, output_dir: str, filename: str, title
             hovertemplate=f"<b>%{{x}}</b><br>{title}: %{{y:.2f}}%<extra></extra>"
         ))
         fig.update_layout(
-            title={'text': title, 'y': 0.95, 'x': 0.5, 'xanchor': 'center', 'yanchor': 'top', 'font': {'color': 'rgb(148, 163, 184)', 'size': 28}},
+            title={
+                'text': title,
+                'y': 0.95,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {
+                    'color': 'rgb(148, 163, 184)',
+                    'size': 28}},
             plot_bgcolor='rgb(13, 18, 30)',
             paper_bgcolor='rgb(13, 18, 30)',
-            font={'color': 'rgb(148, 163, 184)', 'size': 14, 'family': 'system-ui'},
+            font={
+                'color': 'rgb(148, 163, 184)',
+                'size': 14,
+                'family': 'system-ui'},
             showlegend=False,
-            margin=dict(t=60, l=50, r=30, b=80),
-            xaxis=dict(showgrid=True, gridcolor='rgba(148, 163, 184, 0.1)', tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'}, title=None, tickangle=45),
-            yaxis=dict(showgrid=True, gridcolor='rgba(148, 163, 184, 0.1)', zeroline=True, zerolinecolor='rgba(148, 163, 184, 0.5)', zerolinewidth=1, ticksuffix='%', tickfont={'size': 12, 'color': 'rgb(148, 163, 184)'}, title={'text': 'Yield', 'font': {'size': 14, 'color': 'rgb(148, 163, 184)'}}, range=[min(values) - 0.5, max(values) + 0.5], tickformat='.2f'),
-            autosize=True
-        )
+            margin=dict(
+                t=60,
+                l=50,
+                r=30,
+                b=80),
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(148, 163, 184, 0.1)',
+                tickfont={
+                    'size': 12,
+                    'color': 'rgb(148, 163, 184)'},
+                title=None,
+                tickangle=45),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(148, 163, 184, 0.1)',
+                zeroline=True,
+                zerolinecolor='rgba(148, 163, 184, 0.5)',
+                zerolinewidth=1,
+                ticksuffix='%',
+                tickfont={
+                    'size': 12,
+                    'color': 'rgb(148, 163, 184)'},
+                title={
+                    'text': 'Yield',
+                    'font': {
+                        'size': 14,
+                        'color': 'rgb(148, 163, 184)'}},
+                range=[
+                    min(values) - 0.5,
+                    max(values) + 0.5],
+                tickformat='.2f'),
+            autosize=True)
         charts_dir = os.path.join(output_dir, 'charts')
         os.makedirs(charts_dir, exist_ok=True)
         chart_path = os.path.join(charts_dir, filename)
@@ -600,12 +730,16 @@ def generate_single_bond_chart(data: Dict, output_dir: str, filename: str, title
             chart_path,
             include_plotlyjs=True,
             full_html=True,
-            config={'displayModeBar': False, 'responsive': True, 'autosizable': True, 'fillFrame': True}
-        )
+            config={
+                'displayModeBar': False,
+                'responsive': True,
+                'autosizable': True,
+                'fillFrame': True})
         return os.path.relpath(chart_path, output_dir)
     except Exception as e:
         print(f"ERROR - Failed to generate {title} chart: {e}")
         return None
+
 
 def generate_style_box_heatmap(data: Dict, output_dir: str) -> Optional[str]:
     """Generate a style box heatmap (Value/Core/Growth x Large/Mid/Small) using Plotly."""
@@ -615,18 +749,23 @@ def generate_style_box_heatmap(data: Dict, output_dir: str) -> Optional[str]:
         x = data["x"]
         y = data["y"]
         # Color scale: green for positive, red for negative, gray for None
+
         def cell_color(val):
             if val is None:
                 return "rgba(100,116,139,0.4)"  # slate-400 (neutral gray)
             if val >= 0:
                 # Green scale
-                return f"rgba(74,222,128,{0.3 + 0.5 * min(1, abs(val)/1.5)})"  # green-400
+                # green-400
+                return f"rgba(74,222,128,{0.3 + 0.5 * min(1, abs(val) / 1.5)})"
             else:
                 # Red scale
-                return f"rgba(248,113,113,{0.3 + 0.5 * min(1, abs(val)/1.5)})"  # red-400
+                # red-400
+                return f"rgba(248,113,113,{
+                    0.3 + 0.5 * min(1, abs(val) / 1.5)})"
         colors = [[cell_color(val) for val in row] for row in z]
         # Text for each cell
-        text = [["N/A" if val is None else f"{val:+.2f}" for val in row] for row in z]
+        text = [
+            ["N/A" if val is None else f"{val:+.2f}" for val in row] for row in z]
         # For z, replace None with 0 for plotting (so Plotly doesn't error)
         z_plot = [[val if val is not None else 0 for val in row] for row in z]
         fig = go.Figure(data=go.Heatmap(
@@ -646,7 +785,7 @@ def generate_style_box_heatmap(data: Dict, output_dir: str) -> Optional[str]:
             for j, val in enumerate(row):
                 fig.add_shape(
                     type="rect",
-                    x0=j-0.5, x1=j+0.5, y0=i-0.5, y1=i+0.5,
+                    x0=j - 0.5, x1=j + 0.5, y0=i - 0.5, y1=i + 0.5,
                     fillcolor=colors[i][j],
                     line=dict(width=0),
                     layer="below"
@@ -658,14 +797,46 @@ def generate_style_box_heatmap(data: Dict, output_dir: str) -> Optional[str]:
                 'x': 0.5,
                 'xanchor': 'center',
                 'yanchor': 'top',
-                'font': {'color': 'rgb(148, 163, 184)', 'size': 30}
-            },
+                'font': {
+                    'color': 'rgb(148, 163, 184)',
+                    'size': 30}},
             plot_bgcolor='rgb(13, 18, 30)',
             paper_bgcolor='rgb(13, 18, 30)',
-            font={'color': 'rgb(148, 163, 184)', 'size': 20, 'family': 'system-ui'},
-            margin=dict(t=30, l=40, r=40, b=40),
-            xaxis=dict(title='', side='top', tickmode='array', tickvals=list(range(len(x))), ticktext=x, showgrid=False, tickfont={'size': 18, 'color': 'rgb(148, 163, 184)'}, automargin=True),
-            yaxis=dict(title='', autorange='reversed', tickmode='array', tickvals=list(range(len(y))), ticktext=y, showgrid=False, tickfont={'size': 18, 'color': 'rgb(148, 163, 184)'}, automargin=True),
+            font={
+                'color': 'rgb(148, 163, 184)',
+                'size': 20,
+                'family': 'system-ui'},
+            margin=dict(
+                t=30,
+                l=40,
+                r=40,
+                b=40),
+            xaxis=dict(
+                title='',
+                side='top',
+                tickmode='array',
+                tickvals=list(
+                    range(
+                        len(x))),
+                ticktext=x,
+                showgrid=False,
+                tickfont={
+                    'size': 18,
+                    'color': 'rgb(148, 163, 184)'},
+                automargin=True),
+            yaxis=dict(
+                title='',
+                autorange='reversed',
+                tickmode='array',
+                tickvals=list(
+                    range(
+                        len(y))),
+                ticktext=y,
+                showgrid=False,
+                tickfont={
+                    'size': 18,
+                    'color': 'rgb(148, 163, 184)'},
+                automargin=True),
             autosize=True,
             height=320,
         )
@@ -689,4 +860,4 @@ def generate_style_box_heatmap(data: Dict, output_dir: str) -> Optional[str]:
         return os.path.relpath(chart_path, output_dir)
     except Exception as e:
         print(f"ERROR - Failed to generate style box heatmap: {e}")
-        return None 
+        return None

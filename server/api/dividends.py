@@ -1,114 +1,179 @@
-import os, json
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional
-from fastapi import APIRouter, HTTPException, Query, Body
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from utils.logger import get_widget_logger
-from utils.config import POLYGON_API_KEY
+from fastapi import APIRouter, Request, HTTPException, Body
+from server.models import get_model_manager
+from server.api.auth import get_current_user_id
+from utils.logger import get_server_logger
+from typing import List, Dict
+from datetime import datetime
 
-# Initialize logger for dividends widget
-logger = get_widget_logger('dividends')
+logger = get_server_logger("dividends")
 
 router = APIRouter(prefix="/api/dividends", tags=["dividends"])
 
-DIVIDENDS_PATH = os.path.join("public", "data", "dividends.json")
-
-# Helper: get all dividends
-def get_dividends() -> List[Dict]:
-    if not os.path.exists(DIVIDENDS_PATH):
-        return []
-    try:
-        with open(DIVIDENDS_PATH, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        logger.debug(f"Error loading dividends: {e}")
-        return []
 
 @router.get("/")
-def get_all_dividends() -> List[Dict]:
-    """Get all dividends."""
+async def get_all_dividends(request: Request) -> List[Dict]:
+    """Get all dividends from PocketBase."""
     try:
-        return get_dividends()
+        logger.info("Getting all dividends from PocketBase...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "No authenticated user found, returning empty dividends")
+            return []
+
+        dividends = model_manager.get_dividends(user_id)
+        logger.info(
+            f"Retrieved {
+                len(dividends)} dividends from PocketBase for user {user_id}")
+        return dividends
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading dividends: {e}")
+        logger.error(f"Error getting dividends: {e}")
+        raise HTTPException(status_code=500,
+                            detail=f"Error loading dividends: {e}")
+
 
 @router.get("/received")
-def get_received_dividends() -> List[Dict]:
-    """Get received dividends only."""
+async def get_received_dividends(request: Request) -> List[Dict]:
+    """Get received dividends only from PocketBase."""
     try:
-        dividends = get_dividends()
-        # Simple filter for received dividends (state = 'paid')
+        logger.info("Getting received dividends from PocketBase...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "No authenticated user found, returning empty dividends")
+            return []
+
+        dividends = model_manager.get_dividends(user_id)
+
+        # Filter for received dividends (state = 'paid' or null for Robinhood
+        # dividends)
         received = []
         for d in dividends:
-            if d.get('state') == 'paid':
+            if d.get('state') == 'paid' or d.get('state') is None:
                 received.append(d)
+
+        logger.info(
+            f"Retrieved {
+                len(received)} received dividends from PocketBase for user {user_id}")
         return received
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error filtering dividends: {e}")
+        logger.error(f"Error filtering dividends: {e}")
+        raise HTTPException(status_code=500,
+                            detail=f"Error filtering dividends: {e}")
+
 
 @router.get("/past")
-def get_past_dividends() -> List[Dict]:
-    """Get past dividends only."""
+async def get_past_dividends(request: Request) -> List[Dict]:
+    """Get past dividends only from PocketBase."""
     try:
-        dividends = get_dividends()
+        logger.info("Getting past dividends from PocketBase...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "No authenticated user found, returning empty dividends")
+            return []
+
+        dividends = model_manager.get_dividends(user_id)
         today = datetime.now().strftime("%Y-%m-%d")
-        
+
         past = []
         for d in dividends:
             payable_date = d.get('payable_date', '')
             if payable_date and payable_date < today:
                 past.append(d)
-        
+
+        logger.info(
+            f"Retrieved {
+                len(past)} past dividends from PocketBase for user {user_id}")
         return past
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error filtering past dividends: {e}")
+        logger.error(f"Error filtering past dividends: {e}")
+        raise HTTPException(status_code=500,
+                            detail=f"Error filtering past dividends: {e}")
+
 
 @router.get("/summary")
-def get_dividends_summary() -> Dict:
-    """Get dividends summary."""
+async def get_dividends_summary(request: Request) -> Dict:
+    """Get dividends summary from PocketBase."""
     try:
-        dividends = get_dividends()
+        logger.info("Getting dividends summary from PocketBase...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "No authenticated user found, returning empty summary")
+            return {
+                "total_this_year": 0.0,
+                "total_dividends": 0,
+                "received_dividends": 0
+            }
+
+        dividends = model_manager.get_dividends(user_id)
         current_year = datetime.now().year
-        
+
         total_this_year = 0.0
         for d in dividends:
             if d.get('state') == 'paid':
                 payable_date = d.get('payable_date', '')
                 if payable_date and payable_date.startswith(str(current_year)):
                     total_this_year += float(d.get('amount', 0))
-        
-        return {
+
+        summary = {
             "total_this_year": total_this_year,
             "total_dividends": len(dividends),
             "received_dividends": len([d for d in dividends if d.get('state') == 'paid'])
         }
+
+        logger.info(f"Retrieved dividends summary from PocketBase for user {
+                    user_id}: {summary}")
+        return summary
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error calculating summary: {e}")
+        logger.error(f"Error calculating summary: {e}")
+        raise HTTPException(status_code=500,
+                            detail=f"Error calculating summary: {e}")
+
 
 @router.post("/record")
-def record_dividend(data: dict = Body(...)):
-    # data: {symbol, payDate, amount}
-    if not os.path.exists(DIVIDENDS_PATH):
-        dividends = []
-    else:
-        with open(DIVIDENDS_PATH, 'r') as f:
-            dividends = json.load(f)
-    
-    # Add new dividend to the list
-    new_dividend = {
-        "id": f"manual-{datetime.now().timestamp()}",
-        "symbol": data.get('symbol', ''),
-        "amount": data.get('amount', 0.0),
-        "record_date": data.get('record_date', ''),
-        "payable_date": data.get('payDate', ''),
-        "state": "paid",
-        "source": "manual"
-    }
-    dividends.append(new_dividend)
-    
-    with open(DIVIDENDS_PATH, 'w') as f:
-        json.dump(dividends, f, indent=2)
-    return {'status': 'ok'} 
+async def record_dividend(data: dict = Body(...), request: Request = None):
+    """Record a new dividend in PocketBase."""
+    try:
+        logger.info(f"Recording dividend for {data.get('symbol')}...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "Dividends API called without authentication - expected for fresh starts")
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
+
+        # Add user ID to dividend data
+        data["user"] = user_id
+
+        if model_manager.add_dividends([data]):
+            logger.info(
+                f"Successfully recorded dividend for {
+                    data.get('symbol')}")
+            return {"status": "ok"}
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to record dividend")
+    except Exception as e:
+        logger.error(f"Error recording dividend: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to record dividend")

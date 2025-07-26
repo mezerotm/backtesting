@@ -14,6 +14,8 @@ anyio==4.8.0
     #   httpx
     #   openai
     #   starlette
+autopep8==2.1.0
+    # via -r requirements.in
 backtesting==0.6.3
     # via -r requirements.in
 beautifulsoup4==4.13.3
@@ -60,9 +62,15 @@ distro==1.9.0
     # via
     #   -r requirements.in
     #   openai
+dnspython==2.7.0
+    # via email-validator
 dotenv==0.9.9
     # via -r requirements.in
+email-validator==2.2.0
+    # via -r requirements.in
 fastapi==0.115.11
+    # via -r requirements.in
+flake8==7.1.1
     # via -r requirements.in
 fonttools==4.56.0
     # via
@@ -85,10 +93,12 @@ httpx==0.28.1
     # via
     #   -r requirements.in
     #   openai
+    #   pocketbase
 idna==3.10
     # via
     #   -r requirements.in
     #   anyio
+    #   email-validator
     #   httpx
     #   requests
 iniconfig==2.1.0
@@ -115,6 +125,8 @@ matplotlib==3.10.1
     # via
     #   -r requirements.in
     #   seaborn
+mccabe==0.7.0
+    # via flake8
 multitasking==0.0.11
     # via
     #   -r requirements.in
@@ -169,12 +181,18 @@ plotly==6.0.1
     # via -r requirements.in
 pluggy==1.6.0
     # via pytest
+pocketbase==0.15.0
+    # via -r requirements.in
 polygon-api-client==1.14.6
     # via -r requirements.in
 proxy-tools==0.1.0
     # via
     #   -r requirements.in
     #   pywebview
+pycodestyle==2.12.1
+    # via
+    #   autopep8
+    #   flake8
 pycparser==2.22
     # via cffi
 pydantic==2.10.6
@@ -186,6 +204,8 @@ pydantic-core==2.27.2
     # via
     #   -r requirements.in
     #   pydantic
+pyflakes==3.2.0
+    # via flake8
 pygments==2.19.2
     # via pytest
 pyotp==2.9.0

@@ -1,546 +1,317 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
-import json
-import os
-import logging
+from fastapi import APIRouter, Request, HTTPException, Query
+from server.models import get_model_manager
+from server.api.auth import get_current_user_id
+from utils.logger import get_api_logger
 from pydantic import BaseModel
-from fastapi.responses import JSONResponse
-import requests
+from typing import List
 import time
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from utils.logger import get_widget_logger
+import requests
 from utils.config import POLYGON_API_KEY
+from fastapi.responses import JSONResponse
 
-# Initialize logger for portfolio widget
-logger = get_widget_logger('portfolio', level=logging.INFO)
+logger = get_api_logger("portfolio")
 
-# File paths
-PORTFOLIO_PATH = os.path.join("public", "data", "positions.json")
-PORTFOLIO_CASH_PATH = os.path.join("public", "data", "portfolio.json")
+router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
+
 
 class Position(BaseModel):
-    id: int
+    id: str = None
     symbol: str
     quantity: float
     buy_price: float
-    notes: Optional[str] = None
-    source: Optional[str] = None
+    notes: str = None
+    source: str = None
 
-def load_positions() -> List[dict]:
-    if not os.path.exists(PORTFOLIO_PATH):
+
+async def get_portfolio_symbols(request: Request):
+    """Get all unique symbols in the portfolio from PocketBase."""
+    try:
+        model_manager = get_model_manager()
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "No authenticated user found, returning empty symbols list")
+            return []
+        positions = model_manager.get_positions(user_id)
+        symbols = set()
+        for position in positions:
+            symbol = position.get("symbol")
+            if symbol:
+                symbols.add(symbol)
+        return sorted(list(symbols))
+    except Exception as e:
+        logger.error(f"Error getting portfolio symbols: {e}")
         return []
-    with open(PORTFOLIO_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
 
-def save_positions(positions: List[dict]):
-    with open(PORTFOLIO_PATH, "w", encoding="utf-8") as f:
-        json.dump(positions, f, indent=2)
-
-# --- Portfolio Cash, BTC, and BTC Avg Buy Price Logic ---
-def load_portfolio_cash_btc() -> dict:
-    if not os.path.exists(PORTFOLIO_CASH_PATH):
-        return {
-            "total_portfolio_cash": 0.0,
-            "total_portfolio_btc": 0.0,
-            "btc_avg_buy_price": 0.0,
-            "robinhood_enabled": False,
-            "robinhood_username": "",
-            "robinhood_password": "",
-            "robinhood_mfa": ""
-        }
-    with open(PORTFOLIO_CASH_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-        # Set defaults for new fields if missing
-        if "total_portfolio_btc" not in data:
-            data["total_portfolio_btc"] = 0.0
-        if "btc_avg_buy_price" not in data:
-            data["btc_avg_buy_price"] = 0.0
-        if "robinhood_enabled" not in data:
-            data["robinhood_enabled"] = False
-        if "robinhood_username" not in data:
-            data["robinhood_username"] = ""
-        if "robinhood_password" not in data:
-            data["robinhood_password"] = ""
-        if "robinhood_mfa" not in data:
-            data["robinhood_mfa"] = ""
-        # Remove robinhood_display if present
-        data.pop("robinhood_display", None)
-        return data
-
-def save_portfolio_cash_btc(data: dict):
-    # Always write all fields, including new Robinhood settings
-    out = {
-        "total_portfolio_cash": float(data.get("total_portfolio_cash", 0.0)),
-        "total_portfolio_btc": float(data.get("total_portfolio_btc", 0.0)),
-        "btc_avg_buy_price": float(data.get("btc_avg_buy_price", 0.0)),
-        "robinhood_enabled": bool(data.get("robinhood_enabled", False)),
-        "robinhood_username": data.get("robinhood_username", ""),
-        "robinhood_password": data.get("robinhood_password", ""),
-        "robinhood_mfa": data.get("robinhood_mfa", "")
-    }
-    with open(PORTFOLIO_CASH_PATH, "w", encoding="utf-8") as f:
-        json.dump(out, f, indent=2)
-
-# Helper to get all unique symbols in the portfolio
-def get_portfolio_symbols():
-    positions = load_positions()
-    return sorted(set(p["symbol"] for p in positions if p.get("symbol")))
-
-def fetch_ticker_details(symbol):
-    if not POLYGON_API_KEY:
-        raise Exception("Polygon API key not set")
-    url = f"https://api.polygon.io/v3/reference/tickers/{symbol}"
-    params = {"apiKey": POLYGON_API_KEY}
-    try:
-        resp = requests.get(url, params=params, timeout=5)
-        if resp.status_code == 200:
-            data = resp.json()
-            fundamentals = data.get("results", {}).get("fundamentals", {})
-            beta = fundamentals.get("beta")
-            return {"beta": beta}
-    except Exception as e:
-        return {"beta": None, "error": str(e)}
-    return {"beta": None}
-
-# Helper to fetch raw symbol data from Polygon.io
-# Returns: {symbol: {"last_price": float, "previous_close": float, "timestamp": float, ..., "beta": float}}
-def load_polygon_close_cache():
-    if not os.path.exists(POLYGON_CACHE_PATH):
-        return {}
-    try:
-        with open(POLYGON_CACHE_PATH, "r") as f:
-            cache = json.load(f)
-            # Check if this is the old format (flat structure with symbol_date keys)
-            if cache and isinstance(next(iter(cache.values())), dict) and 'price' in next(iter(cache.values())):
-                # This is already the new format, return as is
-                return cache
-            # Check if this is the very old format (symbol_date keys)
-            elif cache and '_' in next(iter(cache.keys())):
-                logger.debug("[DEBUG] Converting old cache format to new format")
-                new_cache = {}
-                for key, value in cache.items():
-                    if '_' in key:
-                        parts = key.split('_', 1)
-                        if len(parts) == 2:
-                            symbol, date = parts
-                            if symbol not in new_cache:
-                                new_cache[symbol] = {}
-                            if isinstance(value, dict) and 'price' in value:
-                                new_cache[symbol][date] = {
-                                    'price': value['price'],
-                                    'timestamp': value.get('timestamp', 0),
-                                    'date': date
-                                }
-                            else:
-                                new_cache[symbol][date] = {
-                                    'price': value,
-                                    'timestamp': 0,
-                                    'date': date
-                                }
-                # Save the converted cache
-                save_polygon_close_cache(new_cache)
-                return new_cache
-            return cache
-    except Exception as e:
-        logger.debug(f"[DEBUG] Error loading polygon cache: {e}")
-        return {}
-
-def save_polygon_close_cache(cache):
-    try:
-        with open(POLYGON_CACHE_PATH, "w") as f:
-            json.dump(cache, f, indent=2)
-    except Exception as e:
-        logger.debug(f"[DEBUG] Error saving polygon close cache: {e}")
 
 def get_current_symbol_data(symbol):
-    """Get current symbol data from unified cache using most recent date."""
-    cache = load_polygon_close_cache()
-    if symbol not in cache:
-        logger.debug(f"[DEBUG] No data found for {symbol}")
+    """Get current symbol data from PocketBase symbol cache."""
+    try:
+        model_manager = get_model_manager()
+        cached_records = model_manager.get_symbol_cache()
+        symbol_records = [
+            r for r in cached_records if r.get("symbol") == symbol]
+        if not symbol_records:
+            logger.debug(f"No cached data found for {symbol}")
+            return None
+        most_recent = max(symbol_records, key=lambda x: x.get("cached_at", ""))
+        current_data = {
+            "last_price": most_recent.get("last_price"),
+            "previous_close": most_recent.get("previous_close"),
+            "timestamp": most_recent.get("timestamp", time.time()),
+            "beta": most_recent.get("beta")
+        }
+        logger.debug(f"Retrieved current data for {symbol}: {current_data}")
+        return current_data
+    except Exception as e:
+        logger.error(f"Error getting current symbol data for {symbol}: {e}")
         return None
-    
-    # Get the most recent date available
-    dates = sorted(cache[symbol].keys(), reverse=True)
-    if not dates:
-        logger.debug(f"[DEBUG] No dates found for {symbol}")
-        return None
-    
-    most_recent_date = dates[0]
-    data = cache[symbol][most_recent_date]
-    
-    # Handle different data formats
-    if isinstance(data, dict):
-        # New format with dictionary
-        last_price = data.get("price")
-        timestamp = data.get("timestamp", time.time())
-        beta = data.get("beta")  # Get beta from cache
-    elif isinstance(data, (int, float)):
-        # Old format with direct price value
-        last_price = data
-        timestamp = time.time()
-        beta = None
-    else:
-        logger.warning(f"[DEBUG] get_current_symbol_data: unknown data format for {symbol}: {type(data)}")
-        return None
-    
-    # Convert to the expected format
-    current_data = {
-        "last_price": last_price,
-        "previous_close": last_price,  # Use same price for now
-        "timestamp": timestamp,
-        "beta": beta  # Use beta from cache
-    }
-    
-    logger.debug(f"[DEBUG] Retrieved current data for {symbol} from {most_recent_date}: {current_data}")
-    return current_data
+
 
 def set_current_symbol_data(symbol, data):
-    """Set current symbol data in unified cache using today's date."""
-    cache = load_polygon_close_cache()
-    if symbol not in cache:
-        cache[symbol] = {}
-    
-    # Use today's date as the key
-    today = datetime.now().strftime('%Y-%m-%d')
-    cache[symbol][today] = {
-        "price": data.get("last_price"),
-        "timestamp": data.get("timestamp", time.time()),
-        "date": today,
-        "beta": data.get("beta")  # Include beta in cache
-    }
-    save_polygon_close_cache(cache)
-    logger.debug(f"[DEBUG] Saved current data for {symbol} with date {today}: {data}")
-
-
-
-# Updated functions to use unified cache
-def load_symbol_data():
-    """Load symbol data from unified cache using most recent dates."""
-    cache = load_polygon_close_cache()
-    result = {}
-    logger.debug(f"[DEBUG] load_symbol_data: cache keys: {list(cache.keys())}")
-    for symbol, data in cache.items():
-        # Get the most recent date available
-        dates = sorted(data.keys(), reverse=True)
-        if dates:
-            most_recent_date = dates[0]
-            price_data = data[most_recent_date]
-            
-            # Handle different data formats
-            if isinstance(price_data, dict):
-                # New format with dictionary
-                last_price = price_data.get("price")
-                timestamp = price_data.get("timestamp", time.time())
-                beta = price_data.get("beta")  # Get beta from cache
-            elif isinstance(price_data, (int, float)):
-                # Old format with direct price value
-                last_price = price_data
-                timestamp = time.time()
-                beta = None
-            else:
-                logger.warning(f"[DEBUG] load_symbol_data: unknown price_data format for {symbol}: {type(price_data)}")
-                continue
-                
-            symbol_data = {
-                "last_price": last_price,
-                "previous_close": last_price,  # Use same price for now
-                "timestamp": timestamp,
-                "beta": beta  # Use beta from cache
-            }
-            result[symbol] = symbol_data
-            logger.debug(f"[DEBUG] load_symbol_data: found data for {symbol} from {most_recent_date}: {symbol_data}")
-        else:
-            logger.debug(f"[DEBUG] load_symbol_data: no dates found for {symbol}")
-    logger.debug(f"[DEBUG] load_symbol_data: returning {len(result)} symbols")
-    return result
-
-def save_symbol_data(data):
-    """Save symbol data to unified cache using today's date."""
-    cache = load_polygon_close_cache()
-    today = datetime.now().strftime('%Y-%m-%d')
-    for symbol, symbol_data in data.items():
-        if symbol not in cache:
-            cache[symbol] = {}
-        cache[symbol][today] = {
-            "price": symbol_data.get("last_price"),
-            "timestamp": symbol_data.get("timestamp", time.time()),
-            "date": today,
-            "beta": symbol_data.get("beta")  # Include beta in cache
+    """Set current symbol data in PocketBase symbol cache."""
+    try:
+        model_manager = get_model_manager()
+        cache_data = {
+            "symbol": symbol,
+            # Use last_price as the current price
+            "price": data.get("last_price"),
+            "date": time.strftime('%Y-%m-%d'),  # Current date
+            "beta": data.get("beta"),
+            "delta": None  # Placeholder for delta calculation
         }
-    save_polygon_close_cache(cache)
+        model_manager.update_symbol_cache(symbol, cache_data)
+        logger.debug(f"Saved current data for {symbol}: {cache_data}")
+    except Exception as e:
+        logger.error(f"Error setting current symbol data for {symbol}: {e}")
+
 
 def fetch_symbol_data(symbols):
-    result = {}
-    cache = load_polygon_close_cache()
-    
+    """Fetch symbol data from Polygon.io and cache in PocketBase."""
+    result = []
+
+    # Check if Polygon API key is available
+    if not POLYGON_API_KEY:
+        logger.warning("POLYGON_API_KEY not set, skipping market data fetch")
+        return result
+
     for symbol in symbols:
-        # Check if we have recent current data in cache
-        current_data = get_current_symbol_data(symbol)
-        cache_age = 0
-        if current_data and 'timestamp' in current_data:
-            cache_age = time.time() - current_data['timestamp']
-        
-        # Use cache if less than 10 minutes old (matches global timer for Robinhood pulls)
-        if current_data and cache_age < 600:  # 10 minutes = 600 seconds
-            result[symbol] = current_data
-            logger.debug(f"[DEBUG] {symbol}: using cached current data (age: {cache_age:.1f}s)")
-            continue
-        
-        # If we have cached data, use it even if old (better than no data)
-        if current_data:
-            result[symbol] = current_data
-            logger.debug(f"[DEBUG] {symbol}: using old cached data (age: {cache_age:.1f}s)")
-            continue
-        
-        # Only try to fetch fresh data if we have no cached data at all
         try:
-            # Get previous day's data (most reliable)
+            # Get previous day's data
             prev_url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/prev"
             prev_params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
-            
             prev_resp = requests.get(prev_url, params=prev_params, timeout=10)
             prev_close = None
             last_price = None
-            
+
             if prev_resp.status_code == 200:
                 prev_data = prev_resp.json()
                 prev_results = prev_data.get("results", [])
                 if prev_results:
                     prev_close = prev_results[0].get("c")
-                    # Use previous close as current price if market is closed
                     last_price = prev_close
-                    logger.debug(f"[DEBUG] {symbol}: got previous close: {prev_close}")
-            
-            # Try to get current day's data if available
-            if not last_price:
-                current_url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/minute/{datetime.now().strftime('%Y-%m-%d')}/{datetime.now().strftime('%Y-%m-%d')}"
-                current_params = {"adjusted": "true", "apiKey": POLYGON_API_KEY, "sort": "desc", "limit": 1}
-                
-                current_resp = requests.get(current_url, params=current_params, timeout=10)
-                if current_resp.status_code == 200:
-                    current_data = current_resp.json()
-                    current_results = current_data.get("results", [])
-                    if current_results:
-                        last_price = current_results[0].get("c")
-                        logger.debug(f"[DEBUG] {symbol}: got current price: {last_price}")
-            
-            # Fetch beta from ticker details
-            ticker_details = fetch_ticker_details(symbol)
-            beta = ticker_details.get("beta")
-            
+                    logger.debug(f"{symbol}: got previous close: {prev_close}")
+
+            # Return data in the format expected by the new schema
             symbol_data = {
-                "last_price": last_price,
-                "previous_close": prev_close,
-                "timestamp": time.time(),
-                "beta": beta
+                "symbol": symbol,
+                "price": last_price,  # Use last_price as the current price
+                "date": time.strftime('%Y-%m-%d'),  # Current date
+                "beta": None,
+                "delta": None
             }
-            result[symbol] = symbol_data
-            # Save to unified cache
-            set_current_symbol_data(symbol, symbol_data)
-            logger.debug(f"[DATABASE] {symbol}: market data updated")
+            result.append(symbol_data)
+            logger.debug(f"{symbol}: market data prepared")
         except Exception as e:
-            # If API call fails, return None values
-            symbol_data = {"last_price": None, "previous_close": None, "timestamp": time.time(), "beta": None, "error": str(e)}
-            result[symbol] = symbol_data
-            logger.error(f"[DATABASE] {symbol}: market data fetch failed")
+            symbol_data = {
+                "symbol": symbol,
+                "price": None,
+                "date": time.strftime('%Y-%m-%d'),
+                "beta": None,
+                "delta": None
+            }
+            result.append(symbol_data)
+            logger.error(f"{symbol}: market data fetch failed - {e}")
     return result
 
-def fetch_daily_closes(symbol, start_date, end_date):
-    url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/day/{start_date}/{end_date}"
-    params = {"adjusted": "true", "apiKey": POLYGON_API_KEY, "sort": "asc", "limit": 5000}
-    resp = requests.get(url, params=params, timeout=10)
-    if resp.status_code != 200:
-        logger.debug(f"[DEBUG] No data for {symbol}: HTTP {resp.status_code}")
-        return None
-    data = resp.json()
-    bars = data.get("results", [])
-    if not bars:
-        logger.debug(f"[DEBUG] No bars for {symbol}")
-        return None
-    df = pd.DataFrame(bars)
-    if 't' not in df or 'c' not in df:
-        logger.debug(f"[DEBUG] Missing columns in bars for {symbol}")
-        return None
-    df['date'] = pd.to_datetime(df['t'], unit='ms')
-    df.set_index('date', inplace=True)
-    df.sort_index(inplace=True)
-    logger.debug(f"[DEBUG] {symbol}: fetched {len(df)} closes, dates: {list(df.index.strftime('%Y-%m-%d'))}")
-    return df['c']
 
-def calculate_beta(stock_prices, market_prices):
-    # Align on dates
-    df = pd.DataFrame({'stock': stock_prices, 'market': market_prices}).dropna()
-    if len(df) < 2:
-        return None
-    stock_returns = df['stock'].pct_change().dropna()
-    market_returns = df['market'].pct_change().dropna()
-    if len(stock_returns) < 2 or len(market_returns) < 2:
-        return None
-    # Align again after pct_change
-    df2 = pd.DataFrame({'stock': stock_returns, 'market': market_returns}).dropna()
-    if len(df2) < 2:
-        return None
-    cov = np.cov(df2['stock'], df2['market'])[0][1]
-    var = np.var(df2['market'])
-    if var == 0:
-        return None
-    beta = cov / var
-    return float(beta)
-
-# --- Polygon Trading Days Helper ---
-POLYGON_CACHE_PATH = os.path.join("public", "data", "polygon_cache.json")
-
-def get_polygon_trading_days(n_days=365):
-    """
-    Fetch the most recent n_days trading days (YYYY-MM-DD) from Polygon, skipping weekends/holidays.
-    Returns a list of date strings, most recent first.
-    """
-    url = f"https://api.polygon.io/v1/marketstatus/upcoming"
-    params = {"apiKey": POLYGON_API_KEY}
-    holidays = set()
+def save_symbol_data(data):
+    """Save symbol data to PocketBase symbol cache."""
     try:
-        resp = requests.get(url, params=params, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            for h in data.get("marketHolidays", []):
-                if h.get("date"):
-                    holidays.add(h["date"])
+        for symbol, symbol_data in data.items():
+            set_current_symbol_data(symbol, symbol_data)
+        logger.info(f"Saved symbol data for {len(data)} symbols to PocketBase")
     except Exception as e:
-        logger.debug(f"[DEBUG] Could not fetch holidays from Polygon: {e}")
-    # Build list of trading days
-    trading_days = []
-    today = datetime.now().date()
-    days_checked = 0
-    while len(trading_days) < n_days and days_checked < n_days * 3:
-        d = today - timedelta(days=days_checked)
-        if d.weekday() < 5 and d.strftime('%Y-%m-%d') not in holidays:
-            trading_days.append(d.strftime('%Y-%m-%d'))
-        days_checked += 1
-    logger.debug(f"[DEBUG] Using {len(trading_days)} trading days (most recent: {trading_days[0]}, oldest: {trading_days[-1]})")
-    return trading_days
+        logger.error(f"Error saving symbol data: {e}")
 
-# --- Beta Calculation with Trading Days ---
-def fetch_closes_for_trading_days(symbol, trading_days):
-    """
-    Fetch closes for a symbol for the given list of trading days (YYYY-MM-DD).
-    Uses file-based cache in public/data/polygon_cache.json.
-    Returns a pandas Series indexed by date.
-    """
-    cache = load_polygon_close_cache()
-    closes = {}
-    updated = False
-    
-    # Initialize symbol in cache if not exists
-    if symbol not in cache:
-        cache[symbol] = {}
-    
-    for date in trading_days:
-        if date in cache[symbol]:
-            cached_entry = cache[symbol][date]
-            closes[date] = cached_entry['price']
-            logger.debug(f"[DEBUG] {symbol} {date}: cache hit")
-        else:
-            url = f"https://api.polygon.io/v1/open-close/{symbol}/{date}"
-            params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
-            try:
-                resp = requests.get(url, params=params, timeout=5)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    close = data.get("close")
-                    if close is not None:
-                        closes[date] = close
-                        cache[symbol][date] = {
-                            'price': close,
-                            'timestamp': datetime.now().timestamp(),
-                            'date': date
-                        }
-                        updated = True
-                        logger.debug(f"[DEBUG] {symbol} {date}: cache miss, fetched and saved")
-            except Exception as e:
-                continue
-    
-    if updated:
-        save_polygon_close_cache(cache)
-    
-    s = pd.Series(closes)
-    s.index = pd.to_datetime(s.index)
-    s = s.sort_index()
-    logger.debug(f"[DEBUG] {symbol}: fetched {len(s)} closes for trading days, sample: {s.head() if not s.empty else 'empty'}")
-    return s
 
-def calculate_and_save_betas(symbols, market_symbol='SPY', lookback_days=365):
-    logger.debug(f"[DEBUG] Starting beta calculation for {len(symbols)} symbols (plus NVDA)")
-    test_symbols = set(symbols)
-    test_symbols.add('NVDA')
-    trading_days = get_polygon_trading_days(lookback_days)
-    for symbol in test_symbols:
-        stock_closes = fetch_closes_for_trading_days(symbol, trading_days)
-        market_closes = fetch_closes_for_trading_days(market_symbol, trading_days)
-        # Align on dates
-        df = pd.DataFrame({'stock': stock_closes, 'market': market_closes}).dropna()
-        if len(df) < 2:
-            logger.debug(f"[DEBUG] {symbol}: Not enough aligned trading days for beta (have {len(df)})")
-            beta = None
-        else:
-            beta = calculate_beta(df['stock'], df['market'])
-            logger.debug(f"[DEBUG] {symbol}: beta={beta} (using {len(df)} aligned trading days)")
-        # Save beta to unified cache
-        current_data = get_current_symbol_data(symbol)
-        if current_data is None:
-            current_data = {"last_price": None, "previous_close": None, "timestamp": time.time(), "beta": None}
-        current_data['beta'] = beta
-        set_current_symbol_data(symbol, current_data)
-    logger.debug(f"[DEBUG] Finished beta calculation for all symbols.")
+def calculate_and_save_betas(symbols):
+    """Calculate and save betas for symbols to PocketBase."""
+    logger.debug(f"Starting beta calculation for {len(symbols)} symbols")
+    # Placeholder for beta calculation
+    for symbol in symbols:
+        try:
+            current_data = get_current_symbol_data(symbol)
+            if current_data is None:
+                current_data = {
+                    "last_price": None,
+                    "previous_close": None,
+                    "timestamp": time.time(),
+                    "beta": None
+                }
+            # Beta calculation would go here
+            current_data['beta'] = None
+            set_current_symbol_data(symbol, current_data)
+        except Exception as e:
+            logger.error(f"Error calculating beta for {symbol}: {e}")
+    logger.debug("Finished beta calculation for all symbols.")
 
-# NOTE: The get_polygon_trading_days helper could also be used for:
-# - P/L calculations (to ensure only trading days are considered)
-# - Performance metrics (e.g., rolling returns, volatility)
-# - Any feature that needs to align with real market/trading days
-
-router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
 @router.get("/", response_model=List[Position])
-def get_positions():
-    return load_positions()
+async def get_positions(request: Request):
+    """Get all positions from PocketBase."""
+    try:
+        logger.info("Getting positions from PocketBase...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "No authenticated user found, returning empty positions")
+            return []
+
+        positions = model_manager.get_positions(user_id)
+        logger.info(
+            f"Retrieved {
+                len(positions)} positions from PocketBase for user {user_id}")
+        return positions
+    except Exception as e:
+        logger.error(f"Error getting positions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get positions")
+
 
 @router.post("/", response_model=Position)
-def add_position(pos: Position):
-    positions = load_positions()
-    if any(p["id"] == pos.id for p in positions):
-        raise HTTPException(status_code=400, detail="ID already exists")
-    positions.append(pos.dict())
-    save_positions(positions)
-    return pos
+async def add_position(pos: Position, request: Request):
+    """Add a new position to PocketBase."""
+    try:
+        logger.info(f"Adding position for {pos.symbol}...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "Portfolio API called without authentication - expected for fresh starts")
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
+
+        position_data = pos.dict()
+        if position_data.get("id"):
+            del position_data["id"]  # Let PocketBase assign the ID
+
+        if model_manager.add_position(position_data):
+            # Get the newly created position
+            positions = model_manager.get_positions(user_id)
+            new_position = None
+            for p in positions:
+                if (p.get("symbol") == pos.symbol and p.get("quantity") ==
+                        pos.quantity and p.get("buy_price") == pos.buy_price):
+                    new_position = p
+                    break
+
+            if new_position:
+                logger.info(f"Successfully added position for {pos.symbol}")
+                return new_position
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Position added but could not retrieve it")
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to add position")
+    except Exception as e:
+        logger.error(f"Error adding position: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add position")
+
 
 @router.put("/{pos_id}", response_model=Position)
-def update_position(pos_id: int, pos: Position):
-    positions = load_positions()
-    for i, p in enumerate(positions):
-        if p["id"] == pos_id:
-            positions[i] = pos.dict()
-            save_positions(positions)
-            return pos
-    raise HTTPException(status_code=404, detail="Position not found")
+async def update_position(pos_id: str, pos: Position, request: Request):
+    """Update an existing position in PocketBase."""
+    try:
+        logger.info(f"Updating position {pos_id}...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
+
+        position_data = pos.dict()
+        if position_data.get("id"):
+            del position_data["id"]  # Keep the existing ID
+
+        if model_manager.update_position(pos_id, position_data):
+            # Get the updated position
+            positions = model_manager.get_positions(user_id)
+            updated_position = None
+            for p in positions:
+                if p.get("id") == pos_id:
+                    updated_position = p
+                    break
+
+            if updated_position:
+                logger.info(f"Successfully updated position {pos_id}")
+                return updated_position
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Position not found after update")
+        else:
+            raise HTTPException(status_code=404, detail="Position not found")
+    except Exception as e:
+        logger.error(f"Error updating position {pos_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update position")
+
 
 @router.delete("/{pos_id}")
-def delete_position(pos_id: int):
-    positions = load_positions()
-    new_positions = [p for p in positions if p["id"] != pos_id]
-    if len(new_positions) == len(positions):
-        raise HTTPException(status_code=404, detail="Position not found")
-    save_positions(new_positions)
-    return JSONResponse(content={"detail": "Deleted"})
+async def delete_position(pos_id: str, request: Request):
+    """Delete a position from PocketBase."""
+    try:
+        logger.info(f"Deleting position {pos_id}...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
+
+        if model_manager.delete_position(pos_id):
+            logger.info(f"Successfully deleted position {pos_id}")
+            return JSONResponse(content={"detail": "Deleted"})
+        else:
+            raise HTTPException(status_code=404, detail="Position not found")
+    except Exception as e:
+        logger.error(f"Error deleting position {pos_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete position")
+
 
 @router.get("/search-symbols")
 def search_symbols(query: str = Query(..., min_length=1)):
     """Search for symbols using Polygon.io's ticker search API."""
     if not POLYGON_API_KEY:
         raise HTTPException(status_code=500, detail="Polygon API key not set")
-    url = f"https://api.polygon.io/v3/reference/tickers"
+    url = "https://api.polygon.io/v3/reference/tickers"
     params = {
         "search": query,
         "active": "true",
@@ -549,31 +320,33 @@ def search_symbols(query: str = Query(..., min_length=1)):
     }
     resp = requests.get(url, params=params)
     if resp.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Polygon API error: {resp.text}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Polygon API error: {resp.text}")
     data = resp.json()
     # Return a list of {symbol, name}
-    results = [
-        {"symbol": t["ticker"], "name": t.get("name", "")} for t in data.get("results", [])
-    ]
+    results = [{"symbol": t["ticker"], "name": t.get(
+        "name", "")} for t in data.get("results", [])]
     return results
+
 
 @router.get("/latest-price/{symbol}")
 def get_latest_price(symbol: str):
-    """Get the latest price for a symbol from unified cache or Polygon.io."""
+    """Get the latest price for a symbol from PocketBase cache or Polygon.io."""
     # First try to get from cache
     current_data = get_current_symbol_data(symbol)
     if current_data and current_data.get('last_price') is not None:
         cache_age = time.time() - current_data.get('timestamp', 0)
         if cache_age < 300:  # 5 minutes
             return {"price": current_data['last_price'], "source": "cache"}
-    
+
     # Fallback to direct API call
     if not POLYGON_API_KEY:
         raise HTTPException(status_code=500, detail="Polygon API key not set")
-    
+
     url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/prev"
     params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
-    
+
     try:
         resp = requests.get(url, params=params, timeout=5)
         if resp.status_code == 200:
@@ -592,144 +365,307 @@ def get_latest_price(symbol: str):
                 return {"price": price, "source": "api"}
         raise HTTPException(status_code=404, detail="No price data found")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Polygon API error: {str(e)}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Polygon API error: {str(e)}")
+
 
 @router.get("/settings")
-def get_portfolio_settings():
-    """
-    Get the total portfolio cash, BTC (dollar value), BTC avg buy price, and Robinhood settings from portfolio.json.
-    Returns: {"total_portfolio_cash": float, "total_portfolio_btc": float, "btc_avg_buy_price": float, ...robinhood fields...}
-    """
-    return load_portfolio_cash_btc()
+async def get_portfolio_settings(request: Request):
+    """Get portfolio settings from PocketBase."""
+    try:
+        logger.info("Getting portfolio settings from PocketBase...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "No authenticated user found, returning empty settings")
+            return {}
+
+        settings = model_manager.get_portfolio_data(user_id)
+        logger.info("Retrieved portfolio settings from PocketBase")
+        return settings
+    except Exception as e:
+        logger.error(f"Error getting portfolio settings: {e}")
+        raise HTTPException(status_code=500,
+                            detail="Failed to get portfolio settings")
+
 
 @router.post("/settings")
-def set_portfolio_settings(data: dict):
-    """
-    Set the total portfolio cash, BTC (dollar value), BTC avg buy price, and Robinhood settings in portfolio.json.
-    Accepts any of: {"total_portfolio_cash": float, "total_portfolio_btc": float, "btc_avg_buy_price": float, ...robinhood fields...}
-    """
-    current = load_portfolio_cash_btc()
-    if "total_portfolio_cash" in data:
-        try:
-            current["total_portfolio_cash"] = float(data["total_portfolio_cash"] or 0)
-        except (ValueError, TypeError):
-            current["total_portfolio_cash"] = 0.0
-    if "total_portfolio_btc" in data:
-        try:
-            current["total_portfolio_btc"] = float(data["total_portfolio_btc"] or 0)
-        except (ValueError, TypeError):
-            current["total_portfolio_btc"] = 0.0
-    if "btc_avg_buy_price" in data:
-        try:
-            current["btc_avg_buy_price"] = float(data["btc_avg_buy_price"] or 0)
-        except (ValueError, TypeError):
-            current["btc_avg_buy_price"] = 0.0
-    # Robinhood settings
-    if "robinhood_enabled" in data:
-        current["robinhood_enabled"] = bool(data["robinhood_enabled"])
-    if "robinhood_username" in data:
-        current["robinhood_username"] = data["robinhood_username"] or ""
-    if "robinhood_password" in data:
-        current["robinhood_password"] = data["robinhood_password"] or ""
-    if "robinhood_mfa" in data:
-        current["robinhood_mfa"] = data["robinhood_mfa"] or ""
-    # Remove robinhood_display if present
-    current.pop("robinhood_display", None)
-    save_portfolio_cash_btc(current)
-    return {"status": "ok"}
+async def set_portfolio_settings(data: dict, request: Request):
+    """Set portfolio settings in PocketBase."""
+    try:
+        logger.info("Updating portfolio settings in PocketBase...")
+        logger.info(f"Received data: {data}")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        logger.info(f"User ID: {user_id}")
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
+
+        # Get current settings and update with new data
+        current_settings = model_manager.get_portfolio_data(user_id)
+        logger.info(f"Current settings: {current_settings}")
+
+        # Update with provided data
+        for key, value in data.items():
+            if key in [
+                "total_portfolio_cash",
+                "total_portfolio_btc",
+                    "btc_avg_buy_price"]:
+                try:
+                    current_settings[key] = float(value or 0)
+                    logger.info(f"Updated {key} to {current_settings[key]}")
+                except (ValueError, TypeError):
+                    current_settings[key] = 0.0
+                    logger.warning(
+                        f"Invalid value for {key}: {value}, set to 0.0")
+            elif key == "robinhood_enabled":
+                current_settings[key] = bool(value)
+                logger.info(f"Updated {key} to {current_settings[key]}")
+            elif key in ["robinhood_username", "robinhood_password", "robinhood_mfa"]:
+                current_settings[key] = value or ""
+                logger.info(f"Updated {key} to '{current_settings[key]}'")
+
+        logger.info(f"Final settings to save: {current_settings}")
+
+        if model_manager.update_portfolio_data(user_id, current_settings):
+            logger.info(
+                "Successfully updated portfolio settings in PocketBase")
+            return {"status": "ok"}
+        else:
+            logger.error("Model manager update_portfolio_data returned False")
+            raise HTTPException(status_code=400,
+                                detail="Failed to update portfolio settings")
+    except Exception as e:
+        logger.error(f"Error updating portfolio settings: {e}")
+        raise HTTPException(status_code=500,
+                            detail="Failed to update portfolio settings")
+
 
 @router.get("/cash")
-def get_portfolio_cash():
-    """
-    Get the total portfolio cash, BTC (dollar value), and BTC avg buy price from portfolio.json.
-    Returns: {"total_portfolio_cash": float, "total_portfolio_btc": float, "btc_avg_buy_price": float}
-    """
-    return load_portfolio_cash_btc()
+async def get_portfolio_cash(request: Request):
+    """Get portfolio cash amount from PocketBase."""
+    try:
+        logger.info("Getting portfolio cash from PocketBase...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning("No authenticated user found, returning 0 cash")
+            return {"total_portfolio_cash": 0.0}
+
+        portfolio_data = model_manager.get_portfolio_data(user_id)
+        cash = portfolio_data.get("total_portfolio_cash", 0.0)
+        logger.info(f"Retrieved portfolio cash from PocketBase: ${cash}")
+        return {"total_portfolio_cash": cash}
+    except Exception as e:
+        logger.error(f"Error getting portfolio cash: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to get portfolio cash")
+
 
 @router.post("/cash")
-def set_portfolio_cash(data: dict):
-    """
-    Set the total portfolio cash, BTC (dollar value), and/or BTC avg buy price in portfolio.json.
-    Accepts any of: {"total_portfolio_cash": float, "total_portfolio_btc": float, "btc_avg_buy_price": float}
-    """
-    # Load current, update only provided fields
-    current = load_portfolio_cash_btc()
-    if "total_portfolio_cash" in data:
-        current["total_portfolio_cash"] = float(data["total_portfolio_cash"])
-    if "total_portfolio_btc" in data:
-        current["total_portfolio_btc"] = float(data["total_portfolio_btc"])
-    if "btc_avg_buy_price" in data:
-        current["btc_avg_buy_price"] = float(data["btc_avg_buy_price"])
-    save_portfolio_cash_btc(current)
-    return {"status": "ok"}
+async def set_portfolio_cash(data: dict, request: Request):
+    """Set portfolio cash amount in PocketBase."""
+    try:
+        logger.info("Setting portfolio cash in PocketBase...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
+
+        current_data = model_manager.get_portfolio_data(user_id)
+        if "total_portfolio_cash" in data:
+            current_data["total_portfolio_cash"] = float(
+                data["total_portfolio_cash"])
+
+        if model_manager.update_portfolio_data(user_id, current_data):
+            logger.info(
+                f"Set portfolio cash in PocketBase to: ${
+                    current_data['total_portfolio_cash']}")
+            return {"status": "ok"}
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to set portfolio cash")
+    except Exception as e:
+        logger.error(f"Error setting portfolio cash: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to set portfolio cash")
+
 
 @router.get("/btc")
-def get_portfolio_btc():
-    """Get the total portfolio BTC value from portfolio.json."""
-    return {"total_portfolio_btc": load_portfolio_cash_btc().get("total_portfolio_btc", 0.0)}
+async def get_portfolio_btc(request: Request):
+    """Get portfolio BTC value from PocketBase."""
+    try:
+        logger.info("Getting portfolio BTC from PocketBase...")
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning("No authenticated user found, returning 0 BTC")
+            return {"total_portfolio_btc": 0.0}
+
+        portfolio_data = model_manager.get_portfolio_data(user_id)
+        btc = portfolio_data.get("total_portfolio_btc", 0.0)
+        logger.info(f"Retrieved portfolio BTC from PocketBase: {btc}")
+        return {"total_portfolio_btc": btc}
+    except Exception as e:
+        logger.error(f"Error getting portfolio BTC: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to get portfolio BTC")
+
 
 @router.post("/btc")
-def set_portfolio_btc(data: dict):
-    """Set the total portfolio BTC value in portfolio.json. Accepts {"total_portfolio_btc": float}."""
-    if "total_portfolio_btc" not in data:
-        raise HTTPException(status_code=400, detail="Missing total_portfolio_btc field")
-    current = load_portfolio_cash_btc()
-    current["total_portfolio_btc"] = float(data["total_portfolio_btc"])
-    save_portfolio_cash_btc(current)
-    return {"status": "ok"}
+async def set_portfolio_btc(data: dict, request: Request):
+    """Set portfolio BTC value in PocketBase."""
+    try:
+        logger.info("Setting portfolio BTC in PocketBase...")
+        if "total_portfolio_btc" not in data:
+            raise HTTPException(status_code=400,
+                                detail="Missing total_portfolio_btc field")
+
+        model_manager = get_model_manager()
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
+
+        current_data = model_manager.get_portfolio_data(user_id)
+        current_data["total_portfolio_btc"] = float(
+            data["total_portfolio_btc"])
+
+        if model_manager.update_portfolio_data(user_id, current_data):
+            logger.info(
+                f"Set portfolio BTC in PocketBase to: {
+                    current_data['total_portfolio_btc']}")
+            return {"status": "ok"}
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to set portfolio BTC")
+    except Exception as e:
+        logger.error(f"Error setting portfolio BTC: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to set portfolio BTC")
+
 
 @router.post("/refresh-symbols")
-def refresh_symbol_data():
-    symbols = get_portfolio_symbols()
-    data = fetch_symbol_data(symbols)
-    save_symbol_data(data)
-    # Now calculate and save betas
-    calculate_and_save_betas(symbols)
-    return {"status": "ok", "symbols": list(data.keys())}
+async def refresh_symbol_data(request: Request):
+    """Refresh symbol data from Polygon.io and save to PocketBase."""
+    try:
+        logger.info("Refreshing symbol data...")
+        symbols = await get_portfolio_symbols(request)
+        data = fetch_symbol_data(symbols)
+        save_symbol_data(data)
+        # Now calculate and save betas
+        calculate_and_save_betas(symbols)
+        logger.info(f"Refreshed symbol data for {len(data)} symbols")
+        return {"status": "ok", "symbols": list(data.keys())}
+    except Exception as e:
+        logger.error(f"Error refreshing symbol data: {e}")
+        raise HTTPException(status_code=500,
+                            detail="Failed to refresh symbol data")
+
 
 @router.get("/summary")
-def get_portfolio_summary():
-    positions = load_positions()
-    symbol_data = load_symbol_data()
-    summary = []
-    for pos in positions:
-        symbol = pos["symbol"]
-        quantity = pos["quantity"]
-        buy_price = pos["buy_price"]
-        last_price = symbol_data.get(symbol, {}).get("last_price")
-        prev_close = symbol_data.get(symbol, {}).get("previous_close")
-        beta = symbol_data.get(symbol, {}).get("beta")
-        # Calculated fields
-        market_value = quantity * last_price if last_price is not None else None
-        todays_return = None
-        if last_price is not None and prev_close and prev_close != 0:
-            todays_return = ((last_price - prev_close) / prev_close) * 100
-        total_return = None
-        if last_price is not None and buy_price and buy_price != 0:
-            total_return = ((last_price - buy_price) / buy_price) * 100
-        # Delta (for stocks/ETFs)
-        delta = quantity
-        # Log only if there's an issue with data
-        if market_value is None:
-            logger.warning(f"[DATABASE] {symbol}: missing market data")
+async def get_portfolio_summary(request: Request):
+    """Get portfolio summary with positions and market data from PocketBase."""
+    try:
+        logger.info("Getting portfolio summary...")
+        model_manager = get_model_manager()
 
-        # Format decimals to 0.00 precision
-        todays_return = round(todays_return, 2) if todays_return is not None else None
-        total_return = round(total_return, 2) if total_return is not None else None
-        beta = round(beta, 2) if beta is not None else None
-        delta = round(delta, 2) if delta is not None else None
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "No authenticated user found, returning empty summary")
+            return []
 
-        summary.append({
-            "id": pos["id"],
-            "symbol": symbol,
-            "quantity": pos["quantity"],
-            "buy_price": round(pos["buy_price"], 2),
-            "market_value": round(market_value, 2) if market_value is not None else None,
-            "todays_return": todays_return,
-            "total_return": total_return,
-            "beta": beta,
-            "delta": delta,
-            "notes": pos.get("notes", ""),
-            "source": pos.get("source", "manual")
-        })
-    return summary 
+        logger.info(f"Getting portfolio summary for user: {user_id}")
+
+        # Get positions filtered by user ID
+        positions = model_manager.get_positions(user_id)
+        # Load symbol data for market prices
+        symbols = [pos["symbol"] for pos in positions]
+        symbol_data = {}
+        for symbol in symbols:
+            data = get_current_symbol_data(symbol)
+            if data:
+                symbol_data[symbol] = data
+
+        summary = []
+        for pos in positions:
+            symbol = pos["symbol"]
+            quantity = pos["quantity"]
+            buy_price = pos["buy_price"]
+            last_price = symbol_data.get(symbol, {}).get("last_price")
+            prev_close = symbol_data.get(symbol, {}).get("previous_close")
+            beta = symbol_data.get(symbol, {}).get("beta")
+
+            # Calculated fields
+            market_value = quantity * last_price if last_price is not None else None
+            todays_return = None
+            if last_price is not None and prev_close and prev_close != 0:
+                todays_return = ((last_price - prev_close) / prev_close) * 100
+            total_return = None
+            if last_price is not None and buy_price and buy_price != 0:
+                total_return = ((last_price - buy_price) / buy_price) * 100
+
+            # Delta (for stocks/ETFs)
+            delta = quantity
+
+            # Log only if there's an issue with data
+            if market_value is None:
+                logger.warning(f"{symbol}: missing market data")
+
+            # Format decimals to 0.00 precision
+            todays_return = round(todays_return,
+                                  2) if todays_return is not None else None
+            total_return = round(total_return,
+                                 2) if total_return is not None else None
+            beta = round(beta, 2) if beta is not None else None
+            delta = round(delta, 2) if delta is not None else None
+
+            summary.append({
+                "id": pos["id"],
+                "symbol": symbol,
+                "quantity": pos["quantity"],
+                "buy_price": round(pos["buy_price"], 2),
+                "market_value": round(market_value, 2) if market_value is not None else None,
+                "todays_return": todays_return,
+                "total_return": total_return,
+                "beta": beta,
+                "delta": delta,
+                "notes": pos.get("notes", ""),
+                "source": pos.get("source", "manual")
+            })
+
+        logger.info(
+            f"Generated portfolio summary with {
+                len(summary)} positions for user {user_id} from PocketBase")
+        return summary
+    except Exception as e:
+        logger.error(f"Error generating portfolio summary: {e}")
+        raise HTTPException(status_code=500,
+                            detail="Failed to generate portfolio summary")

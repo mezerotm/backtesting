@@ -2,6 +2,15 @@
 
 This framework provides tools for backtesting trading strategies using TA-Lib indicators and the Backtesting.py library. It allows for easy comparison between different strategies on historical data.
 
+## ⚠️ Security Notice
+
+**IMPORTANT**: This application serves static files from the `public/` directory only. Source code directories (`server/`, `utils/`, `strategies/`, `workflows/`, `libs/`, `logs/`) are never exposed to users.
+
+When adding new static assets:
+- Place files in `public/` directory
+- Reference them as `/static/filename` in HTML/CSS/JS
+- Never serve source code directories
+
 ## Features
 
 - Multiple pre-built strategies:
@@ -206,14 +215,72 @@ All reports are integrated into a central dashboard:
 - Access via http://localhost:8000/ when server is running
 - Run `make server` to start the report server
 
+## Database Management
+
+The application uses PocketBase for portfolio and market data management with a robust ModelManager abstraction layer.
+
+### Quick Database Setup
+```bash
+# Start database server
+make db-start
+
+# Initialize database schema (must be run from project root)
+make db-init
+
+# Start application server
+make server
+```
+
+### Database Commands
+- `make db-start` - Start PocketBase server
+- `make db-init` - Initialize database collections (includes path verification)
+- `make db-reset` - Reset database (⚠️ deletes all data)
+- `make db-backup` - Create database backup
+- `make db-restore` - Restore from backup
+
+### Database Collections
+- **portfolio** - Portfolio settings and cash data (user-specific)
+- **positions** - Portfolio positions with deduplication
+- **orders** - Trading orders with source tracking (Robinhood ID in source_id field)
+- **dividends** - Dividend data with deduplication
+- **symbol_cache** - Market data cache (price, beta, delta) with deduplication
+- **profit_loss** - Pre-calculated profit/loss records (unrealized/realized)
+
+### Key Features
+- **User-Specific Data**: All collections support multi-user isolation
+- **Deduplication**: Automatic prevention of duplicate records during data pulls
+- **Source Tracking**: Orders track their origin (Robinhood, manual) via source_id
+- **Data Validation**: Robust validation and sanitization of incoming data
+- **Error Handling**: Graceful handling of partial data pull failures
+
+### PocketBase Admin Interface
+When PocketBase is running, access the admin interface at:
+- **URL**: http://127.0.0.1:8090/_/
+- **Default Admin**: No default admin (create one on first access)
+
+For detailed database documentation, see [DATABASE.md](DATABASE.md).
+
 ### Configuration
 Environment variables in `.env`:
 ```
-POLYGON_API_KEY=your_polygon_key
+POLYGON_API_KEY=your_polygon_key  # Optional - warnings shown if missing
 FRED_API_KEY=your_fred_key
 OPENAI_API_KEY=your_openai_key  # Optional, for AI explanations
 ENV=development    # or production
 ```
+
+### Logging System
+The application uses a comprehensive logging system:
+- **API Logs**: `logs/api/{api_name}.log` - Separate log files for each API
+- **Validation Logs**: `logs/api/{api_name}_validation.log` - Data validation and sanitization logs
+- **Widget Logs**: `logs/widgets/{widget_name}.log` - Frontend widget logs
+- **Server Logs**: `logs/server.log` - Main server logs
+
+### Authentication & Security
+- **Session Management**: Cookie-based authentication with PocketBase
+- **User Isolation**: All data is user-specific and properly isolated
+- **Fresh Start Handling**: Graceful handling of authentication during fresh database starts
+- **Error Classification**: Expected authentication failures logged as warnings, not errors
 
 ### Project Structure
 ```
@@ -238,16 +305,29 @@ ENV=development    # or production
 │   │   └── strategy_comparison_report.py
 │   └── base_fetcher.py
 ├── server/
-│   └── report_server.py    # Core server for serving reports
+│   ├── models/             # Database models and ModelManager
+│   ├── api/                # API endpoints (auth, portfolio, orders, dividends, profit_loss, robinhood)
+│   ├── widgets/            # Frontend widgets
+│   └── main.py             # FastAPI server
+├── utils/
+│   ├── pocketbase_client.py # PocketBase client
+│   ├── db_init.py          # Database initialization (with path verification)
+│   ├── logger.py           # Comprehensive logging system
+│   └── config.py           # Configuration utilities
+├── libs/
+│   └── pocketbase          # PocketBase binary
+├── pb_data/                # PocketBase data directory
 ├── templates/
 │   ├── base_layout.html
 │   └── dashboard.html
 ├── public/
+│   ├── data/               # Legacy file storage
 │   └── results/
 ├── market_workflow_cli.py
 ├── financial_workflow_cli.py
 ├── backtest_workflow_cli.py
-└── comparison_workflow_cli.py
+├── comparison_workflow_cli.py
+└── Makefile                # Database and build commands
 ```
 
 ## License
