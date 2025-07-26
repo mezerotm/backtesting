@@ -8,13 +8,19 @@ let plChart = null;
 let currentPeriod = 'YTD';
 
 async function fetchAndRenderProfitLoss(period = 'YTD') {
-  const [summary, details, chartData] = await Promise.all([
-    fetch(`/api/profit_loss/summary?period=${period}`).then(r => r.json()),
-    fetch('/api/profit_loss/details').then(r => r.json()),
-    fetch(`/api/profit_loss/chart?period=${period}`).then(r => r.json()),
-  ]);
-  renderProfitLoss(summary, details);
-  updateChart(chartData);
+  console.log(`[ProfitLoss] Fetching data for period: ${period}`);
+  try {
+    const [summary, details, chartData] = await Promise.all([
+      fetch(`/api/profit-loss/summary?period=${period}`).then(r => r.json()),
+      fetch('/api/profit-loss/details').then(r => r.json()),
+      fetch(`/api/profit-loss/chart?period=${period}`).then(r => r.json()),
+    ]);
+    console.log('[ProfitLoss] API responses:', { summary, details: details.length, chartData });
+    renderProfitLoss(summary, details);
+    updateChart(chartData);
+  } catch (error) {
+    console.error('[ProfitLoss] Error fetching data:', error);
+  }
 }
 
 function renderProfitLoss(summary, details) {
@@ -169,60 +175,4 @@ function updateChart(chartData) {
   plChart.update('none');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('[ProfitLoss] DOMContentLoaded');
-  const btn = document.getElementById('profitLossMinimizeBtn');
-  const icon = document.getElementById('profitLossMinimizeIcon');
-  const content = document.getElementById('profitLossContent');
-  if (btn && content) {
-    console.log('[ProfitLoss] Minimize button and content found');
-    // Set initial max-height based on visibility
-    if (content.style.maxHeight === '0px' || (icon && icon.classList.contains('fa-chevron-down'))) {
-      content.style.maxHeight = '0px';
-      if (icon) {
-        icon.classList.remove('fa-chevron-up');
-        icon.classList.add('fa-chevron-down');
-      }
-      console.log('[ProfitLoss] Content starts collapsed (by style or icon)');
-    } else {
-      content.style.maxHeight = content.scrollHeight + 'px';
-      setTimeout(() => { content.style.maxHeight = 'none'; }, 400);
-      if (icon) {
-        icon.classList.remove('fa-chevron-down');
-        icon.classList.add('fa-chevron-up');
-      }
-      console.log('[ProfitLoss] Content starts expanded');
-    }
-    btn.addEventListener('click', function() {
-      console.log('[ProfitLoss] Minimize button clicked. Current maxHeight:', content.style.maxHeight);
-      if (content.style.maxHeight === '0px') {
-        // Currently closed, so open
-        content.style.maxHeight = content.scrollHeight + 'px';
-        console.log('[ProfitLoss] Opening content');
-        if (icon) {
-          icon.classList.remove('fa-chevron-down');
-          icon.classList.add('fa-chevron-up');
-        }
-        content.addEventListener('transitionend', function handler(e) {
-          if (e.target === content) {
-            content.style.maxHeight = 'none';
-            content.removeEventListener('transitionend', handler);
-            console.log('[ProfitLoss] Open animation complete, maxHeight set to none');
-          }
-        });
-      } else {
-        // Currently open, so close
-        content.style.maxHeight = content.scrollHeight + 'px';
-        void content.offsetWidth;
-        content.style.maxHeight = '0px';
-        console.log('[ProfitLoss] Closing content');
-        if (icon) {
-          icon.classList.remove('fa-chevron-up');
-          icon.classList.add('fa-chevron-down');
-        }
-      }
-    });
-  } else {
-    console.log('[ProfitLoss] Minimize button or content NOT found');
-  }
-}); 
+// Collapse logic is handled by the global WidgetUtils.setupMinimizeButtons() in main.js 

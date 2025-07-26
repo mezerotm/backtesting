@@ -5,13 +5,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Environment configuration
-ENV = os.getenv('ENV', 'development').lower()  # Default to development if not set
+# Default to development if not set
+ENV = os.getenv('ENV', 'development').lower()
 IS_PRODUCTION = ENV == 'production'
 
 # Polygon API configuration
 POLYGON_API_KEY = os.getenv('POLYGON_API_KEY')
 if not POLYGON_API_KEY:
-    raise ValueError("POLYGON_API_KEY environment variable is not set")
+    print("Warning: POLYGON_API_KEY environment variable is not set. Market data will not be available.")
 
 # FRED API configuration
 FRED_API_KEY = os.getenv('FRED_API_KEY')
@@ -31,4 +32,12 @@ if not OPENAI_API_KEY:
 # AI explanations configuration
 ENABLE_AI_EXPLANATIONS = IS_PRODUCTION and OPENAI_API_KEY is not None
 if not ENABLE_AI_EXPLANATIONS and IS_PRODUCTION and OPENAI_API_KEY:
-    print("Note: AI explanations are disabled in non-production environments.") 
+    print("Note: AI explanations are disabled in non-production environments.")
+
+# PocketBase configuration
+POCKETBASE_EMAIL = os.getenv('PB_EMAIL')
+POCKETBASE_PASSWORD = os.getenv('PB_PASSWORD')
+
+if not POCKETBASE_EMAIL or not POCKETBASE_PASSWORD:
+    print("Warning: PB_EMAIL and/or PB_PASSWORD environment variables are not set.")
+    print("Database operations may require manual authentication.")

@@ -1,59 +1,104 @@
-import os, json
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional
-from fastapi import APIRouter, HTTPException, Query, Body
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from utils.logger import get_widget_logger
+from fastapi import APIRouter, Request, HTTPException, Body
+from server.models import get_model_manager
+from server.api.auth import get_current_user_id
+from utils.logger import get_server_logger
+from typing import Dict
 
-# Initialize logger for orders widget
-logger = get_widget_logger('orders')
+logger = get_server_logger("orders")
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
-ORDERS_PATH = os.path.join("public", "data", "orders.json")
 
-# Helper: load/save orders
-def load_orders():
-    if not os.path.exists(ORDERS_PATH):
-        return []
-    with open(ORDERS_PATH, "r") as f:
-        return json.load(f)
 
-def save_orders(orders):
-    with open(ORDERS_PATH, "w") as f:
-        json.dump(orders, f, indent=2)
+@router.get("/")
+async def get_orders(request: Request) -> Dict:
+    """Get all orders for the current user."""
+    try:
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "Orders API called without authentication - expected for fresh starts")
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
 
-@router.get("")
-def get_orders() -> List[Dict]:
-    logger.debug("Fetching all orders")
-    return load_orders()
+        orders = get_model_manager().get_orders(user_id)
+        return {"orders": orders}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting orders: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get orders")
 
-@router.post("")
-def add_order(order: dict = Body(...)):
-    orders = load_orders()
-    order["id"] = order.get("id") or (max([o["id"] for o in orders], default=0) + 1)
-    orders.append(order)
-    save_orders(orders)
-    return {"status": "ok", "id": order["id"]}
+
+@router.post("/")
+async def create_order(request: Request, order_data: Dict = Body(...)):
+    """Create a new order."""
+    try:
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "Orders API called without authentication - expected for fresh starts")
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
+
+        # Add user_id to order data
+        order_data['user_id'] = user_id
+
+        # Create order in database
+        result = get_model_manager().create_order(order_data)
+        return {"success": True, "order": result}
+    except Exception as e:
+        logger.error(f"Error creating order: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create order")
+
 
 @router.put("/{order_id}")
-def edit_order(order_id: int, order: dict = Body(...)):
-    orders = load_orders()
-    for i, o in enumerate(orders):
-        if o["id"] == order_id:
-            order["id"] = order_id
-            orders[i] = order
-            save_orders(orders)
-            return {"status": "ok"}
-    raise HTTPException(status_code=404, detail="Order not found")
+async def edit_order(
+        order_id: str,
+        order: dict = Body(...),
+        request: Request = None):
+    """Update an existing order in PocketBase."""
+    try:
+        logger.info(f"Updating order {order_id}...")
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "Orders API called without authentication - expected for fresh starts")
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
+
+        # Note: ModelManager doesn't have update_order method yet, so we'll need to implement it
+        # For now, we'll return an error
+        raise HTTPException(status_code=501,
+                            detail="Update order not implemented yet")
+    except Exception as e:
+        logger.error(f"Error updating order {order_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update order")
+
 
 @router.delete("/{order_id}")
-def delete_order(order_id: int):
-    orders = load_orders()
-    new_orders = [o for o in orders if o["id"] != order_id]
-    if len(new_orders) == len(orders):
-        raise HTTPException(status_code=404, detail="Order not found")
-    save_orders(new_orders)
-    return {"status": "ok"} 
+async def delete_order(order_id: str, request: Request = None):
+    """Delete an order from PocketBase."""
+    try:
+        logger.info(f"Deleting order {order_id}...")
+
+        # Get user ID from authenticated session
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning(
+                "Orders API called without authentication - expected for fresh starts")
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated")
+
+        # Note: ModelManager doesn't have delete_order method yet, so we'll need to implement it
+        # For now, we'll return an error
+        raise HTTPException(status_code=501,
+                            detail="Delete order not implemented yet")
+    except Exception as e:
+        logger.error(f"Error deleting order {order_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete order")

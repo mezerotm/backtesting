@@ -5,6 +5,7 @@ Utility module for generating standardized metadata for backtest reports.
 import os
 from datetime import datetime
 
+
 def generate_metadata(
     symbol,
     timeframe,
@@ -21,7 +22,7 @@ def generate_metadata(
 ):
     """
     Generate standardized metadata for backtest reports.
-    
+
     Parameters:
     -----------
     symbol : str
@@ -48,7 +49,7 @@ def generate_metadata(
         Path to the chart file (for backtest reports)
     additional_data : dict, optional
         Any additional data to include in the metadata
-        
+
     Returns:
     --------
     dict
@@ -65,7 +66,7 @@ def generate_metadata(
         "type": report_type,
         "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
-    
+
     # Add report type specific fields
     if report_type == "backtest":
         metadata["strategy"] = strategy_name
@@ -75,41 +76,42 @@ def generate_metadata(
         metadata["strategy"] = "Comparison"
         if strategies_compared:
             metadata["strategies_compared"] = strategies_compared
-    
+
     # Add path to the report with /results/ prefix
     if directory_name:
         metadata["path"] = f"/results/{directory_name}/index.html"
-    
+
     # Add any additional data
     if additional_data and isinstance(additional_data, dict):
         metadata.update(additional_data)
-    
+
     return metadata
+
 
 def save_metadata(metadata, directory):
     """
     Save metadata to a JSON file in the specified directory.
-    
+
     Parameters:
     -----------
     metadata : dict
         The metadata to save
     directory : str
         The directory where to save the metadata.json file
-    
+
     Returns:
     --------
     str
         Path to the saved metadata file
     """
     import json
-    
+
     # Ensure directory exists
     os.makedirs(directory, exist_ok=True)
-    
+
     # Save metadata to file
     metadata_path = os.path.join(directory, "metadata.json")
     with open(metadata_path, "w") as f:
         json.dump(metadata, f, indent=4)
-    
-    return metadata_path 
+
+    return metadata_path

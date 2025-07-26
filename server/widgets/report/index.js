@@ -449,8 +449,8 @@ export function initReport() {
     } else {
         console.warn('[initReport] generateReportForm not found');
     }
-    // Auto-refresh reports every 5 seconds
-    setInterval(fetchReportsData, 5000);
+    // Auto-refresh reports every 5 seconds - TEMPORARILY DISABLED to fix infinite loop
+    // setInterval(fetchReportsData, 5000);
 }
 
 export function cleanResults() {

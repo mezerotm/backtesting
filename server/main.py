@@ -18,6 +18,27 @@ Widget JS Build and Copy Logic
 To add a new widget:
 - Create a new folder in server/widgets/ (e.g. mywidget/), add index.html and index.js.
 - Add a copy step below to copy mywidget/index.js to public/js/mywidget.js.
+
+==============================================================================
+SECURITY NOTE: STATIC FILE SERVING
+==============================================================================
+IMPORTANT: Only files in the 'public' directory should be served to users!
+
+Source directories that should NEVER be served:
+- server/     (API source code, templates, configuration)
+- utils/      (utility modules, database clients)
+- strategies/ (trading strategy source code)
+- workflows/  (workflow source code)
+- libs/       (libraries, binaries, PocketBase)
+- logs/       (sensitive log files)
+
+The 'public' directory is the ONLY safe directory to serve because it contains:
+- Compiled/built assets (CSS, JS, images)
+- Static files safe for public access
+- No source code or sensitive information
+
+When adding new static files, always place them in 'public/' and reference them as '/static/filename'
+==============================================================================
 """
 import subprocess
 import sys
@@ -26,7 +47,19 @@ import time
 import signal
 import shutil
 import os
+import logging
 from server.dashboard_generator import generate_dashboard
+
+# Configure logging to suppress verbose HTTP logs
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(levelname)s:%(name)s:%(message)s'
+)
+
+# Suppress verbose HTTP request logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 if __name__ == '__main__':
     print('Generating dashboard...')
@@ -36,21 +69,21 @@ if __name__ == '__main__':
     # Copy main CSS and JS files
     os.makedirs('public', exist_ok=True)
     os.makedirs('public/js', exist_ok=True)
-    
+
     # Copy main.css to public/main.css
     css_src = 'server/main.css'
     css_dst = 'public/main.css'
     if os.path.isfile(css_src):
         shutil.copyfile(css_src, css_dst)
         print(f'Copied {css_src} to {css_dst}')
-    
+
     # Copy main.js to public/js/main.js
     js_src = 'server/main.js'
     js_dst = 'public/js/main.js'
     if os.path.isfile(js_src):
         shutil.copyfile(js_src, js_dst)
         print(f'Copied {js_src} to {js_dst}')
-    
+
     # Copy widget JS files to public/js with widget-prefixed names
     widgets_dir = 'server/widgets'
     for widget_name in os.listdir(widgets_dir):
@@ -63,9 +96,17 @@ if __name__ == '__main__':
     print('Copied all CSS and JS files to public/')
 
     print('Starting FastAPI server...')
-    proc = subprocess.Popen([
-        sys.executable, '-m', 'uvicorn', 'server.api.main:app', '--host', '0.0.0.0', '--port', '8000', '--log-level', 'error'
-    ])
+    proc = subprocess.Popen([sys.executable,
+                             '-m',
+                             'uvicorn',
+                             'server.api.main:app',
+                             '--host',
+                             '0.0.0.0',
+                             '--port',
+                             '8000',
+                             '--log-level',
+                             'error',
+                             '--no-access-log'])
 
     # Optionally open browser
     time.sleep(2)

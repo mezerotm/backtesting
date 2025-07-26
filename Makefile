@@ -81,10 +81,76 @@ results-dir:
 	mkdir -p public/results
 	
 
+# Database management
+db-start:
+	@echo "Starting PocketBase database server..."
+	@if [ ! -f "libs/pocketbase" ]; then \
+		echo "Error: PocketBase binary not found at libs/pocketbase"; \
+		echo "Please ensure the PocketBase binary is in the libs directory"; \
+		exit 1; \
+	fi
+	@mkdir -p pb_data
+	@echo "PocketBase server starting on http://127.0.0.1:8090"
+	@echo "Admin UI available at http://127.0.0.1:8090/_/"
+	@echo "Press Ctrl+C to stop the server"
+	@libs/pocketbase serve --http=127.0.0.1:8090 --dir=pb_data
+
+db-reset:
+	@echo "⚠️  WARNING: This will delete all PocketBase data!"
+	@read -p "Are you sure? Type 'yes' to continue: " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		echo "Removing PocketBase data directory..."; \
+		rm -rf pb_data; \
+		echo "✅ PocketBase data reset complete"; \
+	else \
+		echo "Reset cancelled"; \
+	fi
+
+db-backup:
+	@echo "Creating PocketBase data backup..."
+	@if [ -d "pb_data" ]; then \
+		backup_name="pb_backup_$$(date +%Y%m%d_%H%M%S)"; \
+		cp -r pb_data "$$backup_name"; \
+		echo "✅ Backup created: $$backup_name"; \
+	else \
+		echo "❌ No PocketBase data directory found"; \
+	fi
+
+db-restore:
+	@echo "Available backups:"
+	@ls -d pb_backup_* 2>/dev/null || echo "No backups found"
+	@if [ -d "pb_data" ]; then \
+		echo "⚠️  Current data will be overwritten!"; \
+		read -p "Enter backup directory name: " backup_dir; \
+		if [ -d "$$backup_dir" ]; then \
+			rm -rf pb_data; \
+			cp -r "$$backup_dir" pb_data; \
+			echo "✅ Data restored from $$backup_dir"; \
+		else \
+			echo "❌ Backup directory not found: $$backup_dir"; \
+		fi; \
+	else \
+		echo "❌ No current PocketBase data directory found"; \
+	fi
+
+db-init:
+	@echo "Initializing PocketBase database..."
+	@echo "Note: This must be run from the project root directory"
+	@echo "Current directory: $(PWD)"
+	@$(PYTHON) utils/db_init.py
+
+# Syntax checking and auto-fixing with flake8 and autopep8
+syntax-check:
+	@echo "🔧 Auto-fixing formatting issues with autopep8..."
+	@$(PYTHON) -m autopep8 --in-place --recursive --aggressive --aggressive server/ utils/ workflows/ strategies/
+
 # Start FastAPI server (serves static and API)
-server: results-dir
+server: results-dir syntax-check
 	$(PYTHON) -m server.main
+
+
 
 .PHONY: setup backtest-nvda backtest-smci \
 	compare-active clean results-dir server ensure-venv activate-venv backtest-active \
-	backtest-experimental compare-experimental dev debug-buy-hold market-check morning-check full-market-check debug-market-check install deps
+	backtest-experimental compare-experimental dev debug-buy-hold market-check morning-check full-market-check debug-market-check install deps \
+	db-start db-reset db-backup db-restore db-init

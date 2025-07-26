@@ -8,8 +8,11 @@ let btcPriceFetched = false;
 let btcAvgBuyPrice = 0;
 
 async function fetchPortfolioSettings() {
-  const resp = await fetch('/api/portfolio/settings');
+  const resp = await fetch('/api/portfolio/settings', {
+    credentials: 'include'  // Required to send authentication cookies
+  });
   const data = await resp.json();
+  console.log('[Portfolio] Fetched settings:', data);
   portfolioCash = data.total_portfolio_cash || 0;
   portfolioBTCDollar = data.total_portfolio_btc || 0;
   btcAvgBuyPrice = data.btc_avg_buy_price || 0;
@@ -17,7 +20,9 @@ async function fetchPortfolioSettings() {
 }
 
 async function fetchPortfolioCash() {
-  const resp = await fetch('/api/portfolio/cash');
+  const resp = await fetch('/api/portfolio/cash', {
+    credentials: 'include'  // Required to send authentication cookies
+  });
   const data = await resp.json();
   portfolioCash = data.total_portfolio_cash || 0;
   portfolioBTCDollar = data.total_portfolio_btc || 0;
@@ -28,6 +33,7 @@ async function setPortfolioCashAndBTC(cashVal, btcDollarVal, btcAvgVal) {
   await fetch('/api/portfolio/cash', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',  // Required to send authentication cookies
     body: JSON.stringify({ total_portfolio_cash: cashVal, total_portfolio_btc: btcDollarVal, btc_avg_buy_price: btcAvgVal })
   });
   portfolioCash = cashVal;
@@ -45,18 +51,38 @@ async function fetchPositionsAndSettings() {
   fetchPositions();
 }
 
+// Expose functions globally for login refresh
+window.fetchPositionsAndSettings = fetchPositionsAndSettings;
+window.fetchPositionsAndCash = fetchPositionsAndCash;
+
 function fetchPositions() {
   // Add cache-busting parameter to ensure fresh data
   const timestamp = new Date().getTime();
-  fetch(API_PORTFOLIO + '/summary?t=' + timestamp)
-    .then(r => r.json())
-    .then(data => renderPositions(data))
-    .catch(() => renderPositions([]));
+  console.log('[Portfolio] Fetching positions...');
+  fetch(API_PORTFOLIO + '/summary?t=' + timestamp, {
+    credentials: 'include' // Required to send authentication cookies
+  })
+    .then(r => {
+      console.log('[Portfolio] Response status:', r.status);
+      return r.json();
+    })
+    .then(data => {
+      console.log('[Portfolio] Received positions:', data);
+      renderPositions(data);
+    })
+    .catch(error => {
+      console.error('[Portfolio] Error fetching positions:', error);
+      renderPositions([]);
+    });
 }
 
 async function renderPositions(positions) {
+  console.log('[Portfolio] Rendering positions:', positions);
   const tbody = document.getElementById('positionsTbody');
-  if (!tbody) return;
+  if (!tbody) {
+    console.error('[Portfolio] positionsTbody element not found');
+    return;
+  }
   tbody.innerHTML = '';
   let totalValue = 0;
   positions.forEach(pos => {
@@ -226,14 +252,16 @@ function showPortfolioConfirmationModal(message, confirmCallback) {
 
 function deletePosition(id) {
   showPortfolioConfirmationModal('Are you sure you want to delete this position?', () => {
-    fetch(`${API_PORTFOLIO}/${id}`, { method: 'DELETE' })
+    fetch(`${API_PORTFOLIO}/${id}`, { method: 'DELETE', credentials: 'include' })
       .then(() => fetchPositionsAndCash());
   });
 }
 
 async function fetchRobinhoodStatus() {
   try {
-    const resp = await fetch('/api/robinhood/status');
+    const resp = await fetch('/api/robinhood/status', {
+      credentials: 'include' // Required to send authentication cookies
+    });
     const data = await resp.json();
     
     const statusDiv = document.getElementById('robinhoodStatus');
@@ -286,10 +314,21 @@ async function pullRobinhoodData(showSuccess = true) {
   // Add visual feedback that modal is locked
   if (cashModal) {
     cashModal.classList.add('cursor-not-allowed');
-    // Add a subtle overlay to indicate the modal is locked
+    // Add a better overlay with progress bar
     const overlay = document.createElement('div');
-    overlay.className = 'absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center z-10';
-    overlay.innerHTML = '<div class="text-white text-sm font-medium">Pulling Robinhood data...<br><span class="text-xs opacity-75">Please wait, modal is locked</span></div>';
+    overlay.className = 'absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10';
+    overlay.innerHTML = `
+      <div class="bg-slate-700 rounded-lg p-6 max-w-md w-full mx-4">
+        <div class="text-white text-center">
+          <div class="text-lg font-semibold mb-2">Pulling Robinhood Data</div>
+          <div class="text-sm opacity-75 mb-4">Please wait, this may take 30-60 seconds</div>
+          <div class="flex items-center justify-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
+            <div id="robinhoodProgressText" class="text-sm">Connecting to Robinhood...</div>
+          </div>
+        </div>
+      </div>
+    `;
     overlay.id = 'robinhoodPullOverlay';
     const modalContent = cashModal.querySelector('.bg-slate-800');
     if (modalContent) {
@@ -304,12 +343,44 @@ async function pullRobinhoodData(showSuccess = true) {
     cashModal.removeEventListener('mousedown', originalClickHandler);
   }
   
+  // Show loading state
+  const progressText = document.getElementById('robinhoodProgressText');
+  if (progressText) progressText.textContent = 'Connecting to Robinhood...';
+  
   try {
-    const resp = await fetch('/api/robinhood/pull', { method: 'POST' });
+    // Update progress text during the process
+    setTimeout(() => {
+      if (progressText) progressText.textContent = 'Pulling positions and orders...';
+    }, 2000);
+    
+    setTimeout(() => {
+      if (progressText) progressText.textContent = 'Processing data and updating database...';
+    }, 5000);
+    
+    const resp = await fetch('/api/robinhood/pull', { method: 'POST', credentials: 'include' });
     const data = await resp.json();
+    
+    // Show completion
+    if (progressText) progressText.textContent = 'Complete!';
+    
     if (resp.ok) {
       if (showSuccess) {
-        Utils.showNotification(`Successfully pulled ${data.positions_count} positions and ${data.trades_count || data.orders_count || 0} trades`, 'success');
+        const positions = data.positions || {};
+        const orders = data.orders || {};
+        const dividends = data.dividends || {};
+        
+        const totalPositions = (positions.created || 0) + (positions.updated || 0);
+        const totalOrders = (orders.created || 0) + (orders.updated || 0);
+        const totalDividends = (dividends.created || 0) + (dividends.updated || 0);
+        
+        let message = `Successfully pulled data: `;
+        if (totalPositions > 0) message += `${totalPositions} positions `;
+        if (totalOrders > 0) message += `${totalOrders} orders `;
+        if (totalDividends > 0) message += `${totalDividends} dividends `;
+        
+        if (positions.deleted > 0) message += `(${positions.deleted} positions removed) `;
+        
+        Utils.showNotification(message, 'success');
       }
       await fetchRobinhoodStatus();
       fetchPositionsAndSettings(); // Refresh portfolio data
@@ -353,7 +424,9 @@ async function pullRobinhoodData(showSuccess = true) {
 async function getBTCPrice() {
   if (btcPriceFetched && btcPrice !== null) return btcPrice;
   try {
-    const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+    const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', {
+      credentials: 'include' // Required to send authentication cookies
+    });
     if (!resp.ok) throw new Error('Failed to fetch BTC price');
     const data = await resp.json();
     btcPrice = data.bitcoin.usd;
@@ -364,6 +437,50 @@ async function getBTCPrice() {
     btcPriceFetched = true;
     console.warn('Failed to fetch BTC price from CoinGecko:', e);
     return null;
+  }
+}
+
+async function updatePullButtonState() {
+  const pullBtn = document.getElementById('pullRobinhoodBtn');
+  if (!pullBtn) return;
+  
+  try {
+    console.log('[Portfolio] Updating pull button state...');
+    
+    // First fetch the settings if not already available
+    if (!window._portfolioSettings) {
+      console.log('[Portfolio] No settings cached, fetching...');
+      await fetchPortfolioSettings();
+    }
+    
+    const settings = window._portfolioSettings || {};
+    console.log('[Portfolio] Settings:', settings);
+    
+    const isEnabled = settings.robinhood_enabled;
+    const hasCredentials = settings.robinhood_username && settings.robinhood_password;
+    
+    console.log('[Portfolio] Robinhood enabled:', isEnabled, 'Has credentials:', hasCredentials);
+    
+    if (!isEnabled || !hasCredentials) {
+      pullBtn.disabled = true;
+      pullBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      pullBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+      pullBtn.classList.add('bg-gray-600');
+      pullBtn.textContent = isEnabled ? 'Missing Credentials' : 'Robinhood Disabled';
+      console.log('[Portfolio] Button disabled:', pullBtn.textContent);
+    } else {
+      pullBtn.disabled = false;
+      pullBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+      pullBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      pullBtn.textContent = 'Pull Robinhood';
+      console.log('[Portfolio] Button enabled');
+    }
+  } catch (error) {
+    console.error('Error updating pull button state:', error);
+    // Default to disabled state on error
+    pullBtn.disabled = true;
+    pullBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    pullBtn.textContent = 'Error Loading Settings';
   }
 }
 
@@ -399,6 +516,7 @@ export function initPortfolio() {
         if (robinhoodMFAInput) robinhoodMFAInput.value = data.robinhood_mfa || '';
         
         cashModal.classList.remove('hidden');
+        updatePullButtonState(); // Update button state when modal opens
       } catch (error) {
         console.error('Error opening settings:', error);
         Utils.showNotification('Error loading settings', 'error');
@@ -464,10 +582,7 @@ export function initPortfolio() {
       const robinhoodMFA = robinhoodMFAInput ? robinhoodMFAInput.value : '';
       
       // Send all fields
-      await fetch('/api/portfolio/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const requestData = {
           total_portfolio_cash: cashVal,
           total_portfolio_btc: btcDollarVal,
           btc_avg_buy_price: btcAvgVal,
@@ -475,11 +590,28 @@ export function initPortfolio() {
           robinhood_username: robinhoodUsername,
           robinhood_password: robinhoodPassword,
           robinhood_mfa: robinhoodMFA
-        })
+      };
+      
+      console.log('Sending portfolio settings:', requestData);
+      
+      const response = await fetch('/api/portfolio/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Required to send authentication cookies
+        body: JSON.stringify(requestData)
       });
+      
+      console.log('Portfolio settings response status:', response.status);
+      const responseData = await response.json();
+      console.log('Portfolio settings response:', responseData);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to save settings: ${responseData.detail || 'Unknown error'}`);
+      }
       
       cashModal.classList.add('hidden');
       fetchPositionsAndSettings(); // Refresh table
+      updatePullButtonState(); // Update pull button state
     });
   }
   // Portfolio CRUD logic
@@ -510,6 +642,7 @@ export function initPortfolio() {
         fetch(`${API_PORTFOLIO}/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Required to send authentication cookies
           body: JSON.stringify(pos)
         }).then(() => {
           fetchPositionsAndCash();
@@ -520,6 +653,7 @@ export function initPortfolio() {
         fetch(API_PORTFOLIO + '/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Required to send authentication cookies
           body: JSON.stringify(pos)
         }).then(() => {
           fetchPositionsAndCash();
@@ -570,7 +704,9 @@ export function initPortfolio() {
           return;
       }
       try {
-          const resp = await fetch(`/api/portfolio/search-symbols?query=${encodeURIComponent(query)}`);
+          const resp = await fetch(`/api/portfolio/search-symbols?query=${encodeURIComponent(query)}`, {
+            credentials: 'include' // Required to send authentication cookies
+          });
           if (!resp.ok) return;
           const data = await resp.json();
           symbolSuggestions = data;
@@ -631,24 +767,26 @@ export function initPortfolio() {
   const pullBtn = document.getElementById('pullRobinhoodBtn');
   if (pullBtn) {
     pullBtn.addEventListener('click', () => pullRobinhoodData());
+    // Update button state based on Robinhood settings
+    updatePullButtonState();
   }
   
   // Auto-pull handled by global timer in main.js
   // setInterval(() => pullRobinhoodData(false), 10 * 60 * 1000);
   
-  // Initial data load with symbol refresh
+  // Initial data load - SYMBOL REFRESH TEMPORARILY DISABLED
   fetchPositionsAndCash();
   
-  // Refresh symbol data to get current market prices
-  fetch('/api/portfolio/refresh-symbols', { method: 'POST' })
-    .then(() => {
-      console.log('[Portfolio] Symbol data refreshed');
-      fetchPositionsAndCash(); // Reload with fresh market data
-    })
-    .catch(err => {
-      console.error('[Portfolio] Failed to refresh symbol data:', err);
-      // Still load positions even if symbol refresh fails
-    });
+  // Refresh symbol data to get current market prices - TEMPORARILY DISABLED
+  // fetch('/api/portfolio/refresh-symbols', { method: 'POST' })
+  //   .then(() => {
+  //     console.log('[Portfolio] Symbol data refreshed');
+  //     fetchPositionsAndCash(); // Reload with fresh market data
+  //   })
+  //   .catch(err => {
+  //     console.error('[Portfolio] Failed to refresh symbol data:', err);
+  //     // Still load positions even if symbol refresh fails
+  //   });
 }
 
 console.log('[Portfolio] portfolio/index.js script loaded');

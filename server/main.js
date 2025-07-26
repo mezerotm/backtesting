@@ -318,6 +318,7 @@ const WidgetUtils = {
     // Minimize/maximize widget functionality
     setupMinimizeButtons() {
         document.querySelectorAll('[id$="MinimizeBtn"]').forEach(btn => {
+            console.log(`[WidgetUtils] Found minimize button: ${btn.id}`);
             btn.addEventListener('click', function() {
                 const widgetId = this.id.replace('MinimizeBtn', '');
                 const contentId = widgetId + 'Content';
@@ -326,9 +327,11 @@ const WidgetUtils = {
                 const content = document.getElementById(contentId);
                 const actionBar = document.getElementById(actionBarId);
                 const icon = document.getElementById(iconId);
+                console.log(`[WidgetUtils] ${widgetId} widget elements - contentId: ${contentId}, iconId: ${iconId}, content: ${!!content}, icon: ${!!icon}`);
                 
                 if (content && icon) {
                     const isCollapsed = content.classList.contains('collapsed');
+                    console.log(`[WidgetUtils] ${widgetId} widget - isCollapsed: ${isCollapsed}, content: ${content.id}, icon: ${icon.id}`);
                     
                     if (isCollapsed) {
                         // Expand the widget
@@ -338,6 +341,7 @@ const WidgetUtils = {
                             actionBar.classList.remove('collapsed');
                         }
                         icon.className = 'fa-solid fa-chevron-up';
+                        console.log(`[WidgetUtils] ${widgetId} widget expanded, icon set to chevron-up`);
                     } else {
                         // Collapse the widget
                         content.classList.add('collapsed');
@@ -346,7 +350,10 @@ const WidgetUtils = {
                             actionBar.classList.add('collapsed');
                         }
                         icon.className = 'fa-solid fa-chevron-down';
+                        console.log(`[WidgetUtils] ${widgetId} widget collapsed, icon set to chevron-down`);
                     }
+                } else {
+                    console.log(`[WidgetUtils] Missing elements for ${widgetId} widget - content: ${!!content}, icon: ${!!icon}`);
                 }
             });
         });
@@ -511,34 +518,34 @@ document.addEventListener('DOMContentLoaded', function() {
     Navigation.navigateTo('dashboard');
 });
 
-// Global 10-minute sync timer for integrations
-setInterval(async () => {
-    try {
-        console.log('[Global Sync] Triggering Robinhood pull...');
-        await Utils.apiRequest('/api/robinhood/pull', { method: 'POST' });
-        console.log('[Global Sync] Robinhood pull complete.');
-    } catch (err) {
-        console.error('[Global Sync] Robinhood pull failed:', err);
-    }
-    try {
-        console.log('[Global Sync] Triggering Polygon symbol data refresh...');
-        await Utils.apiRequest('/api/portfolio/refresh-symbols', { method: 'POST' });
-        console.log('[Global Sync] Polygon symbol data refresh complete.');
-    } catch (err) {
-        console.error('[Global Sync] Polygon symbol data refresh failed:', err);
-    }
-}, 30 * 60 * 1000); // 30 minutes in ms
+// Global 10-minute sync timer for integrations - TEMPORARILY DISABLED
+// setInterval(async () => {
+//     try {
+//         console.log('[Global Sync] Triggering Robinhood pull...');
+//         await Utils.apiRequest('/api/robinhood/pull', { method: 'POST' });
+//         console.log('[Global Sync] Robinhood pull complete.');
+//     } catch (err) {
+//         console.error('[Global Sync] Robinhood pull failed:', err);
+//     }
+//     try {
+//         console.log('[Global Sync] Triggering Polygon symbol data refresh...');
+//         await Utils.apiRequest('/api/portfolio/refresh-symbols', { method: 'POST' });
+//         console.log('[Global Sync] Polygon symbol data refresh complete.');
+//     } catch (err) {
+//         console.error('[Global Sync] Polygon symbol data refresh failed:', err);
+//     }
+// }, 30 * 60 * 1000); // 30 minutes in ms
 
-// Initial sync on page load
-setTimeout(async () => {
-    try {
-        console.log('[Initial Sync] Triggering Polygon symbol data refresh...');
-        await Utils.apiRequest('/api/portfolio/refresh-symbols', { method: 'POST' });
-        console.log('[Initial Sync] Polygon symbol data refresh complete.');
-    } catch (err) {
-        console.error('[Initial Sync] Polygon symbol data refresh failed:', err);
-    }
-}, 2000); // Wait 2 seconds after page load
+// Initial sync on page load - TEMPORARILY DISABLED
+// setTimeout(async () => {
+//     try {
+//         console.log('[Initial Sync] Triggering Polygon symbol data refresh...');
+//         await Utils.apiRequest('/api/portfolio/refresh-symbols', { method: 'POST' });
+//         console.log('[Initial Sync] Polygon symbol data refresh complete.');
+//     } catch (err) {
+//         console.error('[Initial Sync] Polygon symbol data refresh failed:', err);
+//     }
+// }, 2000); // Wait 2 seconds after page load
 
 // Export for use in other modules
 window.AppState = AppState;

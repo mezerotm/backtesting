@@ -4,7 +4,8 @@ export function initOrders() {
 }
 
 async function fetchAndRenderOrders() {
-  const orders = await fetch('/api/orders').then(r => r.json());
+  const response = await fetch('/api/orders').then(r => r.json());
+  const orders = response.orders || [];
   renderOrders(orders);
 }
 
