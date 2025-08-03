@@ -147,6 +147,9 @@ function setupOrderModal() {
   };
 }
 
+// Expose functions globally for login refresh
+window.fetchAndRenderOrders = fetchAndRenderOrders;
+
 // Remove the following block:
 // document.addEventListener('DOMContentLoaded', function() {
 //   const btn = document.getElementById('ordersMinimizeBtn');

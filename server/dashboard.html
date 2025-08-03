@@ -259,17 +259,30 @@
         // Show success message
         showToast('Login successful!', 'success');
         
-        // Refresh portfolio data without page reload
+        // Refresh all widget data without page reload
         setTimeout(() => {
-          console.log('Refreshing portfolio data after login...');
-          // Try to refresh portfolio data
+          console.log('Refreshing all widget data after login...');
+          
+          // Refresh portfolio data
           if (typeof window.fetchPositionsAndSettings === 'function') {
             window.fetchPositionsAndSettings();
           } else if (typeof window.fetchPositionsAndCash === 'function') {
             window.fetchPositionsAndCash();
-          } else {
-            console.log('Portfolio refresh functions not available, refreshing page...');
-            window.location.reload();
+          }
+          
+          // Refresh orders data
+          if (typeof window.fetchAndRenderOrders === 'function') {
+            window.fetchAndRenderOrders();
+          }
+          
+          // Refresh dividends data
+          if (typeof window.fetchAndRenderDividends === 'function') {
+            window.fetchAndRenderDividends();
+          }
+          
+          // Refresh profit/loss data
+          if (typeof window.fetchAndRenderProfitLoss === 'function') {
+            window.fetchAndRenderProfitLoss();
           }
         }, 1000);
       } else {
@@ -326,17 +339,30 @@
         // Show success message
         showToast('Registration successful!', 'success');
         
-        // Refresh portfolio data without page reload
+        // Refresh all widget data without page reload
         setTimeout(() => {
-          console.log('Refreshing portfolio data after registration...');
-          // Try to refresh portfolio data
+          console.log('Refreshing all widget data after registration...');
+          
+          // Refresh portfolio data
           if (typeof window.fetchPositionsAndSettings === 'function') {
             window.fetchPositionsAndSettings();
           } else if (typeof window.fetchPositionsAndCash === 'function') {
             window.fetchPositionsAndCash();
-          } else {
-            console.log('Portfolio refresh functions not available, refreshing page...');
-            window.location.reload();
+          }
+          
+          // Refresh orders data
+          if (typeof window.fetchAndRenderOrders === 'function') {
+            window.fetchAndRenderOrders();
+          }
+          
+          // Refresh dividends data
+          if (typeof window.fetchAndRenderDividends === 'function') {
+            window.fetchAndRenderDividends();
+          }
+          
+          // Refresh profit/loss data
+          if (typeof window.fetchAndRenderProfitLoss === 'function') {
+            window.fetchAndRenderProfitLoss();
           }
         }, 1000);
       } else {

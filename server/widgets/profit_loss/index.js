@@ -4,6 +4,9 @@ export function initProfitLoss() {
   initChart();
 }
 
+// Expose functions globally for login refresh
+window.fetchAndRenderProfitLoss = fetchAndRenderProfitLoss;
+
 let plChart = null;
 let currentPeriod = 'YTD';
 
