@@ -400,7 +400,7 @@ const WidgetUtils = {
                 
                 // Handle input changes
                 input.addEventListener('input', Utils.debounce(async function() {
-                    const query = this.value.trim();
+                    const query = (this.value || '').trim();
                     if (query.length >= 2) {
                         try {
                             const suggestions = await Utils.apiRequest(`/api/symbols/search?q=${encodeURIComponent(query)}`);

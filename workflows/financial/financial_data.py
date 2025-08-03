@@ -2,11 +2,14 @@ import pandas as pd
 import requests
 from typing import Dict, Any, Optional
 from utils.logger import get_app_logger
+from workflows.base_fetcher import BaseFetcher
+from polygon import RESTClient
+from utils.config import POLYGON_API_KEY
 
 logger = get_app_logger(__name__)
 
 
-class FinancialDataFetcher:
+class FinancialDataFetcher(BaseFetcher):
     """Fetcher for financial analysis workflow data"""
 
     def __init__(self, force_refresh: bool = False):

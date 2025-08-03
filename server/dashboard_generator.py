@@ -41,7 +41,8 @@ def get_report_metadata(report_dir):
 
                 # Ensure we have a path property
                 if 'path' not in metadata:
-                    metadata['path'] = f"results/{metadata['dir']}/index.html"
+                    metadata['path'] = f"static/results/{
+                        metadata['dir']}/index.html"
 
                 return metadata
         except Exception as e:
@@ -54,7 +55,7 @@ def get_report_metadata(report_dir):
 
     metadata = {
         'dir': dir_name,
-        'path': f"results/{dir_name}/index.html",
+        'path': f"static/results/{dir_name}/index.html",
         'type': 'unknown',
         'created': datetime.fromtimestamp(
             os.path.getctime(report_dir)

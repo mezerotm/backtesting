@@ -636,7 +636,7 @@ def generate_market_index_chart(
     "hide_top_toolbar": false,
     "save_image": false,
     "container_id": "tradingview_{safe_name}"
-  } );
+  }  );
   </script>
 </div>
 </body>
@@ -756,12 +756,13 @@ def generate_style_box_heatmap(data: Dict, output_dir: str) -> Optional[str]:
             if val >= 0:
                 # Green scale
                 # green-400
-                return f"rgba(74,222,128,{0.3 + 0.5 * min(1, abs(val) / 1.5)})"
+                alpha = 0.3 + 0.5 * min(1, abs(val) / 1.5)
+                return f"rgba(74,222,128,{alpha})"
             else:
                 # Red scale
                 # red-400
-                return f"rgba(248,113,113,{
-                    0.3 + 0.5 * min(1, abs(val) / 1.5)})"
+                alpha = 0.3 + 0.5 * min(1, abs(val) / 1.5)
+                return f"rgba(248,113,113,{alpha})"
         colors = [[cell_color(val) for val in row] for row in z]
         # Text for each cell
         text = [

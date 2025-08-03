@@ -416,18 +416,51 @@ export function initReport() {
             submitBtn.disabled = true;
             
             const formData = new FormData(generateReportForm);
+            const reportType = formData.get('genReportType') || 'market';
+            const symbol = formData.get('genSymbol') || '';
+            
             const params = new URLSearchParams();
             params.append('output_dir', 'public/results');
             params.append('force_refresh', 'false');
-            // Optionally, you can add more params from the form if needed
+            
+            // Add symbol if provided
+            if (symbol.trim()) {
+                params.append('symbol', symbol.trim().toUpperCase());
+            }
+            
+            let apiEndpoint = '';
+            let successMessage = '';
+            
+            // Determine API endpoint based on report type
+            switch (reportType) {
+                case 'market':
+                    apiEndpoint = '/api/report/generate-market';
+                    successMessage = 'Market report generated';
+                    break;
+                case 'finance':
+                    apiEndpoint = '/api/report/generate-finance';
+                    successMessage = 'Finance report generated';
+                    break;
+                case 'backtest':
+                    apiEndpoint = '/api/report/generate-backtest';
+                    successMessage = 'Backtest report generated';
+                    break;
+                case 'comparison':
+                    apiEndpoint = '/api/report/generate-comparison';
+                    successMessage = 'Comparison report generated';
+                    break;
+                default:
+                    throw new Error('Invalid report type: ' + reportType);
+            }
+            
             try {
-                const resp = await fetch('/api/report/generate-market?' + params.toString(), {
+                const resp = await fetch(apiEndpoint + '?' + params.toString(), {
                     method: 'POST',
                 });
                 if (!resp.ok) throw new Error('Failed to generate report: ' + resp.status);
                 const data = await resp.json();
                 console.log('[Generate Report] Success:', data);
-                showToast('Market report generated: ' + (data.report_path || 'unknown'), 'success');
+                showToast(successMessage + ': ' + (data.report_path || 'unknown'), 'success');
                 
                 // Close the modal
                 const reportModal = document.getElementById('reportModal');
