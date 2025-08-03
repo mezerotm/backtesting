@@ -124,7 +124,7 @@
       <!-- Report Type should always be at the top -->
       <div>
         <label class="block text-sm text-gray-300 mb-1" for="genReportType">Report Type</label>
-        <select id="genReportType" class="w-full p-2 rounded bg-slate-700 text-white" required>
+        <select id="genReportType" name="genReportType" class="w-full p-2 rounded bg-slate-700 text-white" required>
           <option value="market" data-snapshot="true">Market Check</option>
           <option value="backtest" disabled data-snapshot="false">Backtest</option>
           <option value="comparison" disabled data-snapshot="false">Comparison</option>
@@ -133,7 +133,7 @@
       </div>
       <div>
         <label class="block text-sm text-gray-300 mb-1" for="genSymbol">Symbol</label>
-        <input type="text" id="genSymbol" class="w-full p-2 rounded bg-slate-700 text-white" autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
+        <input type="text" id="genSymbol" name="genSymbol" class="w-full p-2 rounded bg-slate-700 text-white" autocomplete="off" style="text-transform:uppercase; letter-spacing:0.5px;">
         <div id="genSymbolDropdown" class="relative"></div>
       </div>
       <div>
@@ -169,4 +169,46 @@
     </div>
   </div>
 </div>
+
+<!-- Toast Container for Notifications -->
+<div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+<style>
+.toast {
+    padding: 12px 16px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    max-width: 300px;
+    word-wrap: break-word;
+    transition: all 0.3s ease;
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast.success {
+    background-color: #10b981;
+    border-left: 4px solid #059669;
+}
+
+.toast.error {
+    background-color: #ef4444;
+    border-left: 4px solid #dc2626;
+}
+
+.toast.info {
+    background-color: #3b82f6;
+    border-left: 4px solid #2563eb;
+}
+
+.toast.warning {
+    background-color: #f59e0b;
+    border-left: 4px solid #d97706;
+}
+
+.toast.hidden {
+    transform: translateX(100%);
+    opacity: 0;
+}
+</style>
  

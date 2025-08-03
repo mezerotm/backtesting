@@ -77,9 +77,9 @@ def generate_metadata(
         if strategies_compared:
             metadata["strategies_compared"] = strategies_compared
 
-    # Add path to the report with /results/ prefix
+    # Add path to the report with /static/results/ prefix
     if directory_name:
-        metadata["path"] = f"/results/{directory_name}/index.html"
+        metadata["path"] = f"/static/results/{directory_name}/index.html"
 
     # Add any additional data
     if additional_data and isinstance(additional_data, dict):

@@ -7,6 +7,7 @@ import json
 import requests
 import shutil
 from market_workflow_cli import run_market_report
+from financial_workflow_cli import create_financial_report
 
 logger = get_server_logger("report")
 
@@ -32,10 +33,11 @@ def get_report_metadata(report_dir: str) -> Dict:
             if 'created' in metadata:
                 metadata['created'] = metadata['created']
             if 'path' not in metadata:
-                metadata['path'] = f"results/{metadata['dir']}/index.html"
+                metadata['path'] = f"static/results/{
+                    metadata['dir']}/index.html"
             return metadata
     return {'dir': os.path.basename(
-        report_dir), 'path': f"results/{os.path.basename(report_dir)}/index.html"}
+        report_dir), 'path': f"static/results/{os.path.basename(report_dir)}/index.html"}
 
 
 @router.get("/list")
@@ -124,3 +126,35 @@ def generate_market_report_api(
             exc_info=True)
         raise HTTPException(status_code=500,
                             detail=f"Error generating market report: {e}")
+
+
+@router.post("/generate-finance")
+def generate_finance_report_api(
+        symbol: str = None,
+        output_dir: str = 'public/results',
+        force_refresh: bool = False):
+    """Trigger finance report generation and return the report path."""
+    logger.info(f"[API] /api/report/generate-finance called with symbol={
+                symbol}, output_dir={output_dir}, force_refresh={force_refresh}")
+
+    if not symbol:
+        raise HTTPException(status_code=400,
+                            detail="Symbol is required for finance reports")
+
+    try:
+        # Create a simple args object for the financial workflow
+        class Args:
+            def __init__(self, output_dir, force_refresh):
+                self.output_dir = output_dir
+                self.force_refresh = force_refresh
+
+        args = Args(output_dir, force_refresh)
+        path = create_financial_report(symbol, args)
+        logger.info(f"[API] Finance report generated at: {path}")
+        return {"report_path": path}
+    except Exception as e:
+        logger.error(
+            f"[API] Error generating finance report: {e}",
+            exc_info=True)
+        raise HTTPException(status_code=500,
+                            detail=f"Error generating finance report: {e}")

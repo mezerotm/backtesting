@@ -443,7 +443,7 @@ def calculate_unrealized_pl_change(orders, start_date, end_date):
         if pos_data['quantity'] > 0:
             start_price = start_prices.get(symbol)
             if start_price is not None:
-                start_unrealized += (start_price -
+                start_unrealized += (start_price - \
                                      pos_data['avg_price']) * pos_data['quantity']
 
     # Calculate unrealized P/L at end
@@ -452,7 +452,7 @@ def calculate_unrealized_pl_change(orders, start_date, end_date):
         if pos_data['quantity'] > 0:
             end_price = end_prices.get(symbol)
             if end_price is not None:
-                end_unrealized += (end_price -
+                end_unrealized += (end_price - \
                                    pos_data['avg_price']) * pos_data['quantity']
 
     # Return the change in unrealized P/L
@@ -757,65 +757,45 @@ async def get_profit_loss_chart(
     period: str = Query(
         'YTD',
         description="Time period: 1W, 1M, 3M, YTD, MAX")) -> Dict:
-    # Load existing polygon cache to avoid API calls
-    polygon_cache = load_polygon_close_cache()
-    positions = await get_positions(request)
+    """Get profit/loss chart data using cached values."""
+    try:
+        user_id = await get_current_user_id(request)
+        if not user_id:
+            logger.warning("No user ID provided, returning empty chart data")
+            return {"labels": [], "values": [], "period": period}
 
-    # Get date range for the period
-    start_date, end_date = get_date_range(period)
+        model_manager = get_model_manager()
+        cache_records = model_manager.get_profit_loss_cache_records(user_id)
 
-    # Create a simple chart with multiple data points
-    # Use available dates from cache to create a meaningful chart
-    labels = []
-    values = []
+        # Find the specific period in cache
+        cached_data = None
+        for record in cache_records:
+            if record.get("period") == period:
+                cached_data = record
+                break
 
-    # Get all available dates from cache for any symbol
-    all_dates = set()
-    for symbol_data in polygon_cache.values():
-        all_dates.update(symbol_data.keys())
+        if cached_data:
+            # Use cached data to create a simple chart
+            total_pl = cached_data.get("total", 0.0)
+            unrealized_pl = cached_data.get("unrealized", 0.0)
+            realized_pl = cached_data.get("realized", 0.0)
 
-    # Filter dates within the period range
-    period_dates = []
-    for date_str in sorted(all_dates):
-        try:
-            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-            if start_date.date() <= date_obj.date() <= end_date.date():
-                period_dates.append(date_str)
-        except ValueError:
-            continue
+            # Create a simple chart with current data
+            # For now, just show the current total P/L
+            labels = [datetime.now().strftime('%Y-%m-%d')]
+            values = [round(total_pl, 2)]
 
-    # If no dates in range, create a simple chart with current data
-    if not period_dates:
-        current_unrealized = 0.0
-        for pos in positions:
-            symbol = pos["symbol"]
-            if symbol in polygon_cache:
-                dates = sorted(polygon_cache[symbol].keys(), reverse=True)
-                if dates:
-                    latest_price = polygon_cache[symbol][dates[0]]['price']
-                    pl = (latest_price - pos["buy_price"]) * pos["quantity"]
-                    current_unrealized += pl
+            logger.info(f"Retrieved chart data for period {
+                        period}: total={total_pl}")
+            return {"labels": labels, "values": values, "period": period}
+        else:
+            # Fallback: create empty chart if no cached data
+            logger.warning(f"No cached data found for period {period}")
+            return {"labels": [], "values": [], "period": period}
 
-        labels = [datetime.now().strftime('%Y-%m-%d')]
-        values = [round(current_unrealized, 2)]
-    else:
-        # Create chart data for each date in the period
-        for date_str in period_dates:
-            labels.append(date_str)
-
-            # Calculate P/L for this date using available data
-            date_unrealized = 0.0
-            for pos in positions:
-                symbol = pos["symbol"]
-                if symbol in polygon_cache and date_str in polygon_cache[symbol]:
-                    price = polygon_cache[symbol][date_str]['price']
-                    if price is not None:  # Check for None before arithmetic
-                        pl = (price - pos["buy_price"]) * pos["quantity"]
-                        date_unrealized += pl
-
-            values.append(round(date_unrealized, 2))
-
-    return {"labels": labels, "values": values, "period": period}
+    except Exception as e:
+        logger.error(f"Error getting profit/loss chart data: {e}")
+        return {"labels": [], "values": [], "period": period}
 
 
 @router.get("/cache")
@@ -872,7 +852,7 @@ async def get_profit_loss_cache(request: Request) -> Dict:
 
 @router.get("/details")
 async def get_profit_loss_details(request: Request) -> List[Dict]:
-    """Get profit/loss details from PocketBase via ModelManager."""
+    """Get profit/loss details from cached data and current positions."""
     try:
         user_id = await get_current_user_id(request)
         if not user_id:
@@ -880,16 +860,56 @@ async def get_profit_loss_details(request: Request) -> List[Dict]:
             return []
 
         model_manager = get_model_manager()
-        profit_loss_records = model_manager.get_profit_loss_records(user_id)
 
-        # Convert to the expected format
+        # Get current positions to show unrealized P/L by symbol
+        positions = model_manager.get_positions(user_id)
+        symbol_cache = model_manager.get_symbol_cache()
+
         details = []
-        for record in profit_loss_records:
-            details.append({
-                "symbol": record.get("symbol", ""),
-                "type": record.get("type", ""),
-                "amount": record.get("amount", 0.0)
-            })
+
+        # Add unrealized P/L for each position
+        for pos in positions:
+            symbol = pos["symbol"]
+            quantity = pos["quantity"]
+            buy_price = pos["buy_price"]
+
+            # Get latest price from symbol cache
+            symbol_data = [
+                r for r in symbol_cache if r.get("symbol") == symbol]
+            if symbol_data:
+                latest_price = symbol_data[0].get("price", buy_price)
+                unrealized_pl = (latest_price - buy_price) * quantity
+
+                details.append({
+                    "symbol": symbol,
+                    "type": "Unrealized",
+                    "amount": round(unrealized_pl, 2)
+                })
+
+        # Add realized P/L from orders (simplified)
+        orders = model_manager.get_orders(user_id)
+        realized_by_symbol = {}
+
+        for order in orders:
+            if order.get('type') == 'sell':
+                symbol = order.get('symbol', '')
+                if symbol not in realized_by_symbol:
+                    realized_by_symbol[symbol] = 0.0
+                # Simple P/L calculation for sell orders
+                buy_price = order.get('price', 0)
+                sell_price = order.get('price', 0)
+                quantity = order.get('quantity', 0)
+                pl = (sell_price - buy_price) * quantity
+                realized_by_symbol[symbol] += pl
+
+        # Add realized P/L entries
+        for symbol, realized_pl in realized_by_symbol.items():
+            if realized_pl != 0:
+                details.append({
+                    "symbol": symbol,
+                    "type": "Realized",
+                    "amount": round(realized_pl, 2)
+                })
 
         logger.info(
             f"Retrieved {
