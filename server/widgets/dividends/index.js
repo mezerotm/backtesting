@@ -2,6 +2,9 @@ export function initDividends() {
   fetchAndRenderDividends();
 }
 
+// Expose functions globally for login refresh
+window.fetchAndRenderDividends = fetchAndRenderDividends;
+
 async function fetchAndRenderDividends() {
   try {
     const response = await fetch('/api/dividends/received');
