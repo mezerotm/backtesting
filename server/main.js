@@ -1,5 +1,16 @@
 // Main JavaScript for Backtesting Dashboard
 
+// Import frontend data models for validation
+import { 
+    validateData, 
+    validateAndTransform, 
+    withValidatedData, 
+    validateApiResponse, 
+    formatValidationErrors, 
+    handleValidationError,
+    SCHEMA_REGISTRY 
+} from '/js/data_models.js';
+
 // Global state management
 const AppState = {
     isLoading: false,
@@ -92,7 +103,7 @@ const Utils = {
         }, 3000);
     },
     
-    // API request helper
+    // API request helper with validation
     async apiRequest(endpoint, options = {}) {
         const defaultOptions = {
             method: 'GET',
@@ -112,6 +123,16 @@ const Utils = {
             }
             
             const data = await response.json();
+            
+            // Validate response data if validation is available
+            if (typeof validateApiResponse === 'function') {
+                const validation = validateApiResponse(endpoint, data);
+                if (!validation.success) {
+                    console.warn(`API response validation failed for ${endpoint}:`, validation.errors);
+                    handleValidationError(validation.errors, `API Response (${endpoint})`);
+                }
+            }
+            
             return data;
         } catch (error) {
             console.error('API request failed:', error);
@@ -552,4 +573,15 @@ window.AppState = AppState;
 window.Utils = Utils;
 window.ChartUtils = ChartUtils;
 window.Navigation = Navigation;
-window.WidgetUtils = WidgetUtils; 
+window.WidgetUtils = WidgetUtils;
+
+// Export validation utilities globally
+window.DataModels = {
+    validateData,
+    validateAndTransform,
+    withValidatedData,
+    validateApiResponse,
+    formatValidationErrors,
+    handleValidationError,
+    SCHEMA_REGISTRY
+}; 

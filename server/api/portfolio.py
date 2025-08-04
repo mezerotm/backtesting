@@ -1,9 +1,18 @@
 from fastapi import APIRouter, Request, HTTPException, Query
 from server.models import get_model_manager
+from server.models.data_models import (
+    Position,
+    PortfolioSettings,
+    SymbolCache,
+    PortfolioSummary,
+    validate_position_data,
+    validate_portfolio_data,
+    validate_symbol_cache_data,
+    transform_pocketbase_record,
+    transform_to_pocketbase_data)
 from server.api.auth import get_current_user_id
 from utils.logger import get_api_logger
-from pydantic import BaseModel
-from typing import List
+from typing import List, Dict, Any, Optional
 import time
 import requests
 from utils.config import POLYGON_API_KEY
@@ -14,13 +23,158 @@ logger = get_api_logger("portfolio")
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
 
-class Position(BaseModel):
-    id: str = None
-    symbol: str
-    quantity: float
-    buy_price: float
-    notes: str = None
-    source: str = None
+# =============================================================================
+# PORTFOLIO CALCULATIONS
+# =============================================================================
+
+def calculate_position_amount(position: Position) -> float:
+    """Calculate total amount invested in a position."""
+    return round(position.quantity * position.buy_price, 2)
+
+
+def calculate_position_market_value(
+        position: Position,
+        current_price: Optional[float]) -> Optional[float]:
+    """Calculate current market value of a position."""
+    if current_price is None:
+        return None
+    return round(position.quantity * current_price, 2)
+
+
+def calculate_position_total_return(
+        position: Position,
+        current_price: Optional[float]) -> Optional[float]:
+    """Calculate total return percentage for a position."""
+    if current_price is None or position.buy_price == 0:
+        return None
+    return round(((current_price - position.buy_price) /
+                 position.buy_price) * 100, 2)
+
+
+def calculate_position_todays_return(
+        position: Position,
+        current_price: Optional[float],
+        previous_close: Optional[float]) -> Optional[float]:
+    """Calculate today's return percentage for a position."""
+    if current_price is None or previous_close is None or previous_close == 0:
+        return None
+    return round(((current_price - previous_close) / previous_close) * 100, 2)
+
+
+def calculate_position_delta(position: Position) -> float:
+    """Calculate position delta (for stocks/ETFs, delta = quantity)."""
+    return round(position.quantity, 2)
+
+
+def calculate_portfolio_total_value(
+        positions: List[Position],
+        total_cash: float = 0.0,
+        total_btc: float = 0.0) -> float:
+    """Calculate total portfolio value including positions, cash, and BTC."""
+    total_value = total_cash + total_btc
+
+    for position in positions:
+        position_value = position.market_value or calculate_position_amount(
+            position)
+        total_value += position_value or 0
+
+    return round(total_value, 2)
+
+
+def calculate_position_percentages(
+        positions: List[Position],
+        total_portfolio_value: float) -> None:
+    """Calculate percentage of portfolio for each position."""
+    if total_portfolio_value <= 0:
+        return
+
+    for position in positions:
+        position_value = position.market_value or calculate_position_amount(
+            position)
+        position.percent_of_portfolio = round(
+            (position_value / total_portfolio_value) * 100, 2)
+
+
+def create_portfolio_summary(positions: List[Position],
+                             total_cash: float = 0.0,
+                             total_btc: float = 0.0,
+                             btc_avg_price: float = 0.0) -> PortfolioSummary:
+    """Create portfolio summary with calculated values."""
+    # Calculate total portfolio value
+    total_value = calculate_portfolio_total_value(
+        positions, total_cash, total_btc)
+
+    # Create summary
+    summary = PortfolioSummary(
+        positions=positions,
+        total_cash=total_cash,
+        total_btc=total_btc,
+        btc_avg_price=btc_avg_price,
+        total_value=total_value
+    )
+
+    # Calculate percentages
+    calculate_position_percentages(positions, total_value)
+
+    return summary
+
+
+def enrich_positions_with_market_data(
+        positions: List[Position], market_data: Dict[str, Dict[str, Any]]) -> None:
+    """Enrich positions with market data and calculated values."""
+    for position in positions:
+        symbol = position.symbol
+        market_info = market_data.get(symbol, {})
+
+        # Get market prices
+        current_price = market_info.get("last_price")
+        previous_close = market_info.get("previous_close")
+
+        # Calculate market value
+        position.market_value = calculate_position_market_value(
+            position, current_price)
+
+        # Calculate returns
+        position.total_return = calculate_position_total_return(
+            position, current_price)
+        position.todays_return = calculate_position_todays_return(
+            position, current_price, previous_close)
+
+        # Set other market data
+        position.beta = market_info.get("beta")
+        position.delta = calculate_position_delta(position)
+
+
+def get_position_summary_dict(position: Position) -> Dict[str, Any]:
+    """Convert position to dictionary for API response."""
+    return {
+        "id": position.id,
+        "symbol": position.symbol,
+        "quantity": position.quantity,
+        "buy_price": position.buy_price,
+        "market_value": position.market_value,
+        "todays_return": position.todays_return,
+        "total_return": position.total_return,
+        "beta": position.beta,
+        "delta": position.delta,
+        "notes": position.notes or "",
+        "source": position.source or "manual",
+        "percent_of_portfolio": position.percent_of_portfolio
+    }
+
+
+def get_portfolio_summary_dict(summary: PortfolioSummary) -> Dict[str, Any]:
+    """Convert portfolio summary to dictionary for API response."""
+    return {
+        "positions": [
+            get_position_summary_dict(pos) for pos in summary.positions],
+        "total_value": summary.total_value,
+        "total_cash": summary.total_cash,
+        "total_btc": summary.total_btc,
+        "btc_avg_price": summary.btc_avg_price}
+
+
+# Position model is now imported from data_models
 
 
 async def get_portfolio_symbols(request: Request):
@@ -54,41 +208,97 @@ def get_current_symbol_data(symbol):
         if not symbol_records:
             logger.debug(f"No cached data found for {symbol}")
             return None
-        most_recent = max(symbol_records, key=lambda x: x.get("cached_at", ""))
-        current_data = {
-            "last_price": most_recent.get("last_price"),
-            "previous_close": most_recent.get("previous_close"),
-            "timestamp": most_recent.get("timestamp", time.time()),
-            "beta": most_recent.get("beta")
-        }
-        logger.debug(f"Retrieved current data for {symbol}: {current_data}")
-        return current_data
+
+        # Get the most recent record by date (today's date first, then fallback
+        # to any)
+        today = time.strftime('%Y-%m-%d')
+        today_records = [r for r in symbol_records if r.get("date") == today]
+
+        if today_records:
+            most_recent = today_records[0]  # Take the first one for today
+        else:
+            # Fallback to any record for this symbol
+            most_recent = symbol_records[0] if symbol_records else None
+
+        if not most_recent:
+            logger.debug(f"No valid cached data found for {symbol}")
+            return None
+
+        # Transform to SymbolCache model for validation
+        try:
+            symbol_cache = transform_pocketbase_record(
+                most_recent, SymbolCache)
+            current_data = {
+                "last_price": symbol_cache.price,
+                "previous_close": symbol_cache.price,  # For now, use same as price
+                "timestamp": time.time(),
+                "beta": symbol_cache.beta
+            }
+            logger.debug(f"Retrieved current data for {
+                         symbol}: {current_data}")
+            return current_data
+        except Exception as validation_error:
+            logger.error(f"Validation error for symbol {
+                         symbol}: {validation_error}")
+            return None
+
     except Exception as e:
         logger.error(f"Error getting current symbol data for {symbol}: {e}")
         return None
 
 
 def set_current_symbol_data(symbol, data):
-    """Set current symbol data in PocketBase symbol cache."""
+    """Set current symbol data in PocketBase symbol cache with daily records."""
     try:
         model_manager = get_model_manager()
+        today = time.strftime('%Y-%m-%d')
+
+        # Check if we already have a record for today
+        cached_records = model_manager.get_symbol_cache()
+        today_records = [r for r in cached_records if r.get(
+            "symbol") == symbol and r.get("date") == today]
+
+        # Create SymbolCache model for validation
         cache_data = {
             "symbol": symbol,
-            # Use last_price as the current price
             "price": data.get("last_price"),
-            "date": time.strftime('%Y-%m-%d'),  # Current date
+            "date": today,
             "beta": data.get("beta"),
-            "delta": None  # Placeholder for delta calculation
+            "delta": data.get("delta", None)
         }
-        model_manager.update_symbol_cache(symbol, cache_data)
-        logger.debug(f"Saved current data for {symbol}: {cache_data}")
+
+        # Validate the data
+        try:
+            symbol_cache = validate_symbol_cache_data(cache_data)
+            cache_data = transform_to_pocketbase_data(symbol_cache)
+        except Exception as validation_error:
+            logger.error(f"Validation error for symbol {
+                         symbol}: {validation_error}")
+            return False
+
+        if today_records:
+            # Update existing record for today
+            record_id = today_records[0]["id"]
+            result = model_manager.pb_client.update_record(
+                "symbol_cache", record_id, cache_data) is not None
+            logger.debug(f"Updated existing cache data for {
+                         symbol} on {today}: {result}")
+        else:
+            # Create new record for today
+            result = model_manager.pb_client.create_record(
+                "symbol_cache", cache_data) is not None
+            logger.debug(f"Created new cache data for {
+                         symbol} on {today}: {result}")
+
+        return result
     except Exception as e:
         logger.error(f"Error setting current symbol data for {symbol}: {e}")
+        return False
 
 
 def fetch_symbol_data(symbols):
     """Fetch symbol data from Polygon.io and cache in PocketBase."""
-    result = []
+    result = {}
 
     # Check if Polygon API key is available
     if not POLYGON_API_KEY:
@@ -114,23 +324,21 @@ def fetch_symbol_data(symbols):
 
             # Return data in the format expected by the new schema
             symbol_data = {
-                "symbol": symbol,
-                "price": last_price,  # Use last_price as the current price
-                "date": time.strftime('%Y-%m-%d'),  # Current date
-                "beta": None,
-                "delta": None
+                "last_price": last_price,
+                "previous_close": prev_close,
+                "timestamp": time.time(),
+                "beta": None
             }
-            result.append(symbol_data)
+            result[symbol] = symbol_data
             logger.debug(f"{symbol}: market data prepared")
         except Exception as e:
             symbol_data = {
-                "symbol": symbol,
-                "price": None,
-                "date": time.strftime('%Y-%m-%d'),
-                "beta": None,
-                "delta": None
+                "last_price": None,
+                "previous_close": None,
+                "timestamp": time.time(),
+                "beta": None
             }
-            result.append(symbol_data)
+            result[symbol] = symbol_data
             logger.error(f"{symbol}: market data fetch failed - {e}")
     return result
 
@@ -605,66 +813,47 @@ async def get_portfolio_summary(request: Request):
         logger.info(f"Getting portfolio summary for user: {user_id}")
 
         # Get positions filtered by user ID
-        positions = model_manager.get_positions(user_id)
+        raw_positions = model_manager.get_positions(user_id)
+
+        # Transform and validate positions
+        positions = []
+        symbols = []
+        for raw_pos in raw_positions:
+            try:
+                position = transform_pocketbase_record(raw_pos, Position)
+                positions.append(position)
+                symbols.append(position.symbol)
+            except Exception as e:
+                logger.error(
+                    f"Error validating position {
+                        raw_pos.get('id')}: {e}")
+                continue
+
         # Load symbol data for market prices
-        symbols = [pos["symbol"] for pos in positions]
         symbol_data = {}
         for symbol in symbols:
             data = get_current_symbol_data(symbol)
             if data:
                 symbol_data[symbol] = data
 
-        summary = []
-        for pos in positions:
-            symbol = pos["symbol"]
-            quantity = pos["quantity"]
-            buy_price = pos["buy_price"]
-            last_price = symbol_data.get(symbol, {}).get("last_price")
-            prev_close = symbol_data.get(symbol, {}).get("previous_close")
-            beta = symbol_data.get(symbol, {}).get("beta")
+        # Enrich positions with market data and calculations
+        enrich_positions_with_market_data(positions, symbol_data)
 
-            # Calculated fields
-            market_value = quantity * last_price if last_price is not None else None
-            todays_return = None
-            if last_price is not None and prev_close and prev_close != 0:
-                todays_return = ((last_price - prev_close) / prev_close) * 100
-            total_return = None
-            if last_price is not None and buy_price and buy_price != 0:
-                total_return = ((last_price - buy_price) / buy_price) * 100
+        # Log positions with missing market data
+        for position in positions:
+            if position.market_value is None:
+                logger.warning(f"{position.symbol}: missing market data")
 
-            # Delta (for stocks/ETFs)
-            delta = quantity
+        # Create portfolio summary
+        summary = create_portfolio_summary(positions)
 
-            # Log only if there's an issue with data
-            if market_value is None:
-                logger.warning(f"{symbol}: missing market data")
-
-            # Format decimals to 0.00 precision
-            todays_return = round(todays_return,
-                                  2) if todays_return is not None else None
-            total_return = round(total_return,
-                                 2) if total_return is not None else None
-            beta = round(beta, 2) if beta is not None else None
-            delta = round(delta, 2) if delta is not None else None
-
-            summary.append({
-                "id": pos["id"],
-                "symbol": symbol,
-                "quantity": pos["quantity"],
-                "buy_price": round(pos["buy_price"], 2),
-                "market_value": round(market_value, 2) if market_value is not None else None,
-                "todays_return": todays_return,
-                "total_return": total_return,
-                "beta": beta,
-                "delta": delta,
-                "notes": pos.get("notes", ""),
-                "source": pos.get("source", "manual")
-            })
+        # Convert to dictionary for JSON response
+        summary_dict = get_portfolio_summary_dict(summary)
 
         logger.info(
             f"Generated portfolio summary with {
-                len(summary)} positions for user {user_id} from PocketBase")
-        return summary
+                len(summary_dict)} positions for user {user_id}")
+        return summary_dict
     except Exception as e:
         logger.error(f"Error generating portfolio summary: {e}")
         raise HTTPException(status_code=500,

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Request, HTTPException, Body
-from server.models import get_model_manager
+from server.models import get_model_manager, Order, validate_order_data, transform_pocketbase_record, transform_to_pocketbase_data
 from server.api.auth import get_current_user_id
 from utils.logger import get_server_logger
-from typing import Dict
+from typing import Dict, List
 
 logger = get_server_logger("orders")
 
@@ -21,8 +21,26 @@ async def get_orders(request: Request) -> Dict:
                 status_code=401,
                 detail="User not authenticated")
 
-        orders = get_model_manager().get_orders(user_id)
-        return {"orders": orders}
+        # Get raw orders from PocketBase
+        raw_orders = get_model_manager().get_orders(user_id)
+
+        # Transform to Pydantic models for validation
+        orders = []
+        for raw_order in raw_orders:
+            try:
+                order = transform_pocketbase_record(raw_order, Order)
+                orders.append(order)
+            except Exception as e:
+                logger.warning(
+                    f"Invalid order data: {e}, skipping order {
+                        raw_order.get(
+                            'id', 'unknown')}")
+                continue
+
+        # Convert back to dictionaries for API response
+        order_dicts = [transform_to_pocketbase_data(order) for order in orders]
+
+        return {"orders": order_dicts}
     except HTTPException:
         raise
     except Exception as e:
@@ -43,11 +61,22 @@ async def create_order(request: Request, order_data: Dict = Body(...)):
                 detail="User not authenticated")
 
         # Add user_id to order data
-        order_data['user_id'] = user_id
+        order_data['user'] = user_id
+
+        # Validate order data using Pydantic model
+        try:
+            validated_order = validate_order_data(order_data)
+        except Exception as e:
+            logger.error(f"Order validation failed: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid order data: {e}")
 
         # Create order in database
-        result = get_model_manager().create_order(order_data)
+        result = get_model_manager().create_order(validated_order)
         return {"success": True, "order": result}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating order: {e}")
         raise HTTPException(status_code=500, detail="Failed to create order")

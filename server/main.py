@@ -84,6 +84,13 @@ if __name__ == '__main__':
         shutil.copyfile(js_src, js_dst)
         print(f'Copied {js_src} to {js_dst}')
 
+    # Copy frontend data models to public/js/
+    models_src = 'server/models/data_models.js'
+    models_dst = 'public/js/data_models.js'
+    if os.path.isfile(models_src):
+        shutil.copyfile(models_src, models_dst)
+        print(f'Copied {models_src} to {models_dst}')
+
     # Copy widget JS files to public/js with widget-prefixed names
     widgets_dir = 'server/widgets'
     for widget_name in os.listdir(widgets_dir):

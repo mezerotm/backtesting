@@ -68,7 +68,21 @@ function fetchPositions() {
     })
     .then(data => {
       console.log('[Portfolio] Received positions:', data);
-      renderPositions(data);
+      
+      // Validate the response data
+      if (window.DataModels && window.DataModels.validateData) {
+        const validation = window.DataModels.validateData('portfolio_summary', data);
+        if (!validation.success) {
+          console.error('[Portfolio] Data validation failed:', validation.errors);
+          window.DataModels.handleValidationError(validation.errors, 'Portfolio Data');
+          renderPositions([]);
+          return;
+        }
+        console.log('[Portfolio] Data validation successful');
+      }
+      
+      // Safe to use validated data
+      renderPositions(data.positions || []);
     })
     .catch(error => {
       console.error('[Portfolio] Error fetching positions:', error);
@@ -86,7 +100,8 @@ async function renderPositions(positions) {
   tbody.innerHTML = '';
   let totalValue = 0;
   positions.forEach(pos => {
-    totalValue += pos.market_value || (pos.quantity * pos.buy_price);
+    const positionValue = pos.market_value !== null && pos.market_value !== undefined ? pos.market_value : (pos.quantity * pos.buy_price);
+    totalValue += positionValue || 0;
   });
   let btcValueForTotal = portfolioBTCDollar > 0 ? portfolioBTCDollar : 0;
   let cashLeft = portfolioCash - totalValue;
@@ -130,7 +145,9 @@ async function renderPositions(positions) {
     positions.forEach(pos => {
       const amount = pos.quantity * pos.buy_price;
       const amountFormatted = amount !== undefined && amount !== null ? `$${amount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}` : '-';
-      const percent = pos.market_value && totalPortfolioValue > 0 ? ((pos.market_value / totalPortfolioValue) * 100).toFixed(2) : '0.00';
+      // Calculate percentage based on market value if available, otherwise use amount
+      const positionValue = pos.market_value !== null && pos.market_value !== undefined ? pos.market_value : (pos.quantity * pos.buy_price);
+      const percent = positionValue && totalPortfolioValue > 0 ? ((positionValue / totalPortfolioValue) * 100).toFixed(2) : '0.00';
       const isRobinhoodPosition = pos.source === 'robinhood';
       const actionButtons = isRobinhoodPosition ? 
         '<span class="rh-badge">RH</span>' : 
@@ -774,19 +791,19 @@ export function initPortfolio() {
   // Auto-pull handled by global timer in main.js
   // setInterval(() => pullRobinhoodData(false), 10 * 60 * 1000);
   
-  // Initial data load - SYMBOL REFRESH TEMPORARILY DISABLED
+  // Initial data load
   fetchPositionsAndCash();
   
-  // Refresh symbol data to get current market prices - TEMPORARILY DISABLED
-  // fetch('/api/portfolio/refresh-symbols', { method: 'POST' })
-  //   .then(() => {
-  //     console.log('[Portfolio] Symbol data refreshed');
-  //     fetchPositionsAndCash(); // Reload with fresh market data
-  //   })
-  //   .catch(err => {
-  //     console.error('[Portfolio] Failed to refresh symbol data:', err);
-  //     // Still load positions even if symbol refresh fails
-  //   });
+  // Refresh symbol data to get current market prices
+  fetch('/api/portfolio/refresh-symbols', { method: 'POST' })
+    .then(() => {
+      console.log('[Portfolio] Symbol data refreshed');
+      fetchPositionsAndCash(); // Reload with fresh market data
+    })
+    .catch(err => {
+      console.error('[Portfolio] Failed to refresh symbol data:', err);
+      // Still load positions even if symbol refresh fails
+    });
 }
 
 console.log('[Portfolio] portfolio/index.js script loaded');

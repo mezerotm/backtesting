@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException, Body
-from server.models import get_model_manager
+from server.models import get_model_manager, Dividend, validate_dividend_data, transform_pocketbase_record, transform_to_pocketbase_data
 from server.api.auth import get_current_user_id
 from utils.logger import get_server_logger
 from typing import List, Dict
@@ -24,11 +24,30 @@ async def get_all_dividends(request: Request) -> List[Dict]:
                 "No authenticated user found, returning empty dividends")
             return []
 
-        dividends = model_manager.get_dividends(user_id)
+        # Get raw dividends from PocketBase
+        raw_dividends = model_manager.get_dividends(user_id)
+
+        # Transform to Pydantic models for validation
+        dividends = []
+        for raw_dividend in raw_dividends:
+            try:
+                dividend = transform_pocketbase_record(raw_dividend, Dividend)
+                dividends.append(dividend)
+            except Exception as e:
+                logger.warning(
+                    f"Invalid dividend data: {e}, skipping dividend {
+                        raw_dividend.get(
+                            'id', 'unknown')}")
+                continue
+
+        # Convert back to dictionaries for API response
+        dividend_dicts = [transform_to_pocketbase_data(
+            dividend) for dividend in dividends]
+
         logger.info(
             f"Retrieved {
-                len(dividends)} dividends from PocketBase for user {user_id}")
-        return dividends
+                len(dividend_dicts)} dividends from PocketBase for user {user_id}")
+        return dividend_dicts
     except Exception as e:
         logger.error(f"Error getting dividends: {e}")
         raise HTTPException(status_code=500,
@@ -49,19 +68,33 @@ async def get_received_dividends(request: Request) -> List[Dict]:
                 "No authenticated user found, returning empty dividends")
             return []
 
-        dividends = model_manager.get_dividends(user_id)
+        # Get raw dividends from PocketBase
+        raw_dividends = model_manager.get_dividends(user_id)
 
-        # Filter for received dividends (state = 'paid' or null for Robinhood
-        # dividends)
+        # Transform to Pydantic models and filter for received dividends
         received = []
-        for d in dividends:
-            if d.get('state') == 'paid' or d.get('state') is None:
-                received.append(d)
+        for raw_dividend in raw_dividends:
+            try:
+                dividend = transform_pocketbase_record(raw_dividend, Dividend)
+                # Filter for received dividends (state = 'paid' or null for
+                # Robinhood dividends)
+                if dividend.state == 'paid' or dividend.state is None:
+                    received.append(dividend)
+            except Exception as e:
+                logger.warning(
+                    f"Invalid dividend data: {e}, skipping dividend {
+                        raw_dividend.get(
+                            'id', 'unknown')}")
+                continue
+
+        # Convert back to dictionaries for API response
+        received_dicts = [transform_to_pocketbase_data(
+            dividend) for dividend in received]
 
         logger.info(
             f"Retrieved {
-                len(received)} received dividends from PocketBase for user {user_id}")
-        return received
+                len(received_dicts)} received dividends from PocketBase for user {user_id}")
+        return received_dicts
     except Exception as e:
         logger.error(f"Error filtering dividends: {e}")
         raise HTTPException(status_code=500,
