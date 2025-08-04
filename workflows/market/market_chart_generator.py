@@ -612,8 +612,7 @@ def generate_market_index_chart(
     charts_dir = os.path.join(output_dir, 'charts')
     os.makedirs(charts_dir, exist_ok=True)
     chart_path = os.path.join(charts_dir, f'{safe_name}_chart.html')
-    widget_html = f'''
-<!-- TradingView Widget BEGIN -->
+    widget_html = f'''<!-- TradingView Widget BEGIN -->
 <html>
 <head></head>
 <body style="height:900px; margin:0; padding:0;">
@@ -636,13 +635,12 @@ def generate_market_index_chart(
     "hide_top_toolbar": false,
     "save_image": false,
     "container_id": "tradingview_{safe_name}"
-  }  );
+  } );
   </script>
 </div>
 </body>
 </html>
-<!-- TradingView Widget END -->
-'''
+<!-- TradingView Widget END -->'''
     try:
         with open(chart_path, 'w', encoding='utf-8') as f:
             f.write(widget_html)
