@@ -18,6 +18,27 @@ async function fetchAndRenderProfitLoss(period = 'YTD') {
       fetch('/api/profit-loss/details').then(r => r.json()),
       fetch(`/api/profit-loss/chart?period=${period}`).then(r => r.json()),
     ]);
+    
+    // Validate the response data
+    if (window.DataModels && window.DataModels.validateData) {
+      const summaryValidation = window.DataModels.validateData('profit_loss_summary', summary);
+      const detailsValidation = window.DataModels.validateData('profit_loss_details', details);
+      
+      if (!summaryValidation.success) {
+        console.error('[ProfitLoss] Summary validation failed:', summaryValidation.errors);
+        window.DataModels.handleValidationError(summaryValidation.errors, 'Profit/Loss Summary');
+      }
+      
+      if (!detailsValidation.success) {
+        console.error('[ProfitLoss] Details validation failed:', detailsValidation.errors);
+        window.DataModels.handleValidationError(detailsValidation.errors, 'Profit/Loss Details');
+      }
+      
+      if (summaryValidation.success && detailsValidation.success) {
+        console.log('[ProfitLoss] Data validation successful');
+      }
+    }
+    
     console.log('[ProfitLoss] API responses:', { summary, details: details.length, chartData });
     renderProfitLoss(summary, details);
     updateChart(chartData);

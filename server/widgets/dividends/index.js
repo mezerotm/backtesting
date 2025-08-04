@@ -9,9 +9,22 @@ async function fetchAndRenderDividends() {
   try {
     const response = await fetch('/api/dividends/received');
     const dividends = await response.json();
+    
+    // Validate the response data
+    if (window.DataModels && window.DataModels.validateData) {
+      const validation = window.DataModels.validateData('dividends_response', dividends);
+      if (!validation.success) {
+        console.error('[Dividends] Data validation failed:', validation.errors);
+        window.DataModels.handleValidationError(validation.errors, 'Dividends Data');
+        renderDividends([]);
+      }
+      console.log('[Dividends] Data validation successful');
+    }
+    
     renderDividends(dividends);
   } catch (error) {
     console.error('Error fetching dividends:', error);
+    renderDividends([]);
   }
 }
 

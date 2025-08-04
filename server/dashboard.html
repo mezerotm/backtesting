@@ -263,27 +263,59 @@
         setTimeout(() => {
           console.log('Refreshing all widget data after login...');
           
-          // Refresh portfolio data
-          if (typeof window.fetchPositionsAndSettings === 'function') {
-            window.fetchPositionsAndSettings();
-          } else if (typeof window.fetchPositionsAndCash === 'function') {
-            window.fetchPositionsAndCash();
-          }
-          
-          // Refresh orders data
-          if (typeof window.fetchAndRenderOrders === 'function') {
-            window.fetchAndRenderOrders();
-          }
-          
-          // Refresh dividends data
-          if (typeof window.fetchAndRenderDividends === 'function') {
-            window.fetchAndRenderDividends();
-          }
-          
-          // Refresh profit/loss data
-          if (typeof window.fetchAndRenderProfitLoss === 'function') {
-            window.fetchAndRenderProfitLoss();
-          }
+          // Refresh symbol data first to get current market prices
+          fetch('/api/portfolio/refresh-symbols', { method: 'POST' })
+            .then(() => {
+              console.log('Symbol data refreshed after login');
+              
+              // Refresh portfolio data
+              if (typeof window.fetchPositionsAndSettings === 'function') {
+                window.fetchPositionsAndSettings();
+              } else if (typeof window.fetchPositionsAndCash === 'function') {
+                window.fetchPositionsAndCash();
+              }
+              
+              // Refresh orders data
+              if (typeof window.fetchAndRenderOrders === 'function') {
+                window.fetchAndRenderOrders();
+              }
+              
+              // Refresh dividends data
+              if (typeof window.fetchAndRenderDividends === 'function') {
+                window.fetchAndRenderDividends();
+              }
+              
+              // Refresh profit/loss data
+              if (typeof window.fetchAndRenderProfitLoss === 'function') {
+                window.fetchAndRenderProfitLoss();
+              }
+            })
+            .catch(err => {
+              console.error('Failed to refresh symbol data after login:', err);
+              // Still refresh other widgets even if symbol refresh fails
+              
+              // Refresh portfolio data
+              if (typeof window.fetchPositionsAndSettings === 'function') {
+                window.fetchPositionsAndSettings();
+              } else if (typeof window.fetchPositionsAndCash === 'function') {
+                window.fetchPositionsAndCash();
+              }
+              
+              // Refresh orders data
+              if (typeof window.fetchAndRenderOrders === 'function') {
+                window.fetchAndRenderOrders();
+              }
+              
+              // Refresh dividends data
+              if (typeof window.fetchAndRenderDividends === 'function') {
+                window.fetchAndRenderDividends();
+              }
+              
+              // Refresh profit/loss data
+              if (typeof window.fetchAndRenderProfitLoss === 'function') {
+                window.fetchAndRenderProfitLoss();
+              }
+            });
         }, 1000);
       } else {
         showError(data.message || 'Login failed');
@@ -343,27 +375,59 @@
         setTimeout(() => {
           console.log('Refreshing all widget data after registration...');
           
-          // Refresh portfolio data
-          if (typeof window.fetchPositionsAndSettings === 'function') {
-            window.fetchPositionsAndSettings();
-          } else if (typeof window.fetchPositionsAndCash === 'function') {
-            window.fetchPositionsAndCash();
-          }
-          
-          // Refresh orders data
-          if (typeof window.fetchAndRenderOrders === 'function') {
-            window.fetchAndRenderOrders();
-          }
-          
-          // Refresh dividends data
-          if (typeof window.fetchAndRenderDividends === 'function') {
-            window.fetchAndRenderDividends();
-          }
-          
-          // Refresh profit/loss data
-          if (typeof window.fetchAndRenderProfitLoss === 'function') {
-            window.fetchAndRenderProfitLoss();
-          }
+          // Refresh symbol data first to get current market prices
+          fetch('/api/portfolio/refresh-symbols', { method: 'POST' })
+            .then(() => {
+              console.log('Symbol data refreshed after registration');
+              
+              // Refresh portfolio data
+              if (typeof window.fetchPositionsAndSettings === 'function') {
+                window.fetchPositionsAndSettings();
+              } else if (typeof window.fetchPositionsAndCash === 'function') {
+                window.fetchPositionsAndCash();
+              }
+              
+              // Refresh orders data
+              if (typeof window.fetchAndRenderOrders === 'function') {
+                window.fetchAndRenderOrders();
+              }
+              
+              // Refresh dividends data
+              if (typeof window.fetchAndRenderDividends === 'function') {
+                window.fetchAndRenderDividends();
+              }
+              
+              // Refresh profit/loss data
+              if (typeof window.fetchAndRenderProfitLoss === 'function') {
+                window.fetchAndRenderProfitLoss();
+              }
+            })
+            .catch(err => {
+              console.error('Failed to refresh symbol data after registration:', err);
+              // Still refresh other widgets even if symbol refresh fails
+              
+              // Refresh portfolio data
+              if (typeof window.fetchPositionsAndSettings === 'function') {
+                window.fetchPositionsAndSettings();
+              } else if (typeof window.fetchPositionsAndCash === 'function') {
+                window.fetchPositionsAndCash();
+              }
+              
+              // Refresh orders data
+              if (typeof window.fetchAndRenderOrders === 'function') {
+                window.fetchAndRenderOrders();
+              }
+              
+              // Refresh dividends data
+              if (typeof window.fetchAndRenderDividends === 'function') {
+                window.fetchAndRenderDividends();
+              }
+              
+              // Refresh profit/loss data
+              if (typeof window.fetchAndRenderProfitLoss === 'function') {
+                window.fetchAndRenderProfitLoss();
+              }
+            });
         }, 1000);
       } else {
         showError(data.message || 'Registration failed');

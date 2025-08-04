@@ -5,6 +5,7 @@ from utils.logger import get_server_logger, get_data_validation_logger, get_api_
 import os
 import logging
 from datetime import datetime
+import time
 from typing import List, Dict, Optional, Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -708,9 +709,21 @@ async def pull_robinhood_data(request: Request):
 
                 # Use the new upsert method to avoid duplicates
                 if symbol_data:
+                    # Convert symbol_data from dict to list format for upsert
+                    symbol_data_list = []
+                    for symbol, data in symbol_data.items():
+                        symbol_record = {
+                            "symbol": symbol,
+                            "price": data.get("last_price"),
+                            "date": time.strftime('%Y-%m-%d'),
+                            "beta": data.get("beta"),
+                            "delta": None  # Delta not calculated yet
+                        }
+                        symbol_data_list.append(symbol_record)
+
                     model_manager = get_model_manager()
                     upsert_results = model_manager.upsert_symbol_cache_records(
-                        symbol_data)
+                        symbol_data_list)
                     logger.info(
                         f"Symbol cache upsert results: {upsert_results}")
                 else:

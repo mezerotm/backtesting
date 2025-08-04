@@ -4,9 +4,27 @@ export function initOrders() {
 }
 
 async function fetchAndRenderOrders() {
-  const response = await fetch('/api/orders').then(r => r.json());
-  const orders = response.orders || [];
-  renderOrders(orders);
+  try {
+    const response = await fetch('/api/orders').then(r => r.json());
+    
+    // Validate the response data
+    if (window.DataModels && window.DataModels.validateData) {
+      const validation = window.DataModels.validateData('orders_response', response);
+      if (!validation.success) {
+        console.error('[Orders] Data validation failed:', validation.errors);
+        window.DataModels.handleValidationError(validation.errors, 'Orders Data');
+        renderOrders([]);
+        return;
+      }
+      console.log('[Orders] Data validation successful');
+    }
+    
+    const orders = response.orders || [];
+    renderOrders(orders);
+  } catch (error) {
+    console.error('[Orders] Error fetching orders:', error);
+    renderOrders([]);
+  }
 }
 
 function renderOrders(orders) {

@@ -203,85 +203,16 @@ def init_database():
             logger.error("Failed to get users collection ID")
             return False
 
-        # Define collections schema with correct collection ID
-        collections = {
-            "portfolio": {
-                "user": {"type": "relation", "required": True, "options": {"collectionId": users_collection_id}},
-                "total_portfolio_cash": {"type": "number", "required": False},
-                "total_portfolio_btc": {"type": "number", "required": False},
-                "btc_avg_buy_price": {"type": "number", "required": False},
-                "robinhood_enabled": {"type": "bool", "required": False},
-                "robinhood_display": {"type": "bool", "required": False},
-                "robinhood_username": {"type": "text", "required": False},
-                "robinhood_password": {"type": "text", "required": False},
-                "robinhood_mfa": {"type": "text", "required": False},
-                "last_robinhood_pull": {"type": "text", "required": False},
-                "robinhood_last_successful_pull": {"type": "text", "required": False},
-                "robinhood_last_error": {"type": "text", "required": False}
-            },
-            "positions": {
-                "user": {"type": "relation", "required": True, "options": {"collectionId": users_collection_id}},
-                "symbol": {"type": "text", "required": True},
-                "quantity": {"type": "number", "required": True},
-                "buy_price": {"type": "number", "required": True},
-                "notes": {"type": "text", "required": False},
-                "source": {"type": "text", "required": False},
-                "pulled_at": {"type": "text", "required": False}
-            },
-            "orders": {
-                "user": {"type": "relation", "required": True, "options": {"collectionId": users_collection_id}},
-                "symbol": {"type": "text", "required": True},
-                "type": {"type": "text", "required": True},
-                "quantity": {"type": "number", "required": True},
-                "price": {"type": "number", "required": True},
-                "date": {"type": "text", "required": True},
-                "fees": {"type": "number", "required": False},
-                "pl": {"type": "number", "required": False},
-                "source_id": {"type": "text", "required": False},
-                "notes": {"type": "text", "required": False},
-                "source": {"type": "text", "required": False},
-                "pulled_at": {"type": "text", "required": False}
-            },
-            "dividends": {
-                "user": {"type": "relation", "required": True, "options": {"collectionId": users_collection_id}},
-                "symbol": {"type": "text", "required": True},
-                "amount": {"type": "number", "required": True},
-                "date": {"type": "text", "required": True},
-                "record_date": {"type": "text", "required": False},
-                "payable_date": {"type": "text", "required": False},
-                "source": {"type": "text", "required": False},
-                "pulled_at": {"type": "text", "required": False}
-            },
-            "symbol_cache": {
-                "symbol": {"type": "text", "required": True},
-                "price": {"type": "number", "required": False},
-                "date": {"type": "text", "required": False},
-                "beta": {"type": "number", "required": False},
-                "delta": {"type": "number", "required": False}
-            },
-            "profit_loss": {
-                "user": {"type": "relation", "required": True, "options": {"collectionId": users_collection_id}},
-                "symbol": {"type": "text", "required": True},
-                # "Unrealized" or "Realized"
-                "type": {"type": "text", "required": True},
-                "amount": {"type": "number", "required": True, "options": {"nonZero": False}},
-                # "1W", "1M", "3M", "YTD", "MAX"
-                "period": {"type": "text", "required": False},
-                "date": {"type": "text", "required": False},
-                "calculated_at": {"type": "text", "required": False},
-                "source": {"type": "text", "required": False}
-            },
-            "profit_loss_cache": {
-                "user": {"type": "relation", "required": True, "options": {"collectionId": users_collection_id}},
-                # "1W", "1M", "3M", "YTD", "MAX"
-                "period": {"type": "text", "required": True},
-                "total": {"type": "number", "required": True},
-                "unrealized": {"type": "number", "required": True},
-                "realized": {"type": "number", "required": True},
-                "calculated_at": {"type": "text", "required": True},
-                "last_updated": {"type": "text", "required": True}
-            }
-        }
+        # Import collection schemas from data models
+        from server.models.data_models import get_collection_schemas
+        collections = get_collection_schemas()
+
+        # Update collection IDs to use the correct users collection ID
+        for collection_name, fields in collections.items():
+            for field_name, field_config in fields.items():
+                if field_config.get("type") == "relation" and field_config.get(
+                        "options", {}).get("collectionId") == "users":
+                    field_config["options"]["collectionId"] = users_collection_id
 
         # Create or recreate collections with proper fields
         created_count = 0
