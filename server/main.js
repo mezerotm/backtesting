@@ -338,8 +338,12 @@ document.addEventListener('DOMContentLoaded', function() {
 const WidgetUtils = {
     // Minimize/maximize widget functionality
     setupMinimizeButtons() {
-        document.querySelectorAll('[id$="MinimizeBtn"]').forEach(btn => {
-            console.log(`[WidgetUtils] Found minimize button: ${btn.id}`);
+        console.log('[WidgetUtils] Setting up minimize buttons...');
+        const buttons = document.querySelectorAll('[id$="MinimizeBtn"]');
+        console.log(`[WidgetUtils] Found ${buttons.length} minimize buttons:`, Array.from(buttons).map(btn => btn.id));
+        
+        buttons.forEach(btn => {
+            console.log(`[WidgetUtils] Setting up minimize button: ${btn.id}`);
             btn.addEventListener('click', function() {
                 const widgetId = this.id.replace('MinimizeBtn', '');
                 const contentId = widgetId + 'Content';
@@ -378,6 +382,7 @@ const WidgetUtils = {
                 }
             });
         });
+        console.log('[WidgetUtils] Minimize buttons setup complete');
     },
     
     // Setup modal functionality

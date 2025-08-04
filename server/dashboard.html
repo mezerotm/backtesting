@@ -95,17 +95,32 @@
 
 {% block scripts %}
 <script type="module">
-  // Ensure DOM is fully loaded before initializing widgets
+  // Ensure DOM is fully loaded and main.js is initialized before initializing widgets
   document.addEventListener('DOMContentLoaded', async function() {
     try {
       console.log('Initializing dashboard widgets...');
       
+      // Wait for main.js to be fully loaded and initialized
+      await new Promise(resolve => {
+        if (window.WidgetUtils && window.WidgetUtils.setupMinimizeButtons) {
+          resolve();
+        } else {
+          // Wait for main.js to load
+          const checkInterval = setInterval(() => {
+            if (window.WidgetUtils && window.WidgetUtils.setupMinimizeButtons) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 50);
+        }
+      });
+      
       // Import and initialize widgets with error handling
-              const { initReport } = await import("/static/js/report.js");
-        const { initPortfolio } = await import("/static/js/portfolio.js?v=robinhood-fix");
-        const { initOrders } = await import("/static/js/orders.js");
-        const { initDividends } = await import("/static/js/dividends.js");
-        const { initProfitLoss } = await import("/static/js/profit_loss.js");
+      const { initReport } = await import("/static/js/report.js");
+      const { initPortfolio } = await import("/static/js/portfolio.js?v=robinhood-fix");
+      const { initOrders } = await import("/static/js/orders.js");
+      const { initDividends } = await import("/static/js/dividends.js");
+      const { initProfitLoss } = await import("/static/js/profit_loss.js");
       
       // Initialize widgets
       console.log('Initializing Report widget...');
