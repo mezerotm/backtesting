@@ -1,18 +1,142 @@
 export function initOrders() {
+  console.log('[Orders] Initializing orders widget...');
+  // Render the orders widget HTML into the placeholder
+  const ordersWidget = document.getElementById('orders-widget');
+  if (ordersWidget) {
+    console.log('[Orders] Found orders-widget element, rendering HTML...');
+    // Create the orders widget HTML structure
+    ordersWidget.innerHTML = `
+      <!-- Orders Action Bar -->
+      <div id="ordersActionBar" class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2 collapsed">
+          <button id="addOrderBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
+              <i class="fa-solid fa-plus"></i> Add Order
+          </button>
+      </div>
+      <!-- Orders Card -->
+      <div class="bg-slate-800 rounded-xl shadow-sm widget-orders p-6 w-full">
+        <div class="flex justify-between items-center mb-0">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            Orders
+            <button id="ordersMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Orders" style="transition: transform 0.2s;"><i id="ordersMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
+          </h2>
+        </div>
+        <div id="ordersContent" class="collapsed">
+          <div class="overflow-x-auto overflow-y-auto max-h-96">
+            <table class="min-w-full divide-y divide-slate-700 text-sm">
+              <thead class="bg-slate-800 sticky top-0 z-10">
+                <tr>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">ID</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Type</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Quantity</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Buy Price</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Sell Price</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Date</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">P/L</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTbody">
+                <tr><td colspan="9" class="text-center text-gray-400 py-4">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Order Modal -->
+      <div id="orderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-slate-800 rounded-lg p-6 w-full max-w-2xl mx-4">
+          <div class="flex justify-between items-center mb-4">
+            <h2 id="orderModalTitle" class="text-xl font-bold text-white">Add Order</h2>
+            <button id="cancelOrderModalBtn" class="text-gray-400 hover:text-white">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <form id="orderForm" class="space-y-4">
+            <input type="hidden" id="orderId" name="id">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="orderSymbol" class="block text-sm font-medium text-gray-300 mb-1">Symbol</label>
+                <input type="text" id="orderSymbol" name="symbol" required 
+                       class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+              </div>
+              
+              <div>
+                <label for="orderType" class="block text-sm font-medium text-gray-300 mb-1">Type</label>
+                <select id="orderType" name="type" required 
+                        class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                  <option value="buy">Buy</option>
+                  <option value="sell">Sell</option>
+                </select>
+              </div>
+              
+              <div>
+                <label for="orderQuantity" class="block text-sm font-medium text-gray-300 mb-1">Quantity</label>
+                <input type="number" id="orderQuantity" name="quantity" step="0.01" required 
+                       class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+              </div>
+              
+              <div>
+                <label for="orderBuyPrice" class="block text-sm font-medium text-gray-300 mb-1">Buy Price</label>
+                <input type="number" id="orderBuyPrice" name="buy_price" step="0.01" 
+                       class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+              </div>
+              
+              <div>
+                <label for="orderSellPrice" class="block text-sm font-medium text-gray-300 mb-1">Sell Price</label>
+                <input type="number" id="orderSellPrice" name="sell_price" step="0.01" 
+                       class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+              </div>
+              
+              <div>
+                <label for="orderDate" class="block text-sm font-medium text-gray-300 mb-1">Date</label>
+                <input type="date" id="orderDate" name="date" 
+                       class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+              </div>
+              
+              <div>
+                <label for="orderPL" class="block text-sm font-medium text-gray-300 mb-1">P/L</label>
+                <input type="number" id="orderPL" name="pl" step="0.01" 
+                       class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+              </div>
+            </div>
+            
+            <div class="flex justify-end gap-2">
+              <button type="button" id="cancelOrderModalBtn2" class="reset-btn py-2 px-4 rounded-lg text-white bg-gray-600 hover:bg-gray-700">
+                Cancel
+              </button>
+              <button type="submit" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">
+                Save Order
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+  
+  console.log('[Orders] Orders widget HTML rendered, fetching data...');
   fetchAndRenderOrders();
   setupOrderModal();
+  console.log('[Orders] Orders widget initialization complete');
 }
 
 async function fetchAndRenderOrders() {
   try {
-    const response = await fetch('/api/orders').then(r => r.json());
+    console.log('[Orders] Fetching orders...');
+    const response = await fetch('/api/orders/').then(r => r.json());
+    console.log('[Orders] Received response:', response);
     
     // Validate the response data
     if (window.DataModels && window.DataModels.validateData) {
       const validation = window.DataModels.validateData('orders_response', response);
       if (!validation.success) {
         console.error('[Orders] Data validation failed:', validation.errors);
-        window.DataModels.handleValidationError(validation.errors, 'Orders Data');
+        // Don't show error to user, just log it and continue with empty data
+        console.warn('[Orders] Continuing with empty orders due to validation failure');
         renderOrders([]);
         return;
       }
@@ -20,6 +144,9 @@ async function fetchAndRenderOrders() {
     }
     
     const orders = response.orders || [];
+    console.log('[Orders] Extracted orders array:', orders);
+    console.log('[Orders] Orders array length:', orders.length);
+    console.log('[Orders] Orders data structure:', JSON.stringify(orders, null, 2));
     renderOrders(orders);
   } catch (error) {
     console.error('[Orders] Error fetching orders:', error);
@@ -28,14 +155,19 @@ async function fetchAndRenderOrders() {
 }
 
 function renderOrders(orders) {
+  console.log('[Orders] Rendering orders:', orders);
   if (!Array.isArray(orders)) {
     console.error("Orders is not an array", orders);
     orders = [];
   }
   const tbody = document.getElementById('ordersTbody');
-  if (!tbody) return;
+  if (!tbody) {
+    console.error('[Orders] ordersTbody element not found');
+    return;
+  }
   tbody.innerHTML = '';
   if (!orders || orders.length === 0) {
+    console.log('[Orders] No orders to display');
     tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-4">No orders found.</td></tr>';
     return;
   }

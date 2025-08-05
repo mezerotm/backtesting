@@ -1,8 +1,6 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from server.api.auth import router as auth_router
 from server.api.portfolio import router as portfolio_router
 from server.api.orders import router as orders_router
@@ -18,9 +16,6 @@ import os
 logger = get_server_logger("main")
 
 app = FastAPI(title="Backtesting Dashboard", version="1.0.0")
-
-# Initialize Jinja2 templates
-templates = Jinja2Templates(directory="server")
 
 # Add CORS middleware
 app.add_middleware(
@@ -45,14 +40,13 @@ app.add_middleware(
 # - logs/       (contains sensitive log files)
 #
 # Only the 'public' directory should be served as it contains:
-# - Compiled/built assets (CSS, JS, images)
+# - Compiled/built assets (CSS, JS, images) from Vite
 # - Static files safe for public access
 # - No source code or sensitive information
 # =============================================================================
 app.mount("/static", StaticFiles(directory="public"), name="static")
 
 # Import and include routers
-
 app.include_router(portfolio_router)
 app.include_router(profit_loss_router)
 app.include_router(robinhood_router)
@@ -63,10 +57,17 @@ app.include_router(dashboard_router)
 app.include_router(auth_router)
 
 
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    logger.debug("Serving main dashboard page")
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+@app.get("/")
+async def read_root():
+    """API root endpoint - frontend is served by Vite dev server"""
+    return {
+        "message": "GreenArrow Labs API",
+        "status": "running",
+        "frontend": "http://localhost:3001",
+        "pocketbase": "http://127.0.0.1:8090/_/",
+        "docs": "/docs",
+        "hot_reload_test": "v1.0"
+    }
 
 # Add startup event to show server is running
 

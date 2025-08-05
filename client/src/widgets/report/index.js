@@ -236,6 +236,204 @@ export function resetFilters() {
 }
 
 export function initReport() {
+    // Render the report widget HTML into the placeholder
+    const reportWidget = document.getElementById('report-widget');
+    if (reportWidget) {
+        // Create the report widget HTML structure
+        reportWidget.innerHTML = `
+            <!-- Report Action Bar -->
+            <div id="reportActionBar" class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2 collapsed">
+                <button id="cleanResultsBtn" class="reset-btn py-2 px-4 rounded-lg text-white bg-gray-600 hover:bg-gray-700 flex items-center gap-2">
+                    <i class="fa-solid fa-broom"></i> Clean Results
+                </button>
+                <button id="openModalBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Generate Report
+                </button>
+            </div>
+            
+            <!-- Report Card -->
+            <div class="bg-slate-800 rounded-xl shadow-sm widget-report p-6 w-full">
+                <div class="flex justify-between items-center mb-0">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        Reports
+                        <button id="reportMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Reports" style="transition: transform 0.2s;"><i id="reportMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
+                    </h2>
+                </div>
+                <div id="reportContent" class="collapsed">
+                    <!-- Reports Area: Two Columns -->
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <!-- Left Column: Filters -->
+                        <div class="lg:col-span-1">
+                            <div class="bg-slate-700 rounded-lg shadow-sm p-4">
+                                <h3 class="text-md font-bold text-white mb-4 flex items-center gap-2">
+                                    <i class="fa-solid fa-filter"></i>
+                                    Filters
+                                </h3>
+                                <div class="space-y-4">
+                                    <!-- Report Type Filter -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Report Type</label>
+                                        <select id="filterReportType" class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-md text-white">
+                                            <option value="">All Reports</option>
+                                            <option value="backtest">Backtest</option>
+                                            <option value="comparison">Comparison</option>
+                                            <option value="chart">Chart</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Symbol Filter -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Symbol</label>
+                                        <select id="filterSymbol" class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-md text-white">
+                                            <option value="">All Symbols</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Strategy Filter -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Strategy</label>
+                                        <select id="filterStrategy" class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-md text-white">
+                                            <option value="">All Strategies</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Date Range -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
+                                        <input type="date" id="filterStartDate" class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-md text-white">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">End Date</label>
+                                        <input type="date" id="filterEndDate" class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-md text-white">
+                                    </div>
+                                    
+                                    <!-- Filter Buttons -->
+                                    <div class="flex gap-2">
+                                        <button id="resetFiltersBtn" class="flex-1 reset-btn py-2 px-4 rounded-lg text-white bg-gray-600 hover:bg-gray-700">
+                                            Reset
+                                        </button>
+                                        <button id="applyFiltersBtn" class="flex-1 primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">
+                                            Apply Filters
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column: Reports Table -->
+                        <div class="lg:col-span-3">
+                            <div class="bg-slate-700 rounded-lg shadow-sm p-4">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="text-md font-bold text-white flex items-center gap-2">
+                                        <i class="fa-solid fa-file-lines"></i>
+                                        Available Reports
+                                    </h3>
+                                </div>
+                                
+                                <div class="overflow-x-auto">
+                                    <table id="reportsTable" class="min-w-full divide-y divide-slate-600">
+                                        <thead class="bg-slate-700">
+                                            <tr>
+                                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Symbol</th>
+                                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Report Type</th>
+                                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Strategy</th>
+                                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Timeframe</th>
+                                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-slate-700 divide-y divide-slate-600">
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-4 text-center text-gray-400">
+                                            <div class="flex items-center justify-center">
+                                                <div class="spinner"></div>
+                                                <span class="ml-2">Loading reports...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-4 text-sm text-gray-400">
+                            Last updated: <span id="lastUpdated">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+            
+            <!-- Generate Report Modal -->
+            <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+                <div class="bg-slate-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-white">Generate Report</h2>
+                        <button id="cancelReportModalBtn" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="reportForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="genReportType" class="block text-sm font-medium text-gray-300 mb-1">Report Type</label>
+                                <select id="genReportType" name="type" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                                    <option value="">Select Type</option>
+                                    <option value="backtest">Backtest</option>
+                                    <option value="comparison">Comparison</option>
+                                    <option value="chart">Chart</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="genSymbol" class="block text-sm font-medium text-gray-300 mb-1">Symbol</label>
+                                <div class="relative">
+                                    <input type="text" id="genSymbol" name="symbol" required placeholder="Enter symbol (e.g., AAPL)" 
+                                           class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+                                    <div id="genSymbolDropdown" class="absolute w-full"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label for="genStrategy" class="block text-sm font-medium text-gray-300 mb-1">Strategy</label>
+                                <select id="genStrategy" name="strategy" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                                    <option value="">Select Strategy</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="genTimeframe" class="block text-sm font-medium text-gray-300 mb-1">Timeframe</label>
+                                <select id="genTimeframe" name="timeframe" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                                    <option value="">Select Timeframe</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="genStartDate" class="block text-sm font-medium text-gray-300 mb-1">Start Date</label>
+                                <input type="date" id="genStartDate" name="start_date" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                            </div>
+                            
+                            <div>
+                                <label for="genEndDate" class="block text-sm font-medium text-gray-300 mb-1">End Date</label>
+                                <input type="date" id="genEndDate" name="end_date" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end gap-2">
+                            <button type="button" id="cancelReportModalBtn2" class="reset-btn py-2 px-4 rounded-lg text-white bg-gray-600 hover:bg-gray-700">
+                                Cancel
+                            </button>
+                            <button type="submit" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">
+                                Generate Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+    }
+    
     fetchReportsData();
     // Set up event listeners for Clean Results and Generate Report buttons (toolbar or widget)
     // Clean Results

@@ -1,4 +1,51 @@
 export function initProfitLoss() {
+  // Render the profit/loss widget HTML into the placeholder
+  const profitLossWidget = document.getElementById('profit-loss-widget');
+  if (profitLossWidget) {
+    // Create the profit/loss widget HTML structure
+    profitLossWidget.innerHTML = `
+      <!-- Profit/Loss Card -->
+      <div class="bg-slate-800 rounded-xl shadow-sm widget-profit-loss p-6 w-full">
+        <div class="flex justify-between items-center mb-0">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            Profit/Loss
+            <button id="profitLossMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Profit/Loss" style="transition: transform 0.2s;"><i id="profitLossMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
+          </h2>
+        </div>
+        <div id="profitLossContent" class="collapsed">
+          <div class="grid grid-cols-3 gap-4 mb-4">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-green-400" id="plTotal">$0.00</div>
+              <div class="text-sm text-gray-400">Total P/L</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-blue-400" id="plUnrealized">$0.00</div>
+              <div class="text-sm text-gray-400">Unrealized</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-yellow-400" id="plRealized">$0.00</div>
+              <div class="text-sm text-gray-400">Realized</div>
+            </div>
+          </div>
+          <div class="overflow-x-auto overflow-y-auto max-h-96">
+            <table class="min-w-full divide-y divide-slate-700 text-sm">
+              <thead class="bg-slate-800 sticky top-0 z-10">
+                <tr>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Type</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="plDetailsTbody">
+                <tr><td colspan="3" class="text-center text-gray-400 py-4">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
   fetchAndRenderProfitLoss();
   setupTimeButtons();
   initChart();
@@ -26,12 +73,14 @@ async function fetchAndRenderProfitLoss(period = 'YTD') {
       
       if (!summaryValidation.success) {
         console.error('[ProfitLoss] Summary validation failed:', summaryValidation.errors);
-        window.DataModels.handleValidationError(summaryValidation.errors, 'Profit/Loss Summary');
+        console.warn('[ProfitLoss] Continuing with empty summary due to validation failure');
+        summary = { total: 0, unrealized: 0, realized: 0, calculated_at: new Date().toISOString(), period: period };
       }
       
       if (!detailsValidation.success) {
         console.error('[ProfitLoss] Details validation failed:', detailsValidation.errors);
-        window.DataModels.handleValidationError(detailsValidation.errors, 'Profit/Loss Details');
+        console.warn('[ProfitLoss] Continuing with empty details due to validation failure');
+        details = [];
       }
       
       if (summaryValidation.success && detailsValidation.success) {

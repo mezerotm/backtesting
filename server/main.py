@@ -1,23 +1,11 @@
 """
-Widget JS Build and Copy Logic
+FastAPI Server Entry Point
 
-- Each widget (e.g. report, portfolio) lives in its own folder under server/widgets/.
-- Each widget folder contains:
-    - index.html   (widget HTML)
-    - index.js     (widget JavaScript, ES module)
-    - widget.py    (optional: Python render logic)
-
-- You should edit the JS source files in these folders.
-- When you run `make server` (which runs this script), the latest JS files are automatically copied to public/js/ as:
-    - public/js/report.js
-    - public/js/portfolio.js
-  (and so on for other widgets)
-- The dashboard imports the JS from public/js/ for production use.
-- This ensures you can edit source files safely, and only the latest code is served to the browser.
-
-To add a new widget:
-- Create a new folder in server/widgets/ (e.g. mywidget/), add index.html and index.js.
-- Add a copy step below to copy mywidget/index.js to public/js/mywidget.js.
+This script starts the FastAPI backend server that provides:
+- API endpoints for portfolio, orders, dividends, profit/loss data
+- Authentication endpoints
+- Report generation endpoints
+- Static file serving for the built frontend
 
 ==============================================================================
 SECURITY NOTE: STATIC FILE SERVING
@@ -33,7 +21,7 @@ Source directories that should NEVER be served:
 - logs/       (sensitive log files)
 
 The 'public' directory is the ONLY safe directory to serve because it contains:
-- Compiled/built assets (CSS, JS, images)
+- Compiled/built assets (CSS, JS, images) from Vite
 - Static files safe for public access
 - No source code or sensitive information
 
@@ -48,7 +36,6 @@ import signal
 import shutil
 import os
 import logging
-from server.dashboard_generator import generate_dashboard
 
 # Configure logging to suppress verbose HTTP logs
 logging.basicConfig(
@@ -62,47 +49,8 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 if __name__ == '__main__':
-    print('Generating dashboard...')
-    generate_dashboard()
-    print('Dashboard generated.')
-
-    # Copy main CSS and JS files
-    os.makedirs('public', exist_ok=True)
-    os.makedirs('public/js', exist_ok=True)
-
-    # Copy main.css to public/main.css
-    css_src = 'server/main.css'
-    css_dst = 'public/main.css'
-    if os.path.isfile(css_src):
-        shutil.copyfile(css_src, css_dst)
-        print(f'Copied {css_src} to {css_dst}')
-
-    # Copy main.js to public/js/main.js
-    js_src = 'server/main.js'
-    js_dst = 'public/js/main.js'
-    if os.path.isfile(js_src):
-        shutil.copyfile(js_src, js_dst)
-        print(f'Copied {js_src} to {js_dst}')
-
-    # Copy frontend data models to public/js/
-    models_src = 'server/models/data_models.js'
-    models_dst = 'public/js/data_models.js'
-    if os.path.isfile(models_src):
-        shutil.copyfile(models_src, models_dst)
-        print(f'Copied {models_src} to {models_dst}')
-
-    # Copy widget JS files to public/js with widget-prefixed names
-    widgets_dir = 'server/widgets'
-    for widget_name in os.listdir(widgets_dir):
-        widget_path = os.path.join(widgets_dir, widget_name)
-        js_src = os.path.join(widget_path, 'index.js')
-        if os.path.isdir(widget_path) and os.path.isfile(js_src):
-            js_dst = os.path.join('public/js', f'{widget_name}.js')
-            shutil.copyfile(js_src, js_dst)
-            print(f'Copied {js_src} to {js_dst}')
-    print('Copied all CSS and JS files to public/')
-
     print('Starting FastAPI server...')
+    print('Frontend assets are built by Vite - run "make build-frontend" to build')
     proc = subprocess.Popen([sys.executable,
                              '-m',
                              'uvicorn',

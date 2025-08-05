@@ -14,6 +14,7 @@ anyio==4.8.0
     #   httpx
     #   openai
     #   starlette
+    #   watchfiles
 autopep8==2.1.0
     # via -r requirements.in
 backtesting==0.6.3
@@ -297,6 +298,8 @@ urllib3==2.3.0
 uvicorn==0.34.0
     # via -r requirements.in
 watchdog==6.0.0
+    # via -r requirements.in
+watchfiles==0.21.0
     # via -r requirements.in
 websockets==14.2
     # via

@@ -808,7 +808,13 @@ async def get_portfolio_summary(request: Request):
         if not user_id:
             logger.warning(
                 "No authenticated user found, returning empty summary")
-            return []
+            return {
+                "positions": [],
+                "total_value": 0.0,
+                "total_cash": 0.0,
+                "total_btc": 0.0,
+                "btc_avg_price": 0.0
+            }
 
         logger.info(f"Getting portfolio summary for user: {user_id}")
 
