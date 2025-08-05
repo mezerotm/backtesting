@@ -70,6 +70,12 @@ class MarketDataFetcher(BaseFetcher):
     def get_polygon_agg(self, ticker, date=None):
         logger = logging.getLogger(__name__)
         logger.debug(f"get_polygon_agg: ticker={ticker}, date={date}")
+        
+        # Check if we're in after-hours
+        et_time = datetime.now(pytz.timezone('US/Eastern'))
+        is_after_hours = et_time.hour < 9 or et_time.hour >= 16
+        is_weekend = et_time.weekday() >= 5
+        
         try:
             aggs = self.client.get_aggs(
                 ticker=ticker,
@@ -79,13 +85,43 @@ class MarketDataFetcher(BaseFetcher):
                 to=date,
                 adjusted=True
             )
-            logger.debug(f"get_polygon_agg: aggs for {
-                         ticker} on {date}: {aggs}")
+            logger.debug(f"get_polygon_agg: aggs for {ticker} on {date}: {aggs}")
             return aggs[0] if aggs else None
         except Exception as e:
-            logger.error(f"get_polygon_agg: Exception for {
-                         ticker} on {date}: {e}")
-            return None
+            error_str = str(e)
+            
+            # Handle after-hours authorization errors gracefully
+            if "NOT_AUTHORIZED" in error_str and (is_after_hours or is_weekend):
+                logger.info(f"After-hours data not available for {ticker} on {date} - this is expected outside market hours")
+                
+                # Try to get the most recent available data
+                if not date:
+                    # If no specific date requested, try to get the last available trading day
+                    try:
+                        # Get data from the last 5 days to find the most recent
+                        for days_back in range(1, 6):
+                            try_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+                            try:
+                                fallback_aggs = self.client.get_aggs(
+                                    ticker=ticker,
+                                    multiplier=1,
+                                    timespan="day",
+                                    from_=try_date,
+                                    to=try_date,
+                                    adjusted=True
+                                )
+                                if fallback_aggs:
+                                    logger.info(f"Using fallback data for {ticker} from {try_date}")
+                                    return fallback_aggs[0]
+                            except:
+                                continue
+                    except Exception as fallback_error:
+                        logger.warning(f"Fallback data fetch failed for {ticker}: {fallback_error}")
+                
+                return None
+            else:
+                logger.error(f"get_polygon_agg: Exception for {ticker} on {date}: {e}")
+                return None
 
     def fetch_market_indices(self) -> Dict:
         """Fetch major market indices data: Polygon first, then FRED, then Yahoo Finance (rate-limited)."""
@@ -703,8 +739,28 @@ class MarketDataFetcher(BaseFetcher):
             print(f"Error fetching inflation history: {e}")
             return None
 
+    def get_most_recent_trading_day(self) -> str:
+        """Get the most recent trading day (excluding weekends and holidays)."""
+        et_time = datetime.now(pytz.timezone('US/Eastern'))
+        current_date = et_time.date()
+        
+        # If it's weekend, go back to Friday
+        if et_time.weekday() >= 5:  # Saturday = 5, Sunday = 6
+            days_back = et_time.weekday() - 4  # Friday = 4
+            current_date = current_date - timedelta(days=days_back)
+        
+        # If it's before 9:30 AM ET, use previous day
+        if et_time.hour < 9 or (et_time.hour == 9 and et_time.minute < 30):
+            current_date = current_date - timedelta(days=1)
+            # If previous day was weekend, go back to Friday
+            if current_date.weekday() >= 5:
+                days_back = current_date.weekday() - 4
+                current_date = current_date - timedelta(days=days_back)
+        
+        return current_date.strftime('%Y-%m-%d')
+
     def fetch_market_status(self) -> Dict:
-        """Fetch current market status"""
+        """Fetch current market status with after-hours awareness"""
         cache_key = f"market_status_{datetime.now().strftime('%Y-%m-%d_%H')}"
 
         if not self.force_refresh:
@@ -716,6 +772,7 @@ class MarketDataFetcher(BaseFetcher):
             # Get current time in ET
             et_time = datetime.now(pytz.timezone('US/Eastern'))
             current_time = et_time.strftime('%H:%M')
+            is_weekend = et_time.weekday() >= 5
 
             # Define market hours
             pre_market_start = '04:00'
@@ -724,27 +781,43 @@ class MarketDataFetcher(BaseFetcher):
             after_hours_close = '20:00'
 
             # Determine market status
-            if current_time < pre_market_start:
+            if is_weekend:
+                status = 'Closed'
+                hours = 'Market Closed - Opens Monday at 4:00 AM ET'
+                data_availability = 'delayed'
+            elif current_time < pre_market_start:
                 status = 'Closed'
                 hours = 'Pre-Market Trading starts at 4:00 AM ET'
+                data_availability = 'delayed'
             elif current_time < market_open:
                 status = 'Pre-Market'
                 hours = 'Regular Trading starts at 9:30 AM ET'
+                data_availability = 'pre_market'
             elif current_time < market_close:
                 status = 'Open'
                 hours = 'Regular Trading Hours (9:30 AM - 4:00 PM ET)'
+                data_availability = 'live'
             elif current_time < after_hours_close:
                 status = 'After-Hours'
                 hours = 'After-Hours Trading (until 8:00 PM ET)'
+                data_availability = 'after_hours'
             else:
                 status = 'Closed'
                 hours = 'Market Closed - Opens at 4:00 AM ET'
+                data_availability = 'delayed'
+
+            # Get most recent trading day
+            most_recent_trading_day = self.get_most_recent_trading_day()
 
             result = {
                 'status': status,
                 'hours': hours,
                 'current_time_et': current_time,
-                'last_updated': et_time.strftime('%Y-%m-%d %H:%M:%S %Z')
+                'last_updated': et_time.strftime('%Y-%m-%d %H:%M:%S %Z'),
+                'is_weekend': is_weekend,
+                'is_after_hours': status in ['Closed', 'After-Hours'],
+                'most_recent_trading_day': most_recent_trading_day,
+                'data_availability': data_availability
             }
 
             self._save_to_cache(cache_key, result)
@@ -756,7 +829,11 @@ class MarketDataFetcher(BaseFetcher):
                 'status': 'Unknown',
                 'hours': 'Status Unavailable',
                 'current_time_et': datetime.now().strftime('%H:%M'),
-                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'is_weekend': True,
+                'is_after_hours': True,
+                'most_recent_trading_day': datetime.now().strftime('%Y-%m-%d'),
+                'data_availability': 'delayed'
             }
 
     def fetch_economic_events(self) -> Dict:

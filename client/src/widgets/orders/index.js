@@ -25,7 +25,6 @@ export function initOrders() {
             <table class="min-w-full divide-y divide-slate-700 text-sm">
               <thead class="bg-slate-800 sticky top-0 z-10">
                 <tr>
-                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">ID</th>
                   <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
                   <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Type</th>
                   <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Quantity</th>
@@ -36,8 +35,8 @@ export function initOrders() {
                   <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody id="ordersTbody">
-                <tr><td colspan="9" class="text-center text-gray-400 py-4">Loading...</td></tr>
+              <tbody class="divide-y divide-slate-700" id="ordersTbody">
+                <tr><td colspan="8" class="text-center text-gray-400 py-4">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -168,20 +167,20 @@ function renderOrders(orders) {
   tbody.innerHTML = '';
   if (!orders || orders.length === 0) {
     console.log('[Orders] No orders to display');
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-4">No orders found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-4">No orders found.</td></tr>';
     return;
   }
   orders.forEach(order => {
     const tr = document.createElement('tr');
+    tr.className = 'border-b border-slate-700 hover:bg-slate-700';
     tr.innerHTML = `
-      <td class="px-3 py-2">${order.id}</td>
-      <td class="px-3 py-2">${order.symbol}</td>
-      <td class="px-3 py-2">${order.type}</td>
-      <td class="px-3 py-2">${order.quantity}</td>
-      <td class="px-3 py-2">${order.type === 'buy' ? order.price : ''}</td>
-      <td class="px-3 py-2">${order.type === 'sell' ? order.price : ''}</td>
-      <td class="px-3 py-2">${order.date ? new Date(order.date).toLocaleDateString() : ''}</td>
-      <td class="px-3 py-2">${order.pl ? `$${order.pl.toFixed(2)}` : ''}</td>
+      <td class="px-3 py-2 text-white font-semibold">${order.symbol}</td>
+      <td class="px-3 py-2 text-white">${order.type}</td>
+      <td class="px-3 py-2 text-white">${order.quantity}</td>
+      <td class="px-3 py-2 text-white">${order.type === 'buy' ? order.price : ''}</td>
+      <td class="px-3 py-2 text-white">${order.type === 'sell' ? order.price : ''}</td>
+      <td class="px-3 py-2 text-white">${order.date ? new Date(order.date).toLocaleDateString() : ''}</td>
+      <td class="px-3 py-2 text-white">${order.pl ? `$${order.pl.toFixed(2)}` : ''}</td>
       <td class="px-3 py-2">
         ${order.source === 'robinhood' ? 
           '<span class="rh-badge">RH</span>' : 

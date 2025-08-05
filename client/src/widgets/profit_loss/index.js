@@ -36,7 +36,7 @@ export function initProfitLoss() {
                   <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Amount</th>
                 </tr>
               </thead>
-              <tbody id="plDetailsTbody">
+              <tbody class="divide-y divide-slate-700" id="plDetailsTbody">
                 <tr><td colspan="3" class="text-center text-gray-400 py-4">Loading...</td></tr>
               </tbody>
             </table>
@@ -124,8 +124,9 @@ function renderProfitLoss(summary, details) {
     } else {
       details.forEach(d => {
         const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-700 hover:bg-slate-700';
         const amountClass = d.amount >= 0 ? 'text-green-400' : 'text-red-400';
-        tr.innerHTML = `<td class="px-3 py-2">${d.symbol}</td><td class="px-3 py-2">${d.type}</td><td class="px-3 py-2 ${amountClass}">$${d.amount.toFixed(2)}</td>`;
+        tr.innerHTML = `<td class="px-3 py-2 text-white font-semibold">${d.symbol}</td><td class="px-3 py-2 text-white">${d.type}</td><td class="px-3 py-2 ${amountClass} font-semibold">$${d.amount.toFixed(2)}</td>`;
         detailsTbody.appendChild(tr);
       });
     }
