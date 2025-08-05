@@ -32,9 +32,6 @@
 
     <!-- Company Info -->
     <div class="bg-slate-800/50 rounded-lg p-6 mb-8">
-        {% if company_info.logo_url %}
-        <img src="{{ company_info.logo_url }}" alt="{{ company_info.name }} logo" class="h-12 mb-4">
-        {% endif %}
         <h2 class="text-xl font-semibold text-white mb-4">{{ company_info.name }}</h2>
         <p class="text-slate-300 mb-4">{{ company_info.description }}</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-slate-400 mb-4">
@@ -210,25 +207,25 @@
         <div class="grid grid-cols-3 gap-4">
             <div>
                 <h4 class="text-sm font-medium text-slate-400 mb-2">Income Statements</h4>
-                <a href="quarterly_income.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Income</a>
-                <a href="annual_income.json" class="text-blue-400 hover:text-blue-300 block">Annual Income</a>
+                <a href="/api/report/data/{{ symbol }}/quarterly_income.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Income</a>
+                <a href="/api/report/data/{{ symbol }}/annual_income.json" class="text-blue-400 hover:text-blue-300 block">Annual Income</a>
             </div>
             <div>
                 <h4 class="text-sm font-medium text-slate-400 mb-2">Balance Sheets</h4>
-                <a href="quarterly_balance.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Balance</a>
-                <a href="annual_balance.json" class="text-blue-400 hover:text-blue-300 block">Annual Balance</a>
+                <a href="/api/report/data/{{ symbol }}/quarterly_balance.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Balance</a>
+                <a href="/api/report/data/{{ symbol }}/annual_balance.json" class="text-blue-400 hover:text-blue-300 block">Annual Balance</a>
             </div>
             <div>
                 <h4 class="text-sm font-medium text-slate-400 mb-2">Cash Flow Statements</h4>
-                <a href="quarterly_cash_flow.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Cash Flow</a>
-                <a href="annual_cash_flow.json" class="text-blue-400 hover:text-blue-300 block">Annual Cash Flow</a>
+                <a href="/api/report/data/{{ symbol }}/quarterly_cash_flow.json" class="text-blue-400 hover:text-blue-300 block">Quarterly Cash Flow</a>
+                <a href="/api/report/data/{{ symbol }}/annual_cash_flow.json" class="text-blue-400 hover:text-blue-300 block">Annual Cash Flow</a>
             </div>
         </div>
         <div class="mt-4">
             <h4 class="text-sm font-medium text-slate-400 mb-2">Additional Data</h4>
-            <a href="raw_data.json" class="text-blue-400 hover:text-blue-300 block">Complete Raw Data</a>
-            <a href="metrics.json" class="text-blue-400 hover:text-blue-300 block">Calculated Metrics</a>
-            <a href="metric_descriptions.json" class="text-blue-400 hover:text-blue-300 block">Metric Descriptions</a>
+            <a href="/api/report/data/{{ symbol }}/raw_data.json" class="text-blue-400 hover:text-blue-300 block">Complete Raw Data</a>
+            <a href="/api/report/data/{{ symbol }}/metrics.json" class="text-blue-400 hover:text-blue-300 block">Calculated Metrics</a>
+            <a href="/api/report/data/{{ symbol }}/metric_descriptions.json" class="text-blue-400 hover:text-blue-300 block">Metric Descriptions</a>
         </div>
     </div>
 </div>
