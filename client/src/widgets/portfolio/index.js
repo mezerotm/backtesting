@@ -630,6 +630,58 @@ export function initPortfolio() {
           </form>
         </div>
       </div>
+      
+      <!-- Position Modal (Add/Edit) -->
+      <div id="positionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-slate-800 rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-visible">
+          <div class="flex justify-between items-center mb-6">
+            <h2 id="modalTitle" class="text-xl font-bold text-white">Add Position</h2>
+            <button id="cancelModalBtn" class="text-gray-400 hover:text-white">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <form id="positionForm" class="space-y-4">
+            <input type="hidden" id="positionId" name="id">
+            
+            <div>
+              <label for="symbol" class="block text-sm font-medium text-gray-300 mb-2">Symbol</label>
+              <div class="relative">
+                <input type="text" id="symbol" name="symbol" required placeholder="Search for a symbol..." 
+                       class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+                <div id="symbolDropdown" class="absolute w-full z-50"></div>
+              </div>
+            </div>
+            
+            <div>
+              <label for="amount" class="block text-sm font-medium text-gray-300 mb-2">Amount ($)</label>
+              <input type="number" id="amount" name="amount" step="0.01" required 
+                     class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+            </div>
+            
+            <div>
+              <label for="buyPrice" class="block text-sm font-medium text-gray-300 mb-2">Buy Price ($)</label>
+              <input type="number" id="buyPrice" name="buyPrice" step="0.01" required 
+                     class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+            </div>
+            
+            <div>
+              <label for="notes" class="block text-sm font-medium text-gray-300 mb-2">Notes</label>
+              <textarea id="notes" name="notes" rows="3" 
+                        class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400 resize-none"></textarea>
+            </div>
+            
+            <div class="flex justify-end gap-3 pt-4">
+              <button type="button" id="cancelModalBtn2" class="px-4 py-2 rounded-lg text-white bg-gray-600 hover:bg-gray-700 transition-colors">
+                Cancel
+              </button>
+              <button type="submit" class="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                Save Position
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     `;
   }
   
@@ -767,8 +819,14 @@ export function initPortfolio() {
     addPositionBtn.addEventListener('click', openAddModal);
   }
   const cancelModalBtn = document.getElementById('cancelModalBtn');
+  const cancelModalBtn2 = document.getElementById('cancelModalBtn2');
   if (cancelModalBtn) {
     cancelModalBtn.addEventListener('click', () => {
+      document.getElementById('positionModal').classList.add('hidden');
+    });
+  }
+  if (cancelModalBtn2) {
+    cancelModalBtn2.addEventListener('click', () => {
       document.getElementById('positionModal').classList.add('hidden');
     });
   }
@@ -912,6 +970,15 @@ export function initPortfolio() {
       positionModal.addEventListener('mousedown', (e) => {
           if (e.target === positionModal) {
               positionModal.classList.add('hidden');
+          }
+      });
+  }
+  
+  // Portfolio Settings Modal click handler (cashModal already declared above)
+  if (cashModal) {
+      cashModal.addEventListener('mousedown', (e) => {
+          if (e.target === cashModal) {
+              cashModal.classList.add('hidden');
           }
       });
   }
