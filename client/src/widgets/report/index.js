@@ -18,7 +18,24 @@ export function fetchReportsData() {
             const finishedReports = data.filter(report => !report.status || report.status === 'finished');
             console.log('[fetchReportsData] Finished reports after filtering:', finishedReports.length);
             console.log('[fetchReportsData] Report statuses:', data.map(r => ({ dir: r.dir, status: r.status })));
+            
+            // Store all reports for filtering
+            allReports = finishedReports;
+            filteredReports = [...finishedReports];
+            
             displayReports(finishedReports);
+            updateFilterDropdowns();
+            
+            // Set default filter to show all reports (market and finance)
+            const filterReportType = document.getElementById('filterReportType');
+            if (filterReportType && !filterReportType.value) {
+                // Default to showing all reports
+                console.log('Setting default filter: All Reports');
+            }
+            
+            // Apply any active filters automatically
+            applyActiveFilters();
+            
             const lastUpdated = document.getElementById('lastUpdated');
             if (lastUpdated) lastUpdated.textContent = new Date().toLocaleString();
         })
@@ -49,7 +66,7 @@ export function displayReports(reports) {
     if (reports.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="7" class="py-4 text-center">
+                <td colspan="6" class="py-4 text-center">
                     <div class="flex justify-center text-gray-300">
                         <i class="fa-solid fa-folder-open text-xl mr-2"></i>
                         <span>No reports available</span>
@@ -232,10 +249,139 @@ export function showToast(message, type = 'success') {
     });
 }
 
+// Global variables for filtering
+let allReports = [];
+let filteredReports = [];
+
 export function resetFilters() {
-    // This function was not provided in the edit_specification,
-    // so it will be left as a placeholder.
     console.log('Resetting filters...');
+    
+    // Reset all filter inputs
+    const filterReportType = document.getElementById('filterReportType');
+    const filterSymbol = document.getElementById('filterSymbol');
+    const filterStrategy = document.getElementById('filterStrategy');
+    const filterStartDate = document.getElementById('filterStartDate');
+    const filterEndDate = document.getElementById('filterEndDate');
+    
+    if (filterReportType) filterReportType.value = '';
+    if (filterSymbol) filterSymbol.value = '';
+    if (filterStrategy) filterStrategy.value = '';
+    if (filterStartDate) filterStartDate.value = '';
+    if (filterEndDate) filterEndDate.value = '';
+    
+    // Show all reports
+    filteredReports = [...allReports];
+    displayReports(filteredReports);
+    
+    // Update filter dropdowns
+    updateFilterDropdowns();
+}
+
+export function applyFilters() {
+    console.log('Applying filters...');
+    
+    const filterReportType = document.getElementById('filterReportType');
+    const filterSymbol = document.getElementById('filterSymbol');
+    const filterStrategy = document.getElementById('filterStrategy');
+    const filterStartDate = document.getElementById('filterStartDate');
+    const filterEndDate = document.getElementById('filterEndDate');
+    
+    // Get filter values
+    const reportType = filterReportType ? filterReportType.value : '';
+    const symbol = filterSymbol ? filterSymbol.value : '';
+    const strategy = filterStrategy ? filterStrategy.value : '';
+    const startDate = filterStartDate ? filterStartDate.value : '';
+    const endDate = filterEndDate ? filterEndDate.value : '';
+    
+    // Apply filters
+    filteredReports = allReports.filter(report => {
+        // Report type filter
+        if (reportType && report.type !== reportType) {
+            return false;
+        }
+        
+        // Symbol filter
+        if (symbol && report.symbol !== symbol) {
+            return false;
+        }
+        
+        // Strategy filter
+        if (strategy && report.strategy !== strategy) {
+            return false;
+        }
+        
+        // Date range filter
+        if (startDate || endDate) {
+            const reportDate = new Date(report.created);
+            const start = startDate ? new Date(startDate) : null;
+            const end = endDate ? new Date(endDate) : null;
+            
+            if (start && reportDate < start) {
+                return false;
+            }
+            if (end && reportDate > end) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    displayReports(filteredReports);
+    console.log(`Filtered ${filteredReports.length} reports from ${allReports.length} total`);
+}
+
+function applyActiveFilters() {
+    // Check if any filters are active
+    const filterReportType = document.getElementById('filterReportType');
+    const filterSymbol = document.getElementById('filterSymbol');
+    const filterStrategy = document.getElementById('filterStrategy');
+    const filterStartDate = document.getElementById('filterStartDate');
+    const filterEndDate = document.getElementById('filterEndDate');
+    
+    const hasActiveFilters = (
+        (filterReportType && filterReportType.value) ||
+        (filterSymbol && filterSymbol.value) ||
+        (filterStrategy && filterStrategy.value) ||
+        (filterStartDate && filterStartDate.value) ||
+        (filterEndDate && filterEndDate.value)
+    );
+    
+    if (hasActiveFilters) {
+        console.log('Active filters detected, applying automatically...');
+        applyFilters();
+    } else {
+        console.log('No active filters, showing all reports');
+        filteredReports = [...allReports];
+        displayReports(filteredReports);
+    }
+}
+
+function updateFilterDropdowns() {
+    // Get available symbols and strategies
+    const symbols = [...new Set(allReports.map(r => r.symbol).filter(s => s && s !== 'MARKET'))];
+    const strategies = [...new Set(allReports.map(r => r.strategy).filter(s => s && s !== 'Unknown'))];
+    
+    // Update symbol dropdown
+    const filterSymbol = document.getElementById('filterSymbol');
+    if (filterSymbol) {
+        filterSymbol.innerHTML = '<option value="">All Symbols</option>';
+        symbols.forEach(symbol => {
+            filterSymbol.innerHTML += `<option value="${symbol}">${symbol}</option>`;
+        });
+    }
+    
+    // Update strategy dropdown
+    const filterStrategy = document.getElementById('filterStrategy');
+    if (filterStrategy) {
+        filterStrategy.innerHTML = '<option value="">All Strategies</option>';
+        strategies.forEach(strategy => {
+            filterStrategy.innerHTML += `<option value="${strategy}">${strategy}</option>`;
+        });
+    }
+    
+    console.log('[updateFilterDropdowns] Available symbols:', symbols);
+    console.log('[updateFilterDropdowns] Available strategies:', strategies);
 }
 
 export function initReport() {
@@ -278,9 +424,8 @@ export function initReport() {
                                         <label class="block text-sm font-medium text-gray-300 mb-2">Report Type</label>
                                         <select id="filterReportType" class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-md text-white">
                                             <option value="">All Reports</option>
-                                            <option value="backtest">Backtest</option>
-                                            <option value="comparison">Comparison</option>
-                                            <option value="chart">Chart</option>
+                                            <option value="market">Market</option>
+                                            <option value="finance">Finance</option>
                                         </select>
                                     </div>
                                     
@@ -663,6 +808,19 @@ export function initReport() {
     } else {
         console.warn('[initReport] reportForm not found');
     }
+    
+    // Add filter event listeners
+    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+    
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener('click', resetFilters);
+    }
+    
+    if (applyFiltersBtn) {
+        applyFiltersBtn.addEventListener('click', applyFilters);
+    }
+    
     // Auto-refresh reports every 5 seconds - TEMPORARILY DISABLED to fix infinite loop
     // setInterval(fetchReportsData, 5000);
 }
