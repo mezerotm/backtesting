@@ -69,12 +69,19 @@ function fetchPositions() {
     .then(data => {
       console.log('[Portfolio] Received positions:', data);
       
+      // Debug: Log the first position structure
+      if (data.positions && data.positions.length > 0) {
+        console.log('[Portfolio] First position structure:', data.positions[0]);
+        console.log('[Portfolio] First position ID type:', typeof data.positions[0].id, 'Value:', data.positions[0].id);
+      }
+      
       // Validate the response data
       if (window.DataModels && window.DataModels.validateData) {
         const validation = window.DataModels.validateData('portfolio_summary', data);
         if (!validation.success) {
           console.error('[Portfolio] Data validation failed:', validation.errors);
-          window.DataModels.handleValidationError(validation.errors, 'Portfolio Data');
+          // Don't show error to user, just log it and continue with empty data
+          console.warn('[Portfolio] Continuing with empty positions due to validation failure');
           renderPositions([]);
           return;
         }
@@ -503,6 +510,129 @@ async function updatePullButtonState() {
 
 export function initPortfolio() {
   console.log('[Portfolio] initPortfolio function called');
+  
+  // Render the portfolio widget HTML into the placeholder
+  const portfolioWidget = document.getElementById('portfolio-widget');
+  if (portfolioWidget) {
+    // Create the portfolio widget HTML structure
+    portfolioWidget.innerHTML = `
+      <!-- Add Position Toolbar -->
+      <div id="portfolioActionBar" class="bg-slate-800 rounded-xl shadow flex justify-end gap-4 w-full p-6 mb-2 collapsed">
+          <button id="addPositionBtn" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2">
+              <i class="fa-solid fa-plus"></i> Add Position
+          </button>
+          <button id="settingsBtn" class="text-slate-400 hover:text-blue-400 focus:outline-none flex items-center justify-center rounded-full h-10 w-10" title="Portfolio Settings">
+              <i class="fa-solid fa-gear text-xl"></i>
+          </button>
+      </div>
+      <!-- Portfolio Card -->
+      <div class="bg-slate-800 rounded-xl shadow-sm widget-portfolio p-6 mt-2 w-full">
+          <div class="flex justify-between items-center mb-0">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                  Portfolio
+                  <button id="portfolioMinimizeBtn" class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none" title="Minimize Portfolio" style="transition: transform 0.2s;"><i id="portfolioMinimizeIcon" class="fa-solid fa-chevron-down"></i></button>
+              </h2>
+          </div>
+          <div id="portfolioContent" class="collapsed">
+              <div class="overflow-x-auto overflow-y-auto max-h-750px">
+                  <table class="min-w-full divide-y divide-slate-700" id="positionsTable">
+                      <thead>
+                          <tr>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Amount ($)</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Avg Buy Price</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Market Value</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">% of Portfolio</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Today's Return</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Total Return</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Beta</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Delta</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+                          </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-700" id="positionsTbody">
+                          <tr><td colspan="11" class="text-center text-gray-400 py-4">Loading...</td></tr>
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+      </div>
+      
+      <!-- Portfolio Settings Modal -->
+      <div id="cashModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-slate-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-white">Portfolio Settings</h2>
+            <button id="cancelCashModalBtn" class="text-gray-400 hover:text-white">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <form id="portfolioSettingsForm" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="cash" class="block text-sm font-medium text-gray-300 mb-1">Cash Balance</label>
+                <input type="number" id="cash" name="cash" step="0.01" required 
+                       class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+              </div>
+              
+              <div>
+                <label for="btcDollar" class="block text-sm font-medium text-gray-300 mb-1">BTC Dollar Value</label>
+                <input type="number" id="btcDollar" name="btcDollar" step="0.01" 
+                       class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+              </div>
+              
+              <div>
+                <label for="btcAvgBuyPrice" class="block text-sm font-medium text-gray-300 mb-1">BTC Avg Buy Price</label>
+                <input type="number" id="btcAvgBuyPrice" name="btcAvgBuyPrice" step="0.01" 
+                       class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+              </div>
+            </div>
+            
+            <div class="border-t border-slate-600 pt-4">
+              <h3 class="text-lg font-semibold text-white mb-3">Robinhood Integration</h3>
+              <div class="space-y-3">
+                <div class="flex items-center">
+                  <input type="checkbox" id="robinhoodEnabled" name="robinhoodEnabled" 
+                         class="mr-2 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500">
+                  <label for="robinhoodEnabled" class="text-sm text-gray-300">Enable Robinhood Integration</label>
+                </div>
+                
+                <div>
+                  <label for="robinhoodUsername" class="block text-sm font-medium text-gray-300 mb-1">Robinhood Username</label>
+                  <input type="text" id="robinhoodUsername" name="robinhoodUsername" 
+                         class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+                </div>
+                
+                <div>
+                  <label for="robinhoodPassword" class="block text-sm font-medium text-gray-300 mb-1">Robinhood Password</label>
+                  <input type="password" id="robinhoodPassword" name="robinhoodPassword" 
+                         class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+                </div>
+                
+                <div>
+                  <label for="robinhoodMFA" class="block text-sm font-medium text-gray-300 mb-1">Robinhood MFA Code</label>
+                  <input type="text" id="robinhoodMFA" name="robinhoodMFA" 
+                         class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex justify-end gap-2">
+              <button type="button" id="cancelCashModalBtn2" class="reset-btn py-2 px-4 rounded-lg text-white bg-gray-600 hover:bg-gray-700">
+                Cancel
+              </button>
+              <button type="submit" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">
+                Save Settings
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+  
   // Modal logic for settings
   const settingsBtn = document.getElementById('settingsBtn');
   const cashModal = document.getElementById('cashModal');
@@ -694,7 +824,9 @@ export function initPortfolio() {
   }
 
   function closeSymbolDropdown() {
-      symbolDropdown.innerHTML = '';
+      if (symbolDropdown) {
+          symbolDropdown.innerHTML = '';
+      }
       symbolDropdownOpen = false;
       symbolDropdownIndex = -1;
   }
@@ -704,15 +836,17 @@ export function initPortfolio() {
           closeSymbolDropdown();
           return;
       }
-      symbolDropdown.innerHTML = `<div class="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-b-lg shadow-lg mt-0.5 max-h-56 overflow-y-auto select-none">
-          ${suggestions.map((item, i) => `
-              <div class="px-4 py-2 cursor-pointer hover:bg-blue-700 ${i === symbolDropdownIndex ? 'bg-blue-700 text-white' : 'text-gray-200'}" data-index="${i}">
-                  <span class="font-semibold">${item.symbol}</span>
-                  <span class="ml-2 text-xs text-gray-400">${item.name ? item.name : ''}</span>
-              </div>
-          `).join('')}
-      </div>`;
-      symbolDropdownOpen = true;
+      if (symbolDropdown) {
+          symbolDropdown.innerHTML = `<div class="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-b-lg shadow-lg mt-0.5 max-h-56 overflow-y-auto select-none">
+              ${suggestions.map((item, i) => `
+                  <div class="px-4 py-2 cursor-pointer hover:bg-blue-700 ${i === symbolDropdownIndex ? 'bg-blue-700 text-white' : 'text-gray-200'}" data-index="${i}">
+                      <span class="font-semibold">${item.symbol}</span>
+                      <span class="ml-2 text-xs text-gray-400">${item.name ? item.name : ''}</span>
+                  </div>
+              `).join('')}
+          </div>`;
+          symbolDropdownOpen = true;
+      }
   }
 
   async function fetchSymbolSuggestionsPortfolio(query) {
@@ -761,16 +895,18 @@ export function initPortfolio() {
       });
   }
 
-  symbolDropdown.addEventListener('mousedown', (e) => {
-      const target = e.target.closest('[data-index]');
-      if (target) {
-          const idx = parseInt(target.getAttribute('data-index'));
-          if (!isNaN(idx) && symbolSuggestions[idx]) {
-              symbolInput.value = symbolSuggestions[idx].symbol;
-              closeSymbolDropdown();
+  if (symbolDropdown) {
+      symbolDropdown.addEventListener('mousedown', (e) => {
+          const target = e.target.closest('[data-index]');
+          if (target) {
+              const idx = parseInt(target.getAttribute('data-index'));
+              if (!isNaN(idx) && symbolSuggestions[idx]) {
+                  symbolInput.value = symbolSuggestions[idx].symbol;
+                  closeSymbolDropdown();
+              }
           }
-      }
-  });
+      });
+  }
   const positionModal = document.getElementById('positionModal');
   if (positionModal) {
       positionModal.addEventListener('mousedown', (e) => {
@@ -806,82 +942,4 @@ export function initPortfolio() {
     });
 }
 
-console.log('[Portfolio] portfolio/index.js script loaded');
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('[Portfolio] DOMContentLoaded event fired');
-  const btn = document.getElementById('portfolioMinimizeBtn');
-  const icon = document.getElementById('portfolioMinimizeIcon');
-  const actionBar = document.getElementById('portfolioActionBar');
-  const content = document.getElementById('portfolioContent');
-  console.log('[Portfolio] btn:', btn, '| icon:', icon, '| actionBar:', actionBar, '| content:', content);
-  if (btn && actionBar && content) {
-    // Set initial max-height for both to open
-    actionBar.style.maxHeight = actionBar.scrollHeight + 'px';
-    setTimeout(() => { actionBar.style.maxHeight = 'none'; }, 400);
-    content.style.maxHeight = content.scrollHeight + 'px';
-    setTimeout(() => { content.style.maxHeight = 'none'; }, 400);
-    console.log('[Portfolio] Initial actionBar maxHeight:', actionBar.style.maxHeight, '| content maxHeight:', content.style.maxHeight);
-    btn.addEventListener('click', function() {
-      console.log('[Portfolio] Minimize button clicked. actionBar display:', actionBar.style.display, '| content maxHeight:', content.style.maxHeight);
-      // If either is closed, open both
-      if (actionBar.style.display === 'none' || content.style.maxHeight === '0px') {
-        actionBar.style.display = 'flex';
-        actionBar.classList.remove('fade-scale-show');
-        actionBar.classList.add('fade-scale-hide');
-        // Force reflow to apply the initial state
-        void actionBar.offsetWidth;
-        actionBar.classList.remove('fade-scale-hide');
-        actionBar.classList.add('fade-scale-show');
-        // Remove the show class after transition
-        actionBar.addEventListener('transitionend', function handler(e) {
-          if (e.target === actionBar && (e.propertyName === 'opacity' || e.propertyName === 'transform')) {
-            actionBar.classList.remove('fade-scale-show');
-            actionBar.removeEventListener('transitionend', handler);
-          }
-        });
-        content.style.maxHeight = content.scrollHeight + 'px';
-        console.log('[Portfolio] Opening actionBar and content');
-        if (icon) {
-          icon.classList.remove('fa-chevron-down');
-          icon.classList.add('fa-chevron-up');
-        }
-        content.addEventListener('transitionend', function handler(e) {
-          if (e.target === content) {
-            content.style.maxHeight = 'none';
-            console.log('[Portfolio] content open animation complete, maxHeight set to none');
-            content.removeEventListener('transitionend', handler);
-          }
-        });
-      } else {
-        // Both are open, so close both
-        actionBar.classList.remove('fade-scale-show');
-        actionBar.classList.add('fade-scale-hide');
-        actionBar.addEventListener('transitionend', function handler(e) {
-          if (e.target === actionBar && (e.propertyName === 'opacity' || e.propertyName === 'transform')) {
-            actionBar.style.display = 'none';
-            actionBar.classList.remove('fade-scale-hide');
-            actionBar.removeEventListener('transitionend', handler);
-          }
-        });
-        content.style.maxHeight = content.scrollHeight + 'px';
-        void content.offsetWidth;
-        content.style.maxHeight = '0px';
-        console.log('[Portfolio] Closing actionBar and content');
-        if (icon) {
-          icon.classList.remove('fa-chevron-up');
-          icon.classList.add('fa-chevron-down');
-        }
-        content.addEventListener('transitionend', function handler(e) {
-          if (e.target === content) {
-            console.log('[Portfolio] content close animation complete, maxHeight is', content.style.maxHeight);
-            content.removeEventListener('transitionend', handler);
-          }
-        });
-      }
-    });
-  } else {
-    console.log('[Portfolio] Minimize button, actionBar, or content NOT found');
-  }
-  if (actionBar) actionBar.style.transition = '';
-  if (content) content.style.transition = 'max-height 0.4s cubic-bezier(0.4,0,0.2,1)';
-}); 
+console.log('[Portfolio] portfolio/index.js script loaded'); 

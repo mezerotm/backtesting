@@ -1,4 +1,4 @@
-# Trading Strategy Backtesting Framework
+# GreenArrow Labs - Trading Strategy Suite
 
 This framework provides tools for backtesting trading strategies using TA-Lib indicators and the Backtesting.py library. It allows for easy comparison between different strategies on historical data.
 
@@ -35,25 +35,77 @@ When adding new static assets:
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd backtesting-api
+cd backtesting
 ```
 
-2. Install the required dependencies:
+2. Install Python dependencies:
 ```bash
-pip install -r requirements.txt
+make install
+# or manually:
+# python3 -m venv .venv
+# source .venv/bin/activate
+# pip install -r requirements.txt
+```
+
+3. Install Node.js dependencies:
+```bash
+npm install
 ```
 
 Note: TA-Lib requires separate installation steps for the C library depending on your operating system. See [TA-Lib Installation Instructions](https://github.com/mrjbq7/ta-lib#installation).
+
+## Development Workflow
+
+### Starting the Development Environment
+
+This project uses a modern development setup with separate frontend and backend servers:
+
+1. **Start the database** (in one terminal):
+```bash
+make db-start
+```
+
+2. **Start the frontend development server** (in another terminal):
+```bash
+make dev-frontend
+```
+
+3. **Start the backend API server** (in a third terminal):
+```bash
+make dev-server
+```
+
+### Accessing the Application
+
+- **Landing Page**: http://localhost:3001 (default landing page for new users)
+- **Dashboard**: http://localhost:3001/dashboard.html (main application after login)
+- **API**: http://localhost:8000/api (backend API endpoints)
+- **Database Admin**: http://localhost:8090/_/ (PocketBase admin interface)
+
+### Frontend Structure
+
+- `client/` - Frontend application (Vite + React-like structure)
+  - `client/index.html` - Redirects to landing page
+  - `client/landing.html` - Marketing landing page
+  - `client/dashboard.html` - Main application dashboard
+  - `client/src/` - Source files
+    - `client/src/main.js` - Main application logic
+    - `client/src/styles/` - CSS and styling
+    - `client/src/widgets/` - Individual widget components
+    - `client/src/data_models.js` - Frontend data validation
+
+### Backend Structure
+
+- `server/` - FastAPI backend
+  - `server/api/` - API endpoints
+  - `server/models/` - Data models and validation
+  - `server/main.py` - Server entry point
 
 ## Usage
 
 ### Quick Start
 
 Run a comparison of all strategies on the S&P 500 ETF (SPY):
-
-```bash
-python run_comparisons.py
-```
 
 ### Customizing the Comparison
 
@@ -231,12 +283,36 @@ make db-init
 make server
 ```
 
+### Development Setup (3-Terminal Workflow)
+```bash
+# Terminal 1: Database
+make db-start
+
+# Terminal 2: Frontend Development
+make dev-frontend
+
+# Terminal 3: Backend Development  
+make dev-server
+```
+
+**Access Points:**
+- Frontend: http://localhost:3001/
+- Backend API: http://localhost:8000/api/
+- Database Admin: http://127.0.0.1:8090/_/
+
 ### Database Commands
 - `make db-start` - Start PocketBase server
 - `make db-init` - Initialize database collections (includes path verification)
 - `make db-reset` - Reset database (⚠️ deletes all data)
 - `make db-backup` - Create database backup
 - `make db-restore` - Restore from backup
+
+### Frontend Commands
+- `make dev-frontend` - Start Vite development server with hot reload
+- `make build-frontend` - Build frontend for production
+- `npm run dev` - Direct Vite command (same as make dev-frontend)
+- `npm run build` - Direct build command (same as make build-frontend)
+- `npm run preview` - Preview production build locally
 
 ### Database Collections
 - **portfolio** - Portfolio settings and cash data (user-specific)
@@ -269,6 +345,57 @@ OPENAI_API_KEY=your_openai_key  # Optional, for AI explanations
 ENV=development    # or production
 ```
 
+### Node.js Environment
+
+The project uses Node.js for frontend development with Vite. The `node_modules/` directory contains all frontend dependencies.
+
+#### Working with Node.js Dependencies
+
+**Adding new dependencies:**
+```bash
+# Development dependencies (build tools, etc.)
+npm install --save-dev package-name
+
+# Runtime dependencies (if needed)
+npm install package-name
+```
+
+**Updating dependencies:**
+```bash
+# Update all dependencies
+npm update
+
+# Update specific package
+npm update package-name
+```
+
+**Checking for security issues:**
+```bash
+npm audit
+npm audit fix
+```
+
+**Node.js Scripts:**
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+```
+
+#### Development vs Production
+
+- **Development**: Uses Vite dev server with hot reload and API proxy
+- **Production**: Built assets served by FastAPI server from `public/` directory
+
+#### Frontend Architecture
+
+- **Vite**: Modern build tool with fast HMR
+- **Tailwind CSS**: Utility-first CSS framework
+- **ES6 Modules**: Modern JavaScript with import/export
+- **AJV**: JSON Schema validation for data integrity
+- **Font Awesome**: Icon library
+- **Chart.js**: Charting library
+
 ### Logging System
 The application uses a comprehensive logging system:
 - **API Logs**: `logs/api/{api_name}.log` - Separate log files for each API
@@ -284,7 +411,21 @@ The application uses a comprehensive logging system:
 
 ### Project Structure
 ```
-├── workflows/
+├── client/                 # Frontend application (Vite)
+│   ├── src/
+│   │   ├── main.js         # Main application entry point
+│   │   ├── data_models.js  # Frontend data validation models
+│   │   ├── styles/
+│   │   │   └── main.css    # Main stylesheet with Tailwind CSS
+│   │   └── widgets/        # Frontend widget components
+│   ├── index.html          # Main HTML template
+│   └── README.md           # Frontend documentation
+├── server/                 # Backend application (FastAPI)
+│   ├── models/             # Database models and ModelManager
+│   ├── api/                # API endpoints (auth, portfolio, orders, dividends, profit_loss, robinhood)
+│   ├── widgets/            # Legacy frontend widgets (migrated to client/)
+│   └── main.py             # FastAPI server
+├── workflows/              # Analysis workflows
 │   ├── market/
 │   │   ├── market_data.py
 │   │   ├── market_report_generator.py
@@ -304,11 +445,6 @@ The application uses a comprehensive logging system:
 │   │   ├── compare_strategies.py
 │   │   └── strategy_comparison_report.py
 │   └── base_fetcher.py
-├── server/
-│   ├── models/             # Database models and ModelManager
-│   ├── api/                # API endpoints (auth, portfolio, orders, dividends, profit_loss, robinhood)
-│   ├── widgets/            # Frontend widgets
-│   └── main.py             # FastAPI server
 ├── utils/
 │   ├── pocketbase_client.py # PocketBase client
 │   ├── db_init.py          # Database initialization (with path verification)
@@ -317,12 +453,14 @@ The application uses a comprehensive logging system:
 ├── libs/
 │   └── pocketbase          # PocketBase binary
 ├── pb_data/                # PocketBase data directory
-├── templates/
-│   ├── base_layout.html
-│   └── dashboard.html
-├── public/
+├── public/                 # Built assets and static files
 │   ├── data/               # Legacy file storage
 │   └── results/
+├── node_modules/           # Node.js dependencies
+├── package.json            # Node.js dependencies and scripts
+├── vite.config.js          # Vite configuration
+├── tailwind.config.js      # Tailwind CSS configuration
+├── postcss.config.js       # PostCSS configuration
 ├── market_workflow_cli.py
 ├── financial_workflow_cli.py
 ├── backtest_workflow_cli.py

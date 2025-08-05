@@ -17,9 +17,7 @@ async def get_orders(request: Request) -> Dict:
         if not user_id:
             logger.warning(
                 "Orders API called without authentication - expected for fresh starts")
-            raise HTTPException(
-                status_code=401,
-                detail="User not authenticated")
+            return {"orders": []}
 
         # Get raw orders from PocketBase
         raw_orders = get_model_manager().get_orders(user_id)

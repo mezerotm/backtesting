@@ -13,7 +13,7 @@
  */
 
 // Import AJV for JSON Schema validation
-import Ajv from 'https://cdn.jsdelivr.net/npm/ajv@8/dist/ajv.min.mjs';
+import Ajv from 'ajv';
 
 // Initialize AJV with custom options
 const ajv = new Ajv({
@@ -73,25 +73,58 @@ const PortfolioSettingsSchema = {
 const PositionSchema = {
     type: 'object',
     properties: {
-        ...BaseRecordSchema.properties,
-        user: { type: 'string' },
+        // ID field - make it flexible since it can vary
+        id: { type: ['string', 'number', 'null'] },
+        created: { type: 'string' },
+        updated: { type: 'string' },
         symbol: { type: 'string', minLength: 1 },
         quantity: { type: 'number', minimum: 0 },
         buy_price: { type: 'number', minimum: 0 },
         notes: { type: 'string' },
         source: { type: 'string' },
-        pulled_at: { type: 'string' },
-        // Computed fields (not stored in DB)
-        market_value: { type: 'number' },
-        todays_return: { type: 'number' },
-        total_return: { type: 'number' },
-        beta: { type: 'number' },
-        delta: { type: 'number' },
-        percent_of_portfolio: { type: 'number' }
+        // Computed fields (not stored in DB) - these can be null/undefined
+        market_value: { 
+            oneOf: [
+                { type: 'number' },
+                { type: 'null' }
+            ]
+        },
+        todays_return: { 
+            oneOf: [
+                { type: 'number' },
+                { type: 'null' }
+            ]
+        },
+        total_return: { 
+            oneOf: [
+                { type: 'number' },
+                { type: 'null' }
+            ]
+        },
+        beta: { 
+            oneOf: [
+                { type: 'number' },
+                { type: 'null' }
+            ]
+        },
+        delta: { 
+            oneOf: [
+                { type: 'number' },
+                { type: 'null' }
+            ]
+        },
+        percent_of_portfolio: { 
+            oneOf: [
+                { type: 'number' },
+                { type: 'null' }
+            ]
+        }
     },
-    required: ['user', 'symbol', 'quantity', 'buy_price'],
+    required: ['symbol', 'quantity', 'buy_price'],
     additionalProperties: true
 };
+
+
 
 // =============================================================================
 // ORDER SCHEMAS

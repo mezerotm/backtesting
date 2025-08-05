@@ -144,13 +144,47 @@ syntax-check:
 	@echo "🔧 Auto-fixing formatting issues with autopep8..."
 	@$(PYTHON) -m autopep8 --in-place --recursive --aggressive --aggressive server/ utils/ workflows/ strategies/
 
+# Frontend development server
+dev-frontend:
+	@echo "Starting Vite development server..."
+	@echo "Frontend will be available at http://localhost:3001"
+	@echo "API proxy configured to http://localhost:8000"
+	@echo "Press Ctrl+C to stop the server"
+	npm run dev
+
+# Build frontend for production
+build-frontend:
+	@echo "Building frontend for production..."
+	npm run build
+	@echo "Frontend built successfully!"
+
 # Start FastAPI server (serves static and API)
-server: results-dir syntax-check
+server: results-dir syntax-check build-frontend
+	@echo "Starting production server..."
+	@echo "Backend: http://localhost:8000"
+	@echo "Frontend: http://localhost:8000"
+	@echo "PocketBase: http://127.0.0.1:8090/_/ (run 'make db-start' in another terminal)"
+	@echo "Opening API page in browser..."
+	@sleep 2 && xdg-open http://localhost:8000 || open http://localhost:8000 || start http://localhost:8000 || echo "Please manually open: http://localhost:8000"
 	$(PYTHON) -m server.main
+
+# Development server with hot reload
+dev-server: results-dir syntax-check
+	@echo "Starting development server with hot reload..."
+	@echo "Backend: http://localhost:8000"
+	@echo "Frontend: http://localhost:3001 (run 'make dev-frontend' in another terminal)"
+	@echo "PocketBase: http://127.0.0.1:8090/_/ (run 'make db-start' in another terminal)"
+	@echo "Hot reload enabled - watching server/ and utils/ directories"
+	@echo "Server will restart when Python files in these directories change"
+	@echo "Opening API page in browser..."
+	@sleep 2 && xdg-open http://localhost:8000 || open http://localhost:8000 || start http://localhost:8000 || echo "Please manually open: http://localhost:8000"
+	$(PYTHON) -m uvicorn server.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir server --reload-dir utils --log-level info
+
+
 
 
 
 .PHONY: setup backtest-nvda backtest-smci \
 	compare-active clean results-dir server ensure-venv activate-venv backtest-active \
 	backtest-experimental compare-experimental dev debug-buy-hold market-check morning-check full-market-check debug-market-check install deps \
-	db-start db-reset db-backup db-restore db-init
+	db-start db-reset db-backup db-restore db-init dev-frontend build-frontend dev-server
