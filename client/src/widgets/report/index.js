@@ -366,65 +366,42 @@ export function initReport() {
             
             <!-- Generate Report Modal -->
             <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-                <div class="bg-slate-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-                    <div class="flex justify-between items-center mb-4">
+                <div class="bg-slate-800 rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-visible">
+                    <div class="flex justify-between items-center mb-6">
                         <h2 class="text-xl font-bold text-white">Generate Report</h2>
                         <button id="cancelReportModalBtn" class="text-gray-400 hover:text-white">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
                     
-                    <form id="reportForm" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="genReportType" class="block text-sm font-medium text-gray-300 mb-1">Report Type</label>
-                                <select id="genReportType" name="type" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
-                                    <option value="">Select Type</option>
-                                    <option value="backtest">Backtest</option>
-                                    <option value="comparison">Comparison</option>
-                                    <option value="chart">Chart</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label for="genSymbol" class="block text-sm font-medium text-gray-300 mb-1">Symbol</label>
+                    <form id="reportForm" class="space-y-6">
+                        <!-- Report Type Selection (Always Visible) -->
+                        <div>
+                            <label for="genReportType" class="block text-sm font-medium text-gray-300 mb-2">Report Type</label>
+                            <select id="genReportType" name="type" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                                <option value="market">Market Report</option>
+                                <option value="finance">Financial Report</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Conditional Fields Container -->
+                        <div id="conditionalFields" class="space-y-4">
+                            <!-- Symbol Field (Only for Finance Reports) -->
+                            <div id="symbolField" class="hidden">
+                                <label for="genSymbol" class="block text-sm font-medium text-gray-300 mb-2">Symbol</label>
                                 <div class="relative">
-                                    <input type="text" id="genSymbol" name="symbol" required placeholder="Enter symbol (e.g., AAPL)" 
+                                    <input type="text" id="genSymbol" name="symbol" placeholder="Search for a symbol..." 
                                            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
-                                    <div id="genSymbolDropdown" class="absolute w-full"></div>
+                                    <div id="genSymbolDropdown" class="absolute w-full z-50"></div>
                                 </div>
-                            </div>
-                            
-                            <div>
-                                <label for="genStrategy" class="block text-sm font-medium text-gray-300 mb-1">Strategy</label>
-                                <select id="genStrategy" name="strategy" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
-                                    <option value="">Select Strategy</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label for="genTimeframe" class="block text-sm font-medium text-gray-300 mb-1">Timeframe</label>
-                                <select id="genTimeframe" name="timeframe" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
-                                    <option value="">Select Timeframe</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label for="genStartDate" class="block text-sm font-medium text-gray-300 mb-1">Start Date</label>
-                                <input type="date" id="genStartDate" name="start_date" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
-                            </div>
-                            
-                            <div>
-                                <label for="genEndDate" class="block text-sm font-medium text-gray-300 mb-1">End Date</label>
-                                <input type="date" id="genEndDate" name="end_date" required class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
                             </div>
                         </div>
                         
-                        <div class="flex justify-end gap-2">
-                            <button type="button" id="cancelReportModalBtn2" class="reset-btn py-2 px-4 rounded-lg text-white bg-gray-600 hover:bg-gray-700">
+                        <div class="flex justify-end gap-3 pt-4">
+                            <button type="button" id="cancelReportModalBtn2" class="px-4 py-2 rounded-lg text-white bg-gray-600 hover:bg-gray-700 transition-colors">
                                 Cancel
                             </button>
-                            <button type="submit" class="primary-btn py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">
+                            <button type="submit" class="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors">
                                 Generate Report
                             </button>
                         </div>
@@ -469,13 +446,9 @@ export function initReport() {
             }
         });
     }
-    // Dynamic form fields for report type
+    // Modern conditional form fields for report type
     const genReportType = document.getElementById('genReportType');
-    const strategyField = document.getElementById('genStrategy').closest('div');
-    const timeframeField = document.getElementById('genTimeframe').closest('div');
-    const startDateField = document.getElementById('genStartDate').closest('div');
-    const endDateField = document.getElementById('genEndDate').closest('div');
-    const symbolField = document.getElementById('genSymbol').closest('div');
+    const symbolField = document.getElementById('symbolField');
     const genSymbolInput = document.getElementById('genSymbol');
     const genSymbolDropdown = document.getElementById('genSymbolDropdown');
     let genSymbolSuggestions = [];
@@ -493,15 +466,17 @@ export function initReport() {
             closeGenSymbolDropdown();
             return;
         }
-        genSymbolDropdown.innerHTML = `<div class="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-b-lg shadow-lg mt-0.5 max-h-56 overflow-y-auto select-none">
-            ${suggestions.map((item, i) => `
-                <div class="px-4 py-2 cursor-pointer hover:bg-blue-700 ${i === genSymbolDropdownIndex ? 'bg-blue-700 text-white' : 'text-gray-200'}" data-index="${i}">
-                    <span class="font-semibold">${item.symbol}</span>
-                    <span class="ml-2 text-xs text-gray-400">${item.name ? item.name : ''}</span>
-                </div>
-            `).join('')}
-        </div>`;
-        genSymbolDropdownOpen = true;
+        if (genSymbolDropdown) {
+            genSymbolDropdown.innerHTML = `<div class="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-b-lg shadow-lg mt-0.5 max-h-56 overflow-y-auto select-none">
+                ${suggestions.map((item, i) => `
+                    <div class="px-4 py-2 cursor-pointer hover:bg-blue-700 ${i === genSymbolDropdownIndex ? 'bg-blue-700 text-white' : 'text-gray-200'}" data-index="${i}">
+                        <span class="font-semibold">${item.symbol}</span>
+                        <span class="ml-2 text-xs text-gray-400">${item.name ? item.name : ''}</span>
+                    </div>
+                `).join('')}
+            </div>`;
+            genSymbolDropdownOpen = true;
+        }
     }
 
     async function fetchGenSymbolSuggestions(query) {
@@ -510,12 +485,13 @@ export function initReport() {
             return;
         }
         try {
-            const resp = await fetch(`/api/report/search-symbols?query=${encodeURIComponent(query)}`);
+            const resp = await fetch(`/api/portfolio/search-symbols?query=${encodeURIComponent(query)}`);
             if (!resp.ok) return;
             const data = await resp.json();
-            genSymbolSuggestions = data;
+            genSymbolSuggestions = data.symbols || data;
             renderGenSymbolDropdown(genSymbolSuggestions);
         } catch (e) {
+            console.error('Error fetching symbol suggestions:', e);
             closeGenSymbolDropdown();
         }
     }
@@ -558,64 +534,67 @@ export function initReport() {
             setTimeout(closeGenSymbolDropdown, 150);
         });
     }
-    genSymbolDropdown.addEventListener('mousedown', (e) => {
-        const target = e.target.closest('[data-index]');
-        if (target) {
-            const idx = parseInt(target.getAttribute('data-index'));
-            if (!isNaN(idx) && genSymbolSuggestions[idx]) {
-                genSymbolInput.value = genSymbolSuggestions[idx].symbol;
-                closeGenSymbolDropdown();
+    
+    if (genSymbolDropdown) {
+        genSymbolDropdown.addEventListener('mousedown', (e) => {
+            const target = e.target.closest('[data-index]');
+            if (target) {
+                const idx = parseInt(target.getAttribute('data-index'));
+                if (!isNaN(idx) && genSymbolSuggestions[idx]) {
+                    genSymbolInput.value = genSymbolSuggestions[idx].symbol;
+                    closeGenSymbolDropdown();
+                }
             }
-        }
-    });
+        });
+    }
+
     function updateReportFormFields() {
         const type = genReportType.value;
-        // Always show report type at the top
-        if (type === 'finance') {
-            if (symbolField) {
-                symbolField.style.display = '';
-                genSymbolInput.required = true;
-                console.log('[updateReportFormFields] Showing symbol field, required=true');
-            }
-        } else {
-            if (symbolField) {
-                symbolField.style.display = 'none';
-                genSymbolInput.required = false;
-                console.log('[updateReportFormFields] Hiding symbol field, required=false');
-            }
+        
+        // Hide all conditional fields by default
+        if (symbolField) {
+            symbolField.classList.add('hidden');
+            genSymbolInput.required = false;
         }
-        if (type === 'market' || type === 'finance') {
-            if (strategyField) strategyField.style.display = 'none';
-            if (timeframeField) timeframeField.style.display = 'none';
-            if (startDateField) startDateField.style.display = 'none';
-            if (endDateField) endDateField.style.display = 'none';
-        } else {
-            if (strategyField) strategyField.style.display = '';
-            if (timeframeField) timeframeField.style.display = '';
-            if (startDateField) startDateField.style.display = '';
-            if (endDateField) endDateField.style.display = '';
+        
+        // Show relevant fields based on report type
+        switch (type) {
+            case 'market':
+                // Market reports don't need any additional fields
+                break;
+            case 'finance':
+                // Finance reports need symbol
+                if (symbolField) {
+                    symbolField.classList.remove('hidden');
+                    genSymbolInput.required = true;
+                }
+                break;
+            default:
+                // No report type selected
+                break;
         }
     }
+    
     if (genReportType) {
         genReportType.addEventListener('change', updateReportFormFields);
         updateReportFormFields(); // Initial call
     }
     // Add event listener for Generate Report form
-    const generateReportForm = document.getElementById('generateReportForm');
-    if (generateReportForm) {
-        generateReportForm.addEventListener('submit', async function(e) {
+    const reportForm = document.getElementById('reportForm');
+    if (reportForm) {
+        reportForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             console.log('[Generate Report] Form submitted');
             
             // Show loading state
-            const submitBtn = generateReportForm.querySelector('button[type="submit"]');
+            const submitBtn = reportForm.querySelector('button[type="submit"]');
             const originalText = submitBtn.textContent;
             submitBtn.textContent = 'Generating...';
             submitBtn.disabled = true;
             
-            const formData = new FormData(generateReportForm);
-            const reportType = formData.get('genReportType') || 'market';
-            const symbol = formData.get('genSymbol') || '';
+            const formData = new FormData(reportForm);
+            const reportType = formData.get('type') || 'market';
+            const symbol = formData.get('symbol') || '';
             
             const params = new URLSearchParams();
             params.append('output_dir', 'public/results');
@@ -636,19 +615,20 @@ export function initReport() {
                     successMessage = 'Market report generated';
                     break;
                 case 'finance':
+                    if (!symbol.trim()) {
+                        showToast('Symbol is required for financial reports', 'error');
+                        submitBtn.textContent = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
                     apiEndpoint = '/api/report/generate-finance';
-                    successMessage = 'Finance report generated';
-                    break;
-                case 'backtest':
-                    apiEndpoint = '/api/report/generate-backtest';
-                    successMessage = 'Backtest report generated';
-                    break;
-                case 'comparison':
-                    apiEndpoint = '/api/report/generate-comparison';
-                    successMessage = 'Comparison report generated';
+                    successMessage = 'Financial report generated';
                     break;
                 default:
-                    throw new Error('Invalid report type: ' + reportType);
+                    showToast('Invalid report type: ' + reportType, 'error');
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                    return;
             }
             
             try {
@@ -678,7 +658,7 @@ export function initReport() {
             }
         });
     } else {
-        console.warn('[initReport] generateReportForm not found');
+        console.warn('[initReport] reportForm not found');
     }
     // Auto-refresh reports every 5 seconds - TEMPORARILY DISABLED to fix infinite loop
     // setInterval(fetchReportsData, 5000);
