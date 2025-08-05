@@ -612,34 +612,34 @@ document.addEventListener('DOMContentLoaded', async function() {
     Navigation.navigateTo('dashboard');
 });
 
-// Global 10-minute sync timer for integrations - TEMPORARILY DISABLED
-// setInterval(async () => {
-//     try {
-//         console.log('[Global Sync] Triggering Robinhood pull...');
-//         await Utils.apiRequest('/api/robinhood/pull', { method: 'POST' });
-//         console.log('[Global Sync] Robinhood pull complete.');
-//     } catch (err) {
-//         console.error('[Global Sync] Robinhood pull failed:', err);
-//     }
-//     try {
-//         console.log('[Global Sync] Triggering Polygon symbol data refresh...');
-//         await Utils.apiRequest('/api/portfolio/refresh-symbols', { method: 'POST' });
-//         console.log('[Global Sync] Polygon symbol data refresh complete.');
-//     } catch (err) {
-//         console.error('[Global Sync] Polygon symbol data refresh failed:', err);
-//     }
-// }, 30 * 60 * 1000); // 30 minutes in ms
+// Global 10-minute sync timer for integrations
+setInterval(async () => {
+    try {
+        console.log('[Global Sync] Triggering Robinhood pull...');
+        await Utils.apiRequest('/api/robinhood/pull', { method: 'POST' });
+        console.log('[Global Sync] Robinhood pull complete.');
+    } catch (err) {
+        console.error('[Global Sync] Robinhood pull failed:', err);
+    }
+    try {
+        console.log('[Global Sync] Triggering Polygon symbol data refresh...');
+        await Utils.apiRequest('/api/portfolio/refresh-symbols', { method: 'POST' });
+        console.log('[Global Sync] Polygon symbol data refresh complete.');
+    } catch (err) {
+        console.error('[Global Sync] Polygon symbol data refresh failed:', err);
+    }
+}, 10 * 60 * 1000); // 10 minutes in ms
 
-// Initial sync on page load - TEMPORARILY DISABLED
-// setTimeout(async () => {
-//     try {
-//         console.log('[Initial Sync] Triggering Polygon symbol data refresh...');
-//         await Utils.apiRequest('/api/portfolio/refresh-symbols', { method: 'POST' });
-//         console.log('[Initial Sync] Polygon symbol data refresh complete.');
-//     } catch (err) {
-//         console.error('[Initial Sync] Polygon symbol data refresh failed:', err);
-//     }
-// }, 2000); // Wait 2 seconds after page load
+// Initial sync on page load
+setTimeout(async () => {
+    try {
+        console.log('[Initial Sync] Triggering Polygon symbol data refresh...');
+        await Utils.apiRequest('/api/portfolio/refresh-symbols', { method: 'POST' });
+        console.log('[Initial Sync] Polygon symbol data refresh complete.');
+    } catch (err) {
+        console.error('[Initial Sync] Polygon symbol data refresh failed:', err);
+    }
+}, 2000); // Wait 2 seconds after page load
 
 // Export for use in other modules
 window.AppState = AppState;

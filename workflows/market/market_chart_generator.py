@@ -621,21 +621,21 @@ def generate_market_index_chart(
         safe_name}"></div>
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <script type="text/javascript">
-  new TradingView.widget({
+  new TradingView.widget({{
         "width": "100%",
-    "height": 900,
-    "symbol": "{tv_symbol}",
-    "interval": "D",
-    "timezone": "Etc/UTC",
-    "theme": "dark",
-    "style": "1",
-    "locale": "en",
-    "toolbar_bg": "#131722",
-    "enable_publishing": false,
-    "hide_top_toolbar": false,
-    "save_image": false,
-    "container_id": "tradingview_{safe_name}"
-  } );
+        "height": 900,
+        "symbol": "{tv_symbol}",
+        "interval": "D",
+        "timezone": "Etc/UTC",
+        "theme": "dark",
+        "style": "1",
+        "locale": "en",
+        "toolbar_bg": "#131722",
+        "enable_publishing": false,
+        "hide_top_toolbar": false,
+        "save_image": false,
+        "container_id": "tradingview_{safe_name}"
+  }});
   </script>
 </div>
 </body>

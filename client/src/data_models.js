@@ -139,7 +139,12 @@ const OrderSchema = {
         type: { type: 'string', enum: ['buy', 'sell'] },
         quantity: { type: 'number', minimum: 0 },
         price: { type: 'number', minimum: 0 },
-        date: { type: 'string', format: 'date' },
+        date: { 
+            oneOf: [
+                { type: 'string', format: 'date' },
+                { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}T' } // ISO timestamp format
+            ]
+        },
         fees: { type: 'number', minimum: 0, default: 0.0 },
         pl: { type: 'number' },
         source_id: { type: 'string' },

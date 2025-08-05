@@ -26,7 +26,7 @@ export function initDividends() {
                   <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Source</th>
                 </tr>
               </thead>
-              <tbody id="dividendsTbody">
+              <tbody class="divide-y divide-slate-700" id="dividendsTbody">
                 <tr><td colspan="7" class="text-center text-gray-400 py-4">Loading...</td></tr>
               </tbody>
             </table>

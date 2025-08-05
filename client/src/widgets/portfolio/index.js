@@ -130,6 +130,7 @@ async function renderPositions(positions) {
     btcPercent = portfolioBTCDollar > 0 ? ((portfolioBTCDollar / totalPortfolioValue) * 100).toFixed(2) + '%' : '-';
   }
   const btcRow = document.createElement('tr');
+  btcRow.className = 'border-b border-slate-700 hover:bg-slate-700';
   btcRow.innerHTML = `
     <td class="px-3 py-2 text-yellow-400 font-bold">BTC</td>
     <td class="px-3 py-2 text-gray-200">$${portfolioBTCDollar.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
@@ -167,6 +168,7 @@ async function renderPositions(positions) {
       const beta = pos.beta !== undefined && pos.beta !== null ? pos.beta.toFixed(2) : '-';
       const delta = pos.delta !== undefined && pos.delta !== null ? pos.delta.toFixed(2) : '-';
       const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-700 hover:bg-slate-700';
       tr.innerHTML = `
         <td class="px-3 py-2 text-white font-semibold">${pos.symbol}</td>
         <td class="px-3 py-2 text-gray-200">${amountFormatted}</td>
@@ -187,6 +189,7 @@ async function renderPositions(positions) {
   // --- CASH row at the bottom ---
   const cashPercent = cashLeft > 0 ? ((cashLeft / totalPortfolioValue) * 100).toFixed(2) : '0.00';
   const cashRow = document.createElement('tr');
+  cashRow.className = 'border-b border-slate-700 hover:bg-slate-700';
   cashRow.innerHTML = `
     <td class="px-3 py-2 text-green-400 font-bold">CASH</td>
     <td class="px-3 py-2 text-gray-200">$${cashLeft.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
@@ -570,7 +573,7 @@ export function initPortfolio() {
           </div>
           
           <form id="portfolioSettingsForm" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-4">
               <div>
                 <label for="cash" class="block text-sm font-medium text-gray-300 mb-1">Cash Balance</label>
                 <input type="number" id="cash" name="cash" step="0.01" required 
@@ -615,6 +618,12 @@ export function initPortfolio() {
                   <label for="robinhoodMFA" class="block text-sm font-medium text-gray-300 mb-1">Robinhood MFA Code</label>
                   <input type="text" id="robinhoodMFA" name="robinhoodMFA" 
                          class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400">
+                </div>
+                
+                <div class="pt-2">
+                  <button type="button" id="pullRobinhoodBtn" class="w-full py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600">
+                    Pull Robinhood Data
+                  </button>
                 </div>
               </div>
             </div>
@@ -694,7 +703,6 @@ export function initPortfolio() {
     settingsBtn.addEventListener('click', async () => {
       try {
         await fetchPortfolioSettings();
-        await fetchRobinhoodStatus();
         
         const cashInput = document.getElementById('cash');
         const btcDollarInput = document.getElementById('btcDollar');
@@ -715,7 +723,6 @@ export function initPortfolio() {
         if (robinhoodMFAInput) robinhoodMFAInput.value = data.robinhood_mfa || '';
         
         cashModal.classList.remove('hidden');
-        updatePullButtonState(); // Update button state when modal opens
       } catch (error) {
         console.error('Error opening settings:', error);
         Utils.showNotification('Error loading settings', 'error');
@@ -724,6 +731,29 @@ export function initPortfolio() {
     cancelCashModalBtn.addEventListener('click', () => {
       cashModal.classList.add('hidden');
     });
+    
+    // Handle the second cancel button
+    const cancelCashModalBtn2 = document.getElementById('cancelCashModalBtn2');
+    if (cancelCashModalBtn2) {
+      cancelCashModalBtn2.addEventListener('click', () => {
+        cashModal.classList.add('hidden');
+      });
+    }
+    
+    // Handle the pull Robinhood button in the modal
+    const pullRobinhoodBtn = document.getElementById('pullRobinhoodBtn');
+    if (pullRobinhoodBtn) {
+      pullRobinhoodBtn.addEventListener('click', async () => {
+        try {
+          await pullRobinhoodData(true);
+          // Refresh the portfolio data after pull
+          fetchPositionsAndSettings();
+        } catch (error) {
+          console.error('Error pulling Robinhood data:', error);
+          Utils.showNotification('Error pulling Robinhood data', 'error');
+        }
+      });
+    }
     
     // Store the original click handler function
     const originalModalClickHandler = (e) => {
@@ -735,10 +765,10 @@ export function initPortfolio() {
     cashModal.addEventListener('mousedown', originalModalClickHandler);
     cashModal._originalClickHandler = originalModalClickHandler;
   }
-  // Handle cash form submission
-  const cashForm = document.getElementById('cashForm');
-  if (cashForm) {
-    cashForm.addEventListener('submit', async function(e) {
+  // Handle portfolio settings form submission
+  const portfolioSettingsForm = document.getElementById('portfolioSettingsForm');
+  if (portfolioSettingsForm) {
+    portfolioSettingsForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       
       const cashInput = document.getElementById('cash');

@@ -551,6 +551,19 @@ def transform_pocketbase_record(
     if 'user' in clean_data and isinstance(clean_data['user'], dict):
         clean_data['user'] = clean_data['user'].get('id', clean_data['user'])
 
+    # Handle date format conversion for Order model
+    if model_class.__name__ == 'Order' and 'date' in clean_data:
+        date_value = clean_data['date']
+        if isinstance(date_value, str) and 'T' in date_value:
+            # Convert ISO timestamp to YYYY-MM-DD format
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+                clean_data['date'] = dt.strftime('%Y-%m-%d')
+            except:
+                # If conversion fails, keep original
+                pass
+
     return model_class(**clean_data)
 
 

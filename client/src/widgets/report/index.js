@@ -145,7 +145,7 @@ export function deleteReport(reportDir) {
     showConfirmationModal(
         `Are you sure you want to delete this report?`,
         () => {
-            fetch(`/delete-report/${reportDir}`, { 
+            fetch(`/api/report/delete/${reportDir}`, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             })
@@ -166,6 +166,9 @@ export function deleteReport(reportDir) {
         }
     );
 }
+
+// Make deleteReport globally available
+window.deleteReport = deleteReport;
 
 export function showConfirmationModal(message, confirmCallback) {
     // Use the global confirmation modal from WidgetUtils
