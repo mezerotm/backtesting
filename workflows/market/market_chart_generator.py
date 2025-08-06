@@ -617,11 +617,10 @@ def generate_market_index_chart(
 <head></head>
 <body style="height:900px; margin:0; padding:0;">
 <div class="tradingview-widget-container" style="height:900px;">
-  <div id="tradingview_{
-        safe_name}"></div>
+  <div id="tradingview_{safe_name}"></div>
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <script type="text/javascript">
-  new TradingView.widget({{
+  new TradingView.widget({
         "width": "100%",
         "height": 900,
         "symbol": "{tv_symbol}",
@@ -635,7 +634,7 @@ def generate_market_index_chart(
         "hide_top_toolbar": false,
         "save_image": false,
         "container_id": "tradingview_{safe_name}"
-  }});
+  } );
   </script>
 </div>
 </body>

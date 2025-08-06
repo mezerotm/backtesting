@@ -560,7 +560,7 @@ def transform_pocketbase_record(
                 from datetime import datetime
                 dt = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
                 clean_data['date'] = dt.strftime('%Y-%m-%d')
-            except:
+            except BaseException:
                 # If conversion fails, keep original
                 pass
 

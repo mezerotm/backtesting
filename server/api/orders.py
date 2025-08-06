@@ -15,19 +15,22 @@ async def get_orders(request: Request) -> Dict:
     try:
         logger.info("=== ORDERS DEBUG: get_orders called ===")
         logger.info(f"=== ORDERS DEBUG: Cookies: {request.cookies} ===")
-        
+
         user_id = await get_current_user_id(request)
         logger.info(f"=== ORDERS DEBUG: user_id: {user_id} ===")
-        
+
         if not user_id:
             logger.warning(
                 "Orders API called without authentication - expected for fresh starts")
             return {"orders": []}
 
         # Get raw orders from PocketBase
-        logger.info(f"=== ORDERS DEBUG: Getting orders for user_id: {user_id} ===")
+        logger.info(
+            f"=== ORDERS DEBUG: Getting orders for user_id: {user_id} ===")
         raw_orders = get_model_manager().get_orders(user_id)
-        logger.info(f"=== ORDERS DEBUG: Raw orders from DB: {len(raw_orders)} orders ===")
+        logger.info(
+            f"=== ORDERS DEBUG: Raw orders from DB: {
+                len(raw_orders)} orders ===")
         logger.info(f"=== ORDERS DEBUG: Raw orders data: {raw_orders} ===")
 
         # Transform to Pydantic models for validation
@@ -42,8 +45,10 @@ async def get_orders(request: Request) -> Dict:
                         raw_order.get(
                             'id', 'unknown')}")
                 continue
-        
-        logger.info(f"=== ORDERS DEBUG: Transformed orders: {len(orders)} orders ===")
+
+        logger.info(
+            f"=== ORDERS DEBUG: Transformed orders: {
+                len(orders)} orders ===")
 
         # Convert back to dictionaries for API response
         order_dicts = [transform_to_pocketbase_data(order) for order in orders]
