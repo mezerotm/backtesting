@@ -70,12 +70,12 @@ class MarketDataFetcher(BaseFetcher):
     def get_polygon_agg(self, ticker, date=None):
         logger = logging.getLogger(__name__)
         logger.debug(f"get_polygon_agg: ticker={ticker}, date={date}")
-        
+
         # Check if we're in after-hours
         et_time = datetime.now(pytz.timezone('US/Eastern'))
         is_after_hours = et_time.hour < 9 or et_time.hour >= 16
         is_weekend = et_time.weekday() >= 5
-        
+
         try:
             aggs = self.client.get_aggs(
                 ticker=ticker,
@@ -85,22 +85,29 @@ class MarketDataFetcher(BaseFetcher):
                 to=date,
                 adjusted=True
             )
-            logger.debug(f"get_polygon_agg: aggs for {ticker} on {date}: {aggs}")
+            logger.debug(f"get_polygon_agg: aggs for {
+                         ticker} on {date}: {aggs}")
             return aggs[0] if aggs else None
         except Exception as e:
             error_str = str(e)
-            
+
             # Handle after-hours authorization errors gracefully
-            if "NOT_AUTHORIZED" in error_str and (is_after_hours or is_weekend):
-                logger.info(f"After-hours data not available for {ticker} on {date} - this is expected outside market hours")
-                
+            if "NOT_AUTHORIZED" in error_str and (
+                    is_after_hours or is_weekend):
+                logger.info(f"After-hours data not available for {ticker} on {
+                            date} - this is expected outside market hours")
+
                 # Try to get the most recent available data
                 if not date:
-                    # If no specific date requested, try to get the last available trading day
+                    # If no specific date requested, try to get the last
+                    # available trading day
                     try:
                         # Get data from the last 5 days to find the most recent
                         for days_back in range(1, 6):
-                            try_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+                            try_date = (
+                                datetime.now() -
+                                timedelta(
+                                    days=days_back)).strftime('%Y-%m-%d')
                             try:
                                 fallback_aggs = self.client.get_aggs(
                                     ticker=ticker,
@@ -111,16 +118,19 @@ class MarketDataFetcher(BaseFetcher):
                                     adjusted=True
                                 )
                                 if fallback_aggs:
-                                    logger.info(f"Using fallback data for {ticker} from {try_date}")
+                                    logger.info(
+                                        f"Using fallback data for {ticker} from {try_date}")
                                     return fallback_aggs[0]
-                            except:
+                            except BaseException:
                                 continue
                     except Exception as fallback_error:
-                        logger.warning(f"Fallback data fetch failed for {ticker}: {fallback_error}")
-                
+                        logger.warning(
+                            f"Fallback data fetch failed for {ticker}: {fallback_error}")
+
                 return None
             else:
-                logger.error(f"get_polygon_agg: Exception for {ticker} on {date}: {e}")
+                logger.error(f"get_polygon_agg: Exception for {
+                             ticker} on {date}: {e}")
                 return None
 
     def fetch_market_indices(self) -> Dict:
@@ -743,12 +753,12 @@ class MarketDataFetcher(BaseFetcher):
         """Get the most recent trading day (excluding weekends and holidays)."""
         et_time = datetime.now(pytz.timezone('US/Eastern'))
         current_date = et_time.date()
-        
+
         # If it's weekend, go back to Friday
         if et_time.weekday() >= 5:  # Saturday = 5, Sunday = 6
             days_back = et_time.weekday() - 4  # Friday = 4
             current_date = current_date - timedelta(days=days_back)
-        
+
         # If it's before 9:30 AM ET, use previous day
         if et_time.hour < 9 or (et_time.hour == 9 and et_time.minute < 30):
             current_date = current_date - timedelta(days=1)
@@ -756,7 +766,7 @@ class MarketDataFetcher(BaseFetcher):
             if current_date.weekday() >= 5:
                 days_back = current_date.weekday() - 4
                 current_date = current_date - timedelta(days=days_back)
-        
+
         return current_date.strftime('%Y-%m-%d')
 
     def fetch_market_status(self) -> Dict:

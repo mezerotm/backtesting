@@ -88,31 +88,43 @@ def get_report_data(symbol: str, filename: str):
     """Serve JSON data files for financial reports."""
     # Find the most recent report directory for this symbol
     if not os.path.exists(REPORTS_DIR):
-        raise HTTPException(status_code=404, detail="Reports directory not found")
-    
+        raise HTTPException(
+            status_code=404,
+            detail="Reports directory not found")
+
     # Look for financial report directories for this symbol
     symbol_dirs = []
     for item in os.listdir(REPORTS_DIR):
-        if item.startswith(f"financial_{symbol}_") and os.path.isdir(os.path.join(REPORTS_DIR, item)):
+        if item.startswith(
+                f"financial_{symbol}_") and os.path.isdir(
+                os.path.join(
+                REPORTS_DIR,
+                item)):
             symbol_dirs.append(item)
-    
+
     if not symbol_dirs:
-        raise HTTPException(status_code=404, detail=f"No financial reports found for {symbol}")
-    
+        raise HTTPException(
+            status_code=404,
+            detail=f"No financial reports found for {symbol}")
+
     # Get the most recent directory (sort by date)
     symbol_dirs.sort(reverse=True)
     latest_dir = symbol_dirs[0]
     file_path = os.path.join(REPORTS_DIR, latest_dir, filename)
-    
+
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"File {filename} not found for {symbol}")
-    
+        raise HTTPException(status_code=404, detail=f"File {
+                            filename} not found for {symbol}")
+
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         return data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading file: {
+                str(e)}")
 
 
 @router.get("/search-symbols")

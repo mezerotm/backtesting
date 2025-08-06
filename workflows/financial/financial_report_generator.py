@@ -459,44 +459,75 @@ def generate_financial_report(
         print(f"[DEBUG] Metrics saved: {os.path.exists(metrics_file)}")
 
         # Save individual JSON files for easy access
-        if 'quarterly_financials' in data and isinstance(data['quarterly_financials'], pd.DataFrame):
-            quarterly_income_file = os.path.join(report_dir, 'quarterly_income.json')
+        if 'quarterly_financials' in data and isinstance(
+                data['quarterly_financials'], pd.DataFrame):
+            quarterly_income_file = os.path.join(
+                report_dir, 'quarterly_income.json')
             with open(quarterly_income_file, 'w') as f:
-                json.dump(data['quarterly_financials'].to_dict('records'), f, indent=2)
-            
-            # Also save as quarterly_balance.json and quarterly_cash_flow.json (same data, different views)
-            quarterly_balance_file = os.path.join(report_dir, 'quarterly_balance.json')
+                json.dump(
+                    data['quarterly_financials'].to_dict('records'),
+                    f,
+                    indent=2)
+
+            # Also save as quarterly_balance.json and quarterly_cash_flow.json
+            # (same data, different views)
+            quarterly_balance_file = os.path.join(
+                report_dir, 'quarterly_balance.json')
             with open(quarterly_balance_file, 'w') as f:
-                json.dump(data['quarterly_financials'].to_dict('records'), f, indent=2)
-            
-            quarterly_cash_flow_file = os.path.join(report_dir, 'quarterly_cash_flow.json')
+                json.dump(
+                    data['quarterly_financials'].to_dict('records'),
+                    f,
+                    indent=2)
+
+            quarterly_cash_flow_file = os.path.join(
+                report_dir, 'quarterly_cash_flow.json')
             with open(quarterly_cash_flow_file, 'w') as f:
-                json.dump(data['quarterly_financials'].to_dict('records'), f, indent=2)
-        
-        if 'annual_financials' in data and isinstance(data['annual_financials'], pd.DataFrame):
+                json.dump(
+                    data['quarterly_financials'].to_dict('records'),
+                    f,
+                    indent=2)
+
+        if 'annual_financials' in data and isinstance(
+                data['annual_financials'], pd.DataFrame):
             annual_income_file = os.path.join(report_dir, 'annual_income.json')
             with open(annual_income_file, 'w') as f:
-                json.dump(data['annual_financials'].to_dict('records'), f, indent=2)
-            
-            # Also save as annual_balance.json and annual_cash_flow.json (same data, different views)
-            annual_balance_file = os.path.join(report_dir, 'annual_balance.json')
+                json.dump(
+                    data['annual_financials'].to_dict('records'),
+                    f,
+                    indent=2)
+
+            # Also save as annual_balance.json and annual_cash_flow.json (same
+            # data, different views)
+            annual_balance_file = os.path.join(
+                report_dir, 'annual_balance.json')
             with open(annual_balance_file, 'w') as f:
-                json.dump(data['annual_financials'].to_dict('records'), f, indent=2)
-            
-            annual_cash_flow_file = os.path.join(report_dir, 'annual_cash_flow.json')
+                json.dump(
+                    data['annual_financials'].to_dict('records'),
+                    f,
+                    indent=2)
+
+            annual_cash_flow_file = os.path.join(
+                report_dir, 'annual_cash_flow.json')
             with open(annual_cash_flow_file, 'w') as f:
-                json.dump(data['annual_financials'].to_dict('records'), f, indent=2)
-        
+                json.dump(
+                    data['annual_financials'].to_dict('records'),
+                    f,
+                    indent=2)
+
         # Save raw data
         raw_data_file = os.path.join(report_dir, 'raw_data.json')
         with open(raw_data_file, 'w') as f:
-            json.dump({
-                **common_metadata,
-                'data': {k: v.to_dict('records') if isinstance(v, pd.DataFrame) else v for k, v in data.items()}
-            }, f, indent=2, default=str)
-        
+            json.dump({**common_metadata,
+                       'data': {k: v.to_dict('records') if isinstance(v,
+                                                                      pd.DataFrame) else v for k,
+                                v in data.items()}},
+                      f,
+                      indent=2,
+                      default=str)
+
         # Save metric descriptions
-        descriptions_file = os.path.join(report_dir, 'metric_descriptions.json')
+        descriptions_file = os.path.join(
+            report_dir, 'metric_descriptions.json')
         with open(descriptions_file, 'w') as f:
             json.dump({
                 **common_metadata,
