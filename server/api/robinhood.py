@@ -392,10 +392,10 @@ def map_dividends(raw_dividends: List[Dict], user_id: str) -> List[Dict]:
 
 
 def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
-    """Map raw positions to our data format."""
+    """Map raw stock positions to our data format."""
     try:
         validation_logger.info(
-            f"Starting position mapping for {
+            f"Starting stock position mapping for {
                 len(raw_positions)} raw positions...")
         mapped = []
         skipped_count = 0
@@ -437,6 +437,10 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                     skipped_count += 1
                     continue
 
+                # Ensure buy_price is valid
+                if buy_price is None or buy_price != buy_price:  # Check for NaN
+                    buy_price = 0.0
+
                 if buy_price < 0:
                     validation_logger.warning(f"ADJUSTED: Negative buy price for {
                                               clean_symbol}: {buy_price} -> 0.0")
@@ -451,6 +455,13 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                     validation_logger.warning(
                         f"SUSPICIOUS: Very high buy price for {clean_symbol}: ${buy_price}")
 
+                # Final validation - ensure we have valid data
+                if buy_price <= 0:
+                    validation_logger.warning(
+                        f"SKIPPED: Invalid buy price for {clean_symbol}: {buy_price}")
+                    skipped_count += 1
+                    continue
+
                 mapped_position = {
                     'symbol': clean_symbol,
                     'quantity': quantity,
@@ -461,8 +472,8 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                     'user': user_id
                 }
                 mapped.append(mapped_position)
-                validation_logger.debug(
-                    f"MAPPED: Position {clean_symbol} - Qty: {quantity}, Price: ${buy_price}")
+                validation_logger.debug(f"MAPPED: Stock Position {
+                    clean_symbol} - Qty: {quantity}, Price: ${buy_price}")
 
             except (ValueError, TypeError) as e:
                 validation_logger.error(
@@ -475,18 +486,326 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                 error_count += 1
                 continue
 
-        validation_logger.info(f"Position mapping complete: {len(mapped)} mapped, {
+        validation_logger.info(f"Stock position mapping complete: {len(mapped)} mapped, {
                                skipped_count} skipped, {error_count} errors")
         return mapped
     except Exception as e:
-        validation_logger.error(f"CRITICAL: Error in position mapping: {e}")
+        validation_logger.error(
+            f"CRITICAL: Error in stock position mapping: {e}")
+        return []
+
+
+def map_crypto_positions(
+        raw_crypto_positions: List[Dict],
+        user_id: str) -> List[Dict]:
+    """Map raw crypto positions to our data format."""
+    try:
+        validation_logger.info(
+            f"Starting crypto position mapping for {
+                len(raw_crypto_positions)} raw crypto positions...")
+
+        # Log the first crypto position structure for debugging
+        if raw_crypto_positions:
+            validation_logger.info(f"=== CRYPTO POSITION DATA STRUCTURE ===")
+            validation_logger.info(
+                f"First crypto position keys: {
+                    list(
+                        raw_crypto_positions[0].keys())}")
+            validation_logger.info(
+                f"First crypto position data: {
+                    raw_crypto_positions[0]}")
+            validation_logger.info(
+                f"=== END CRYPTO POSITION DATA STRUCTURE ===")
+
+        mapped = []
+        skipped_count = 0
+        error_count = 0
+
+        for i, crypto_pos in enumerate(raw_crypto_positions):
+            try:
+                validation_logger.info(f"=== Processing crypto position {
+                                       i + 1}/{len(raw_crypto_positions)} ===")
+                validation_logger.info(
+                    f"Raw crypto position data: {crypto_pos}")
+
+                # Extract crypto symbol (e.g., "BTC", "ETH")
+                crypto_symbol = crypto_pos.get('currency', {}).get('code', '')
+                validation_logger.info(
+                    f"Crypto symbol extracted: '{crypto_symbol}'")
+
+                if not crypto_symbol:
+                    validation_logger.warning(
+                        f"SKIPPED: Missing crypto symbol in position data")
+                    skipped_count += 1
+                    continue
+
+                # Sanitize symbol
+                clean_symbol = sanitize_symbol(crypto_symbol)
+                validation_logger.info(f"Sanitized symbol: '{clean_symbol}'")
+
+                if not clean_symbol:
+                    validation_logger.warning(f"SKIPPED: Invalid crypto symbol '{
+                        crypto_symbol}' in position data")
+                    skipped_count += 1
+                    continue
+
+                # Extract and validate position data
+                raw_quantity = crypto_pos.get('quantity', 0)
+                validation_logger.info(
+                    f"Raw quantity: {raw_quantity} (type: {
+                        type(raw_quantity)})")
+
+                try:
+                    quantity = float(raw_quantity)
+                    validation_logger.info(f"Parsed quantity: {quantity}")
+                except (ValueError, TypeError) as e:
+                    validation_logger.warning(f"SKIPPED: Invalid quantity for {
+                        clean_symbol}: {raw_quantity} - {e}")
+                    skipped_count += 1
+                    continue
+
+                # Log all available fields for cost basis calculation
+                validation_logger.info(
+                    f"Available fields for cost calculation:")
+                validation_logger.info(
+                    f"  - cost_basis: {crypto_pos.get('cost_basis')}")
+                validation_logger.info(
+                    f"  - average_buy_price: {crypto_pos.get('average_buy_price')}")
+                validation_logger.info(
+                    f"  - total_cost: {crypto_pos.get('total_cost')}")
+                validation_logger.info(
+                    f"  - equity: {crypto_pos.get('equity')}")
+                validation_logger.info(
+                    f"  - market_value: {crypto_pos.get('market_value')}")
+
+                # Log cost_bases array details
+                cost_bases = crypto_pos.get('cost_bases', [])
+                validation_logger.info(f"  - cost_bases array: {len(cost_bases)} items")
+                if cost_bases:
+                    validation_logger.info(f"  - First cost_bases item: {cost_bases[0]}")
+                
+                # Log tax_lot_cost_bases array details
+                tax_lot_cost_bases = crypto_pos.get('tax_lot_cost_bases', [])
+                validation_logger.info(f"  - tax_lot_cost_bases array: {len(tax_lot_cost_bases)} items")
+                if tax_lot_cost_bases:
+                    validation_logger.info(f"  - First tax_lot_cost_bases item: {tax_lot_cost_bases[0]}")
+
+                # Log all available date fields
+                validation_logger.info(f"Available date fields:")
+                validation_logger.info(
+                    f"  - created_at: {crypto_pos.get('created_at')}")
+                validation_logger.info(f"  - date: {crypto_pos.get('date')}")
+                validation_logger.info(
+                    f"  - purchase_date: {crypto_pos.get('purchase_date')}")
+                validation_logger.info(
+                    f"  - updated_at: {crypto_pos.get('updated_at')}")
+                validation_logger.info(
+                    f"  - last_transaction_at: {crypto_pos.get('last_transaction_at')}")
+
+                try:
+                    # For crypto, we need to calculate the average buy price
+                    # First try to get cost basis from the cost_bases array
+                    cost_basis = 0.0
+                    buy_price = 0.0
+                    
+                    # Check cost_bases array first (this is where Robinhood stores the actual cost data)
+                    cost_bases = crypto_pos.get('cost_bases', [])
+                    if cost_bases:
+                        # Sum up all direct cost basis from the array
+                        total_cost_basis = 0.0
+                        total_quantity = 0.0
+                        
+                        for cost_basis_item in cost_bases:
+                            try:
+                                direct_cost_basis = float(cost_basis_item.get('direct_cost_basis', 0))
+                                direct_quantity = float(cost_basis_item.get('direct_quantity', 0))
+                                total_cost_basis += direct_cost_basis
+                                total_quantity += direct_quantity
+                                validation_logger.info(f"Cost basis item: direct_cost_basis={direct_cost_basis}, direct_quantity={direct_quantity}")
+                            except (ValueError, TypeError) as e:
+                                validation_logger.warning(f"Failed to parse cost basis item: {e}")
+                        
+                        if total_quantity > 0 and total_cost_basis > 0:
+                            cost_basis = total_cost_basis
+                            buy_price = total_cost_basis / total_quantity
+                            validation_logger.info(f"Calculated from cost_bases array: cost_basis={cost_basis}, buy_price={buy_price}")
+                        else:
+                            validation_logger.warning(f"Invalid totals from cost_bases array: total_cost_basis={total_cost_basis}, total_quantity={total_quantity}")
+                    else:
+                        # Fallback to the old cost_basis field
+                        cost_basis = float(crypto_pos.get('cost_basis', 0))
+                        validation_logger.info(f"Using fallback cost_basis: {cost_basis}")
+
+                        if quantity > 0 and cost_basis > 0:
+                            buy_price = cost_basis / quantity
+                            validation_logger.info(
+                                f"Calculated buy price from cost_basis: {buy_price}")
+                    
+                    # If we still don't have a valid buy price, try alternative fields
+                    if buy_price <= 0:
+                        validation_logger.warning(f"Cannot calculate buy price from cost_bases (quantity: {quantity}, cost_basis: {cost_basis})")
+
+                        # Try alternative fields
+                        alternative_buy_price = None
+
+                        # Try average_buy_price if available
+                        if crypto_pos.get('average_buy_price'):
+                            try:
+                                alternative_buy_price = float(
+                                    crypto_pos.get('average_buy_price'))
+                                validation_logger.info(
+                                    f"Using average_buy_price: {alternative_buy_price}")
+                            except (ValueError, TypeError):
+                                validation_logger.warning(
+                                    "Failed to parse average_buy_price")
+
+                        # Try total_cost / quantity if available
+                        elif crypto_pos.get('total_cost') and quantity > 0:
+                            try:
+                                total_cost = float(
+                                    crypto_pos.get('total_cost'))
+                                alternative_buy_price = total_cost / quantity
+                                validation_logger.info(
+                                    f"Calculated from total_cost: {alternative_buy_price}")
+                            except (ValueError, TypeError):
+                                validation_logger.warning(
+                                    "Failed to calculate from total_cost")
+
+                        if alternative_buy_price and alternative_buy_price > 0:
+                            buy_price = alternative_buy_price
+                            validation_logger.info(
+                                f"Using alternative buy price: {buy_price}")
+                        else:
+                            # Check if we have a buy date to get historical
+                            # price
+                            buy_date = crypto_pos.get('created_at') or crypto_pos.get(
+                                'date') or crypto_pos.get('purchase_date')
+                            if buy_date:
+                                validation_logger.info(
+                                    f"Found buy date: {buy_date}, attempting to get historical price...")
+                                try:
+                                    # Convert date format if needed
+                                    if 'T' in buy_date:
+                                        # Extract YYYY-MM-DD from ISO format
+                                        buy_date = buy_date.split('T')[0]
+
+                                    from server.api.portfolio import get_crypto_historical_price
+                                    historical_price = get_crypto_historical_price(
+                                        clean_symbol, buy_date)
+                                    if historical_price and historical_price > 0:
+                                        buy_price = historical_price
+                                        validation_logger.info(
+                                            f"Using historical price from {buy_date}: {buy_price}")
+                                    else:
+                                        validation_logger.warning(
+                                            f"Could not get historical price for {clean_symbol} on {buy_date}")
+                                        buy_price = 0.0
+                                except Exception as e:
+                                    validation_logger.warning(
+                                        f"Failed to get historical price: {e}")
+                                    buy_price = 0.0
+                            else:
+                                validation_logger.info(
+                                    "No buy date found, attempting to get current crypto price as fallback...")
+                                try:
+                                    crypto_quote = r.crypto.get_crypto_quote_from_symbol(
+                                        clean_symbol)
+                                    validation_logger.info(
+                                        f"Crypto quote response: {crypto_quote}")
+
+                                    if crypto_quote and 'mark_price' in crypto_quote:
+                                        buy_price = float(
+                                            crypto_quote['mark_price'])
+                                        validation_logger.info(
+                                            f"Using current market price as fallback: {buy_price}")
+                                    else:
+                                        buy_price = 0.0
+                                        validation_logger.warning(
+                                            "No mark_price in crypto quote")
+                                except Exception as e:
+                                    buy_price = 0.0
+                                    validation_logger.warning(
+                                        f"Failed to get crypto quote: {e}")
+                except (ValueError, TypeError) as e:
+                    validation_logger.warning(
+                        f"SKIPPED: Invalid cost basis for {clean_symbol}: {
+                            crypto_pos.get('cost_basis')} - {e}")
+                    skipped_count += 1
+                    continue
+
+                # Validate data ranges
+                if quantity <= 0:
+                    validation_logger.info(
+                        f"SKIPPED: Zero/negative quantity for {clean_symbol}: {quantity}")
+                    skipped_count += 1
+                    continue
+
+                # Ensure buy_price is valid
+                if buy_price is None or buy_price != buy_price:  # Check for NaN
+                    buy_price = 0.0
+
+                if buy_price < 0:
+                    validation_logger.warning(f"ADJUSTED: Negative buy price for {
+                                              clean_symbol}: {buy_price} -> 0.0")
+                    buy_price = 0.0
+
+                # Log suspicious data
+                if quantity > 1000000:  # More than 1M units
+                    validation_logger.warning(
+                        f"SUSPICIOUS: Very large quantity for {clean_symbol}: {quantity}")
+
+                if buy_price > 100000:  # More than $100k per unit (for crypto)
+                    validation_logger.warning(
+                        f"SUSPICIOUS: Very high buy price for {clean_symbol}: ${buy_price}")
+
+                # Final validation - ensure we have valid data
+                if buy_price <= 0:
+                    validation_logger.warning(
+                        f"SKIPPED: Invalid buy price for {clean_symbol}: {buy_price}")
+                    skipped_count += 1
+                    continue
+
+                mapped_position = {
+                    'symbol': clean_symbol,
+                    'quantity': quantity,
+                    'buy_price': buy_price,
+                    'notes': crypto_pos.get('currency', {}).get('name', clean_symbol),
+                    'source': 'robinhood_crypto',
+                    'pulled_at': datetime.now().isoformat(),
+                    'user': user_id}
+                mapped.append(mapped_position)
+                validation_logger.debug(f"MAPPED: Crypto Position {
+                    clean_symbol} - Qty: {quantity}, Price: ${buy_price}")
+
+            except (ValueError, TypeError) as e:
+                validation_logger.error(
+                    f"ERROR: Data conversion error for crypto position {
+                        crypto_pos.get(
+                            'id', 'unknown')}: {e}")
+                error_count += 1
+                continue
+            except Exception as e:
+                validation_logger.error(
+                    f"ERROR: Unexpected error mapping crypto position {
+                        crypto_pos.get(
+                            'id', 'unknown')}: {e}")
+                error_count += 1
+                continue
+
+        validation_logger.info(
+            f"Crypto position mapping complete: {
+                len(mapped)} mapped, {skipped_count} skipped, {error_count} errors")
+        return mapped
+    except Exception as e:
+        validation_logger.error(
+            f"CRITICAL: Error in crypto position mapping: {e}")
         return []
 
 
 def map_orders(raw_orders: List[Dict], user_id: str) -> List[Dict]:
-    """Map raw orders to our data format."""
+    """Map raw stock orders to our data format."""
     try:
-        logger.debug(f"Mapping {len(raw_orders)} raw orders...")
+        logger.debug(f"Mapping {len(raw_orders)} raw stock orders...")
         orders = []
         order_id_counter = 1
 
@@ -494,7 +813,7 @@ def map_orders(raw_orders: List[Dict], user_id: str) -> List[Dict]:
             try:
                 if order.get('type') not in ('market', 'limit'):
                     logger.debug(
-                        f"Skipping order {
+                        f"Skipping stock order {
                             order.get(
                                 'id', 'unknown')}: type {
                             order.get('type')} not market/limit")
@@ -503,7 +822,7 @@ def map_orders(raw_orders: List[Dict], user_id: str) -> List[Dict]:
                 instrument_url = order.get('instrument')
                 if not instrument_url:
                     logger.debug(
-                        f"Skipping order {
+                        f"Skipping stock order {
                             order.get(
                                 'id',
                                 'unknown')}: missing instrument URL")
@@ -518,8 +837,8 @@ def map_orders(raw_orders: List[Dict], user_id: str) -> List[Dict]:
                 executions = order.get('executions', [])
 
                 if not executions:
-                    logger.debug(
-                        f"Skipping order {order_id}: no executions present")
+                    logger.debug(f"Skipping stock order {
+                        order_id}: no executions present")
                     continue
 
                 for execution in executions:
@@ -547,19 +866,124 @@ def map_orders(raw_orders: List[Dict], user_id: str) -> List[Dict]:
                         order_id_counter += 1
                     except Exception as e:
                         logger.error(
-                            f"Error mapping execution in order {order_id}: {e}")
+                            f"Error mapping execution in stock order {order_id}: {e}")
                         continue
             except Exception as e:
                 logger.error(
-                    f"Error processing order {
+                    f"Error processing stock order {
                         order.get(
                             'id', 'unknown')}: {e}")
                 continue
 
-        logger.info(f"Successfully mapped {len(orders)} orders")
+        logger.info(f"Successfully mapped {len(orders)} stock orders")
         return orders
     except Exception as e:
-        logger.error(f"Error mapping orders: {e}")
+        logger.error(f"Error mapping stock orders: {e}")
+        return []
+
+
+def map_crypto_orders(
+        raw_crypto_orders: List[Dict],
+        user_id: str) -> List[Dict]:
+    """Map raw crypto orders to our data format."""
+    try:
+        logger.debug(f"Mapping {len(raw_crypto_orders)} raw crypto orders...")
+
+        # Log the first crypto order structure for debugging
+        if raw_crypto_orders:
+            logger.info(f"=== CRYPTO ORDER DATA STRUCTURE ===")
+            logger.info(
+                f"First crypto order keys: {
+                    list(
+                        raw_crypto_orders[0].keys())}")
+            logger.info(f"First crypto order data: {raw_crypto_orders[0]}")
+            logger.info(f"=== END CRYPTO ORDER DATA STRUCTURE ===")
+
+        orders = []
+        order_id_counter = 1
+
+        for i, order in enumerate(raw_crypto_orders):
+            try:
+                logger.info(f"=== Processing crypto order {
+                            i + 1}/{len(raw_crypto_orders)} ===")
+                logger.info(f"Raw crypto order data: {order}")
+
+                if order.get('type') not in ('market', 'limit'):
+                    logger.debug(
+                        f"Skipping crypto order {
+                            order.get(
+                                'id', 'unknown')}: type {
+                            order.get('type')} not market/limit")
+                    continue
+
+                # Extract crypto symbol
+                crypto_symbol = order.get('currency_pair_id', '')
+                logger.info(f"Crypto symbol extracted: '{crypto_symbol}'")
+
+                if not crypto_symbol:
+                    logger.debug(
+                        f"Skipping crypto order {
+                            order.get(
+                                'id',
+                                'unknown')}: missing currency pair")
+                    continue
+
+                # Clean up crypto symbol (e.g., "BTC-USD" -> "BTC")
+                symbol = crypto_symbol.split(
+                    '-')[0] if '-' in crypto_symbol else crypto_symbol
+                logger.info(f"Cleaned symbol: '{symbol}'")
+
+                side = order.get('side', 'buy')
+                order_id = order.get('id', '')
+                executions = order.get('executions', [])
+
+                logger.info(
+                    f"Order side: {side}, ID: {order_id}, Executions count: {
+                        len(executions)}")
+
+                if not executions:
+                    logger.debug(f"Skipping crypto order {
+                        order_id}: no executions present")
+                    continue
+
+                for j, execution in enumerate(executions):
+                    try:
+                        logger.info(f"Processing execution {
+                                    j + 1}/{len(executions)}: {execution}")
+
+                        mapped_order = {
+                            'symbol': symbol,
+                            'type': side,
+                            'quantity': float(execution.get('quantity') or 0),
+                            'price': float(execution.get('price') or 0),
+                            'date': execution.get('timestamp', ''),
+                            'fees': float(execution.get('fees') or 0),
+                            'pl': 0.0,
+                            'source_id': order_id,
+                            'notes': crypto_symbol,
+                            'source': 'robinhood_crypto',
+                            'pulled_at': datetime.now().isoformat(),
+                            'user': user_id
+                        }
+
+                        logger.info(f"Mapped crypto order: {mapped_order}")
+                        orders.append(mapped_order)
+                        order_id_counter += 1
+                    except Exception as e:
+                        logger.error(
+                            f"Error mapping execution in crypto order {order_id}: {e}")
+                        continue
+            except Exception as e:
+                logger.error(
+                    f"Error processing crypto order {
+                        order.get(
+                            'id', 'unknown')}: {e}")
+                continue
+
+        logger.info(f"Successfully mapped {len(orders)} crypto orders")
+        return orders
+    except Exception as e:
+        logger.error(f"Error mapping crypto orders: {e}")
         return []
 
 
@@ -635,21 +1059,94 @@ async def pull_robinhood_data(request: Request):
         raw_dividends = []
 
         try:
-            logger.info("Pulling positions from Robinhood...")
+            logger.info("Pulling stock positions from Robinhood...")
             raw_positions = r.account.build_holdings()
             logger.info(
                 f"Pulled {
-                    len(raw_positions)} positions from Robinhood")
+                    len(raw_positions)} stock positions from Robinhood")
         except Exception as e:
-            logger.error(f"Failed to pull positions from Robinhood: {e}")
+            logger.error(f"Failed to pull stock positions from Robinhood: {e}")
             # Continue with other data pulls - don't fail completely
 
         try:
-            logger.info("Pulling orders from Robinhood...")
-            raw_orders = r.orders.get_all_stock_orders()
-            logger.info(f"Pulled {len(raw_orders)} orders from Robinhood")
+            logger.info("Pulling crypto positions from Robinhood...")
+            raw_crypto_positions = r.crypto.get_crypto_positions()
+            logger.info(
+                f"Pulled {
+                    len(raw_crypto_positions)} crypto positions from Robinhood")
+
+            # Log the raw crypto positions data structure
+            if raw_crypto_positions:
+                logger.info("=== RAW CRYPTO POSITIONS DATA ===")
+                logger.info(
+                    f"Number of crypto positions: {
+                        len(raw_crypto_positions)}")
+                logger.info(
+                    f"First crypto position sample: {
+                        raw_crypto_positions[0]}")
+                logger.info("=== END RAW CRYPTO POSITIONS DATA ===")
+            else:
+                logger.info("No crypto positions found")
+
         except Exception as e:
-            logger.error(f"Failed to pull orders from Robinhood: {e}")
+            logger.error(
+                f"Failed to pull crypto positions from Robinhood: {e}")
+            raw_crypto_positions = []
+            # Continue with other data pulls
+
+        try:
+            logger.info("Pulling stock orders from Robinhood...")
+            raw_orders = r.orders.get_all_stock_orders()
+            logger.info(
+                f"Pulled {
+                    len(raw_orders)} stock orders from Robinhood")
+        except Exception as e:
+            logger.error(f"Failed to pull stock orders from Robinhood: {e}")
+            # Continue with other data pulls
+
+        try:
+            logger.info("Pulling crypto orders from Robinhood...")
+            # Try different crypto order functions that might exist
+            raw_crypto_orders = []
+            
+            # Try get_crypto_orders first
+            try:
+                raw_crypto_orders = r.crypto.get_crypto_orders()
+                logger.info(f"Pulled {len(raw_crypto_orders)} crypto orders using get_crypto_orders")
+            except AttributeError:
+                logger.warning("get_crypto_orders not available, trying alternative methods...")
+                
+                # Try get_crypto_order_history
+                try:
+                    raw_crypto_orders = r.crypto.get_crypto_order_history()
+                    logger.info(f"Pulled {len(raw_crypto_orders)} crypto orders using get_crypto_order_history")
+                except AttributeError:
+                    logger.warning("get_crypto_order_history not available, trying get_crypto_orders_by_id...")
+                    
+                    # Try to get orders by getting account info first
+                    try:
+                        account = r.load_account_profile()
+                        if account and 'crypto_account' in account:
+                            crypto_account_id = account['crypto_account']
+                            raw_crypto_orders = r.crypto.get_crypto_orders_by_id(crypto_account_id)
+                            logger.info(f"Pulled {len(raw_crypto_orders)} crypto orders using get_crypto_orders_by_id")
+                        else:
+                            logger.warning("No crypto account found in account profile")
+                    except Exception as e:
+                        logger.warning(f"Failed to get crypto orders by account ID: {e}")
+            
+            # Log the raw crypto orders data structure
+            if raw_crypto_orders:
+                logger.info("=== RAW CRYPTO ORDERS DATA ===")
+                logger.info(f"Number of crypto orders: {len(raw_crypto_orders)}")
+                logger.info(f"First crypto order sample: {raw_crypto_orders[0]}")
+                logger.info("=== END RAW CRYPTO ORDERS DATA ===")
+            else:
+                logger.info("No crypto orders found")
+
+        except Exception as e:
+            logger.error(f"Failed to pull crypto orders from Robinhood: {e}")
+            raw_crypto_orders = []
             # Continue with other data pulls
 
         try:
@@ -668,24 +1165,36 @@ async def pull_robinhood_data(request: Request):
         if raw_positions and not validate_robinhood_data(
                 raw_positions, "positions"):
             validation_logger.error(
-                "CRITICAL: Invalid positions data structure, treating as empty")
+                "CRITICAL: Invalid stock positions data structure, treating as empty")
             raw_positions = {}
+
+        if raw_crypto_positions and not validate_robinhood_data(
+                raw_crypto_positions, "crypto_positions"):
+            validation_logger.error(
+                "CRITICAL: Invalid crypto positions data structure, treating as empty")
+            raw_crypto_positions = []
 
         if raw_orders and not validate_robinhood_data(raw_orders, "orders"):
             validation_logger.error(
-                "CRITICAL: Invalid orders data structure, treating as empty")
-            raw_orders = []
+                "CRITICAL: Invalid stock orders data structure, treating as empty")
+            raw_orders = {}
+
+        if raw_crypto_orders and not validate_robinhood_data(
+                raw_crypto_orders, "crypto_orders"):
+            validation_logger.error(
+                "CRITICAL: Invalid crypto orders data structure, treating as empty")
+            raw_crypto_orders = []
 
         if raw_dividends and not validate_robinhood_data(
                 raw_dividends, "dividends"):
             validation_logger.error(
                 "CRITICAL: Invalid dividends data structure, treating as empty")
-            raw_dividends = []
+            raw_dividends = {}
 
         validation_logger.info("=== Robinhood data validation complete ===")
 
         # Check if we got any data at all
-        if not raw_positions and not raw_orders and not raw_dividends:
+        if not raw_positions and not raw_crypto_positions and not raw_orders and not raw_crypto_orders and not raw_dividends:
             error_msg = "Failed to pull any data from Robinhood"
             logger.error(error_msg)
             raise HTTPException(status_code=500, detail=error_msg)
@@ -695,17 +1204,29 @@ async def pull_robinhood_data(request: Request):
             logger.info("Populating symbol cache with current market data...")
             from server.api.portfolio import get_portfolio_symbols, fetch_symbol_data, save_symbol_data, calculate_and_save_betas
 
-            # Get all symbols from positions
-            symbols = set()
+            # Get all symbols from stock positions
+            stock_symbols = set()
             for symbol in raw_positions.keys():
                 if symbol:
-                    symbols.add(symbol)
+                    stock_symbols.add(symbol)
 
-            if symbols:
+            # Get all symbols from crypto positions
+            crypto_symbols = set()
+            for crypto_pos in raw_crypto_positions:
+                crypto_symbol = crypto_pos.get('currency', {}).get('code', '')
+                if crypto_symbol:
+                    crypto_symbols.add(crypto_symbol)
+
+            # Combine all symbols
+            all_symbols = stock_symbols.union(crypto_symbols)
+
+            if all_symbols:
                 logger.info(
                     f"Fetching market data for {
-                        len(symbols)} symbols...")
-                symbol_data = fetch_symbol_data(list(symbols))
+                        len(all_symbols)} symbols ({
+                        len(stock_symbols)} stocks, {
+                        len(crypto_symbols)} crypto)...")
+                symbol_data = fetch_symbol_data(list(all_symbols))
 
                 # Use the new upsert method to avoid duplicates
                 if symbol_data:
@@ -730,11 +1251,17 @@ async def pull_robinhood_data(request: Request):
                     logger.warning(
                         "No symbol data fetched - this may be due to missing POLYGON_API_KEY")
 
-                # Calculate betas
-                calculate_and_save_betas(list(symbols))
-                logger.info(
-                    f"Market data and betas updated for {
-                        len(symbols)} symbols")
+                # Calculate betas (only for stocks, not crypto)
+                if stock_symbols:
+                    calculate_and_save_betas(list(stock_symbols))
+                    logger.info(
+                        f"Market data and betas updated for {
+                            len(stock_symbols)} stock symbols")
+
+                if crypto_symbols:
+                    logger.info(
+                        f"Market data updated for {
+                            len(crypto_symbols)} crypto symbols")
             else:
                 logger.info("No symbols to populate in symbol cache")
         except Exception as e:
@@ -742,17 +1269,38 @@ async def pull_robinhood_data(request: Request):
 
         # SECOND: Map and save data to PocketBase
         try:
-            logger.info("Mapping and saving positions...")
-            mapped_positions = map_positions(raw_positions, user_id)
+            logger.info("Mapping and saving stock positions...")
+            mapped_stock_positions = map_positions(raw_positions, user_id)
+
+            logger.info("Mapping and saving crypto positions...")
+            mapped_crypto_positions = map_crypto_positions(
+                raw_crypto_positions, user_id)
+
+            # Combine all positions
+            all_mapped_positions = mapped_stock_positions + mapped_crypto_positions
             model_manager = get_model_manager()
             position_results = model_manager.upsert_positions(
-                mapped_positions, user_id)
-            logger.info(f"Upserted positions: {position_results}")
+                all_mapped_positions, user_id)
+            logger.info(
+                f"Upserted positions: {position_results} (stocks: {
+                    len(mapped_stock_positions)}, crypto: {
+                    len(mapped_crypto_positions)})")
 
-            logger.info("Mapping and saving orders...")
-            mapped_orders = map_orders(raw_orders, user_id)
-            order_results = model_manager.upsert_orders(mapped_orders, user_id)
-            logger.info(f"Upserted orders: {order_results}")
+            logger.info("Mapping and saving stock orders...")
+            mapped_stock_orders = map_orders(raw_orders, user_id)
+
+            logger.info("Mapping and saving crypto orders...")
+            mapped_crypto_orders = map_crypto_orders(
+                raw_crypto_orders, user_id)
+
+            # Combine all orders
+            all_mapped_orders = mapped_stock_orders + mapped_crypto_orders
+            order_results = model_manager.upsert_orders(
+                all_mapped_orders, user_id)
+            logger.info(
+                f"Upserted orders: {order_results} (stocks: {
+                    len(mapped_stock_orders)}, crypto: {
+                    len(mapped_crypto_orders)})")
 
             logger.info("Mapping and saving dividends...")
             mapped_dividends = map_dividends(raw_dividends, user_id)
@@ -879,29 +1427,42 @@ async def pull_robinhood_data(request: Request):
         # Log validation summary
         validation_logger.info("=== Robinhood Pull Validation Summary ===")
         validation_logger.info(
-            f"Positions: {
-                len(mapped_positions)} successfully mapped")
+            f"Stock Positions: {
+                len(mapped_stock_positions)} successfully mapped")
         validation_logger.info(
-            f"Orders: {
-                len(mapped_orders)} successfully mapped")
+            f"Crypto Positions: {
+                len(mapped_crypto_positions)} successfully mapped")
+        validation_logger.info(
+            f"Stock Orders: {
+                len(mapped_stock_orders)} successfully mapped")
+        validation_logger.info(
+            f"Crypto Orders: {
+                len(mapped_crypto_orders)} successfully mapped")
         validation_logger.info(
             f"Dividends: {
                 len(mapped_dividends)} successfully mapped")
         validation_logger.info(
             f"Symbols updated: {
-                len(symbols) if 'symbols' in locals() else 0}")
+                len(all_symbols) if 'all_symbols' in locals() else 0} (stocks: {
+                len(stock_symbols) if 'stock_symbols' in locals() else 0}, crypto: {
+                len(crypto_symbols) if 'crypto_symbols' in locals() else 0})")
         validation_logger.info("=== End Validation Summary ===")
 
         logger.info("Robinhood data pull completed successfully")
         return {
             "success": True,
             "message": "Data pulled successfully",
-            "positions_count": len(mapped_positions),
-            "orders_count": len(mapped_orders),
+            "positions": {
+                "total": len(all_mapped_positions),
+                "stocks": len(mapped_stock_positions),
+                "crypto": len(mapped_crypto_positions)},
+            "orders": {
+                "total": len(all_mapped_orders),
+                "stocks": len(mapped_stock_orders),
+                "crypto": len(mapped_crypto_orders)},
             "dividends_count": len(mapped_dividends),
-            "symbols_updated": len(symbols) if 'symbols' in locals() else 0,
-            "pull_timestamp": datetime.now().isoformat()
-        }
+            "symbols_updated": len(all_symbols) if 'all_symbols' in locals() else 0,
+            "pull_timestamp": datetime.now().isoformat()}
 
     except HTTPException:
         raise
