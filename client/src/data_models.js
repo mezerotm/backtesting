@@ -317,6 +317,19 @@ const ProfitLossDetailsSchema = {
     }
 };
 
+const RefreshSymbolsResponseSchema = {
+    type: 'object',
+    properties: {
+        status: { type: 'string' },
+        symbols: { 
+            type: 'array',
+            items: { type: 'string' }
+        }
+    },
+    required: ['status'],
+    additionalProperties: true
+};
+
 // =============================================================================
 // SCHEMA REGISTRY
 // =============================================================================
@@ -334,7 +347,8 @@ const SCHEMA_REGISTRY = {
     'orders_response': OrdersResponseSchema,
     'dividends_response': DividendsResponseSchema,
     'profit_loss_summary': ProfitLossSummarySchema,
-    'profit_loss_details': ProfitLossDetailsSchema
+    'profit_loss_details': ProfitLossDetailsSchema,
+    'refresh_symbols_response': RefreshSymbolsResponseSchema
 };
 
 // =============================================================================
@@ -453,7 +467,8 @@ function validateApiResponse(endpoint, data) {
         '/api/orders': 'orders_response',
         '/api/dividends/received': 'dividends_response',
         '/api/profit-loss/summary': 'profit_loss_summary',
-        '/api/profit-loss/details': 'profit_loss_details'
+        '/api/profit-loss/details': 'profit_loss_details',
+        '/api/portfolio/refresh-symbols': 'refresh_symbols_response'
     };
     
     const schemaName = schemaMap[endpoint];
@@ -522,6 +537,7 @@ export {
     DividendsResponseSchema,
     ProfitLossSummarySchema,
     ProfitLossDetailsSchema,
+    RefreshSymbolsResponseSchema,
     
     // Registry
     SCHEMA_REGISTRY,

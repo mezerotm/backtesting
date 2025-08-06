@@ -247,6 +247,43 @@ def get_current_symbol_data(symbol):
         return None
 
 
+def get_crypto_historical_price(symbol: str, date: str) -> Optional[float]:
+    """Get historical crypto price from CoinGecko for a specific date."""
+    try:
+        # CoinGecko historical data endpoint
+        url = f"https://api.coingecko.com/api/v3/coins/{
+            symbol.lower()}/history"
+        params = {
+            'date': date,
+            'localization': 'false'
+        }
+
+        logger.info(f"Fetching historical price for {symbol} on {date}")
+        response = requests.get(url, params=params, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+            if 'market_data' in data and 'current_price' in data['market_data']:
+                price = data['market_data']['current_price']['usd']
+                logger.info(f"Historical price for {
+                            symbol} on {date}: ${price}")
+                return float(price)
+            else:
+                logger.warning(
+                    f"No price data in CoinGecko response for {symbol} on {date}")
+                return None
+        else:
+            logger.warning(
+                f"CoinGecko API error for {symbol} on {date}: {
+                    response.status_code}")
+            return None
+
+    except Exception as e:
+        logger.error(f"Error getting historical price for {
+                     symbol} on {date}: {e}")
+        return None
+
+
 def set_current_symbol_data(symbol, data):
     """Set current symbol data in PocketBase symbol cache with daily records."""
     try:
@@ -307,20 +344,154 @@ def fetch_symbol_data(symbols):
 
     for symbol in symbols:
         try:
-            # Get previous day's data
-            prev_url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/prev"
-            prev_params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
-            prev_resp = requests.get(prev_url, params=prev_params, timeout=10)
-            prev_close = None
-            last_price = None
+            # Check if this is a crypto symbol (common crypto symbols)
+            crypto_symbols = {
+                'BTC',
+                'ETH',
+                'ADA',
+                'DOGE',
+                'XRP',
+                'LTC',
+                'BCH',
+                'ETC',
+                'LINK',
+                'UNI',
+                'AAVE',
+                'COMP',
+                'MKR',
+                'YFI',
+                'SUSHI',
+                'CRV',
+                'BAL',
+                'REN',
+                'ZRX',
+                'BAT',
+                'ZEC',
+                'DASH',
+                'XLM',
+                'TRX',
+                'VET',
+                'ALGO',
+                'ATOM',
+                'DOT',
+                'SOL',
+                'AVAX',
+                'MATIC',
+                'FTM',
+                'NEAR',
+                'AR',
+                'ICP',
+                'FIL',
+                'THETA',
+                'XTZ',
+                'EOS',
+                'TRX',
+                'XMR',
+                'NEO',
+                'QTUM',
+                'IOTA',
+                'NANO',
+                'BTT',
+                'WIN',
+                'BTTOLD',
+                'WINOLD'}
 
-            if prev_resp.status_code == 200:
-                prev_data = prev_resp.json()
-                prev_results = prev_data.get("results", [])
-                if prev_results:
-                    prev_close = prev_results[0].get("c")
-                    last_price = prev_close
-                    logger.debug(f"{symbol}: got previous close: {prev_close}")
+            if symbol in crypto_symbols:
+                # For crypto, try to get data from CoinGecko API (free and
+                # reliable)
+                try:
+                    # Map common crypto symbols to CoinGecko IDs
+                    coin_id_map = {
+                        'BTC': 'bitcoin',
+                        'ETH': 'ethereum',
+                        'SOL': 'solana',
+                        'XRP': 'ripple',
+                        'DOGE': 'dogecoin',
+                        'ADA': 'cardano',
+                        'LTC': 'litecoin',
+                        'BCH': 'bitcoin-cash',
+                        'ETC': 'ethereum-classic',
+                        'LINK': 'chainlink',
+                        'UNI': 'uniswap',
+                        'AAVE': 'aave',
+                        'COMP': 'compound-governance-token',
+                        'MKR': 'maker',
+                        'YFI': 'yearn-finance',
+                        'SUSHI': 'sushi',
+                        'CRV': 'curve-dao-token',
+                        'BAL': 'balancer',
+                        'REN': 'republic-protocol',
+                        'ZRX': '0x',
+                        'BAT': 'basic-attention-token',
+                        'ZEC': 'zcash',
+                        'DASH': 'dash',
+                        'XLM': 'stellar',
+                        'TRX': 'tron',
+                        'VET': 'vechain',
+                        'ALGO': 'algorand',
+                        'ATOM': 'cosmos',
+                        'AVAX': 'avalanche-2',
+                        'MATIC': 'matic-network',
+                        'FTM': 'fantom',
+                        'NEAR': 'near',
+                        'AR': 'arweave',
+                        'ICP': 'internet-computer',
+                        'FIL': 'filecoin',
+                        'THETA': 'theta-token',
+                        'XTZ': 'tezos',
+                        'EOS': 'eos',
+                        'XMR': 'monero',
+                        'NEO': 'neo',
+                        'QTUM': 'qtum',
+                        'IOTA': 'iota',
+                        'NANO': 'nano',
+                        'TRUMP': 'trump'  # Note: This might not exist on CoinGecko
+                    }
+                    
+                    coin_id = coin_id_map.get(symbol, symbol.lower())
+                    crypto_url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
+                    logger.info(f"Fetching crypto price for {symbol} using CoinGecko ID: {coin_id}")
+                    
+                    # Add small delay to avoid rate limiting
+                    time.sleep(0.1)
+                    
+                    crypto_resp = requests.get(crypto_url, timeout=10)
+                    if crypto_resp.status_code == 200:
+                        crypto_data = crypto_resp.json()
+                        if coin_id in crypto_data and 'usd' in crypto_data[coin_id]:
+                            last_price = float(crypto_data[coin_id]['usd'])
+                            prev_close = last_price  # For crypto, use current price as previous close
+                            logger.info(f"{symbol} (crypto): got price: ${last_price}")
+                        else:
+                            last_price = None
+                            prev_close = None
+                            logger.warning(f"{symbol} (crypto): no price data available for {coin_id}")
+                    else:
+                        last_price = None
+                        prev_close = None
+                        logger.warning(f"{symbol} (crypto): API request failed with status {crypto_resp.status_code}")
+                except Exception as crypto_error:
+                    logger.warning(f"{symbol} (crypto): failed to get crypto price: {crypto_error}")
+                    last_price = None
+                    prev_close = None
+            else:
+                # For stocks, use Polygon.io
+                prev_url = f"https://api.polygon.io/v2/aggs/ticker/{
+                    symbol}/prev"
+                prev_params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
+                prev_resp = requests.get(
+                    prev_url, params=prev_params, timeout=10)
+                prev_close = None
+                last_price = None
+
+                if prev_resp.status_code == 200:
+                    prev_data = prev_resp.json()
+                    prev_results = prev_data.get("results", [])
+                    if prev_results:
+                        prev_close = prev_results[0].get("c")
+                        last_price = prev_close
+                        logger.debug(
+                            f"{symbol} (stock): got previous close: {prev_close}")
 
             # Return data in the format expected by the new schema
             symbol_data = {

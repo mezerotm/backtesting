@@ -7,6 +7,11 @@ let btcPrice = null;
 let btcPriceFetched = false;
 let btcAvgBuyPrice = 0;
 
+// Sorting state
+let currentSortColumn = null;
+let currentSortDirection = 'none'; // 'none', 'asc', 'desc'
+let allPositions = []; // Store all positions for sorting
+
 async function fetchPortfolioSettings() {
   const resp = await fetch('/api/portfolio/settings', {
     credentials: 'include'  // Required to send authentication cookies
@@ -97,8 +102,120 @@ function fetchPositions() {
     });
 }
 
+// Make sortPositions globally accessible
+window.sortPositions = function(column) {
+  console.log('[Portfolio] Sorting by column:', column);
+  
+  if (currentSortColumn === column) {
+    // Cycle through: none -> asc -> desc -> none
+    if (currentSortDirection === 'none') {
+      currentSortDirection = 'asc';
+    } else if (currentSortDirection === 'asc') {
+      currentSortDirection = 'desc';
+    } else {
+      currentSortDirection = 'none';
+    }
+  } else {
+    // New column, start with ascending
+    currentSortColumn = column;
+    currentSortDirection = 'asc';
+  }
+  
+  console.log('[Portfolio] Sort state:', { column: currentSortColumn, direction: currentSortDirection });
+  
+  // Clear all sort indicators
+  clearSortIndicators();
+  
+  // Add sort indicator to current column
+  if (currentSortDirection !== 'none') {
+    addSortIndicator(column, currentSortDirection);
+  }
+  
+  // Sort and render
+  renderPositions(allPositions);
+}
+
+function clearSortIndicators() {
+  const headers = document.querySelectorAll('#positionsTable th[data-sortable]');
+  headers.forEach(header => {
+    const icon = header.querySelector('.sort-icon');
+    if (icon) {
+      icon.remove();
+    }
+  });
+}
+
+function addSortIndicator(column, direction) {
+  const header = document.querySelector(`#positionsTable th[data-column="${column}"]`);
+  if (header) {
+    const icon = document.createElement('span');
+    icon.className = 'sort-icon ml-1';
+    icon.innerHTML = direction === 'asc' ? '↑' : '↓';
+    header.appendChild(icon);
+  }
+}
+
+function sortData(positions, column, direction) {
+  if (direction === 'none') {
+    return positions;
+  }
+  
+  // Calculate total portfolio value for percentage sorting
+  let totalPortfolioValue = 0;
+  positions.forEach(pos => {
+    const positionValue = pos.market_value !== null && pos.market_value !== undefined ? pos.market_value : (pos.quantity * pos.buy_price);
+    totalPortfolioValue += positionValue || 0;
+  });
+  if (totalPortfolioValue === 0) totalPortfolioValue = 1;
+  
+  const sorted = [...positions].sort((a, b) => {
+    let aVal, bVal;
+    
+    switch (column) {
+      case 'amount':
+        aVal = a.quantity * a.buy_price;
+        bVal = b.quantity * b.buy_price;
+        break;
+      case 'percent':
+        const aPositionValue = a.market_value !== null && a.market_value !== undefined ? a.market_value : (a.quantity * a.buy_price);
+        const bPositionValue = b.market_value !== null && b.market_value !== undefined ? b.market_value : (b.quantity * b.buy_price);
+        aVal = (aPositionValue / totalPortfolioValue) * 100;
+        bVal = (bPositionValue / totalPortfolioValue) * 100;
+        break;
+      case 'total_return':
+        aVal = parseFloat(a.total_return || 0);
+        bVal = parseFloat(b.total_return || 0);
+        break;
+      case 'delta':
+        aVal = parseFloat(a.delta || 0);
+        bVal = parseFloat(b.delta || 0);
+        break;
+      default:
+        return 0;
+    }
+    
+    if (direction === 'asc') {
+      return aVal - bVal;
+    } else {
+      return bVal - aVal;
+    }
+  });
+  
+  return sorted;
+}
+
 async function renderPositions(positions) {
   console.log('[Portfolio] Rendering positions:', positions);
+  console.log('[Portfolio] Portfolio settings:', { portfolioCash, portfolioBTCDollar, btcAvgBuyPrice });
+  
+  // Store positions for sorting
+  allPositions = positions;
+  
+  // Apply sorting if needed
+  if (currentSortDirection !== 'none' && currentSortColumn) {
+    positions = sortData(positions, currentSortColumn, currentSortDirection);
+  }
+  
   const tbody = document.getElementById('positionsTbody');
   if (!tbody) {
     console.error('[Portfolio] positionsTbody element not found');
@@ -111,15 +228,32 @@ async function renderPositions(positions) {
     totalValue += positionValue || 0;
   });
   let btcValueForTotal = portfolioBTCDollar > 0 ? portfolioBTCDollar : 0;
-  let cashLeft = portfolioCash - totalValue;
-  if (cashLeft < 0) cashLeft = 0;
   let totalPortfolioValue = 0;
   if (totalValue > 0) totalPortfolioValue += totalValue;
   if (btcValueForTotal > 0) totalPortfolioValue += btcValueForTotal;
-  if (cashLeft > 0) totalPortfolioValue += cashLeft;
+  if (portfolioCash > 0) totalPortfolioValue += portfolioCash;
   if (totalPortfolioValue === 0) totalPortfolioValue = 1; // Prevent divide by zero
 
-  // --- BTC row at the top ---
+  // --- CASH row at the very top ---
+  const cashPercent = portfolioCash > 0 ? ((portfolioCash / totalPortfolioValue) * 100).toFixed(2) : '0.00';
+  const cashRow = document.createElement('tr');
+  cashRow.className = 'border-b border-slate-700 hover:bg-slate-700';
+  cashRow.innerHTML = `
+    <td class="px-3 py-2 text-green-400 font-bold">CASH</td>
+    <td class="px-3 py-2 text-gray-200">$${portfolioCash.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-green-300">${cashPercent}%</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-200">-</td>
+    <td class="px-3 py-2 text-gray-400">$${portfolioCash.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+    <td class="px-3 py-2"></td>
+  `;
+  tbody.appendChild(cashRow);
+
+  // --- BTC row second ---
   let btcPercent = '-';
   let btcNotes = '-';
   if (portfolioBTCDollar && btcAvgBuyPrice) {
@@ -157,8 +291,9 @@ async function renderPositions(positions) {
       const positionValue = pos.market_value !== null && pos.market_value !== undefined ? pos.market_value : (pos.quantity * pos.buy_price);
       const percent = positionValue && totalPortfolioValue > 0 ? ((positionValue / totalPortfolioValue) * 100).toFixed(2) : '0.00';
       const isRobinhoodPosition = pos.source === 'robinhood';
-      const actionButtons = isRobinhoodPosition ? 
-        '<span class="rh-badge">RH</span>' : 
+              const isCryptoPosition = pos.source === 'robinhood_crypto';
+        const actionButtons = isRobinhoodPosition || isCryptoPosition ?
+          `<span class="rh-badge ${isCryptoPosition ? 'crypto-badge' : ''}">${isCryptoPosition ? '₿' : 'RH'}</span>` : 
         `<button class="portfolio-edit-btn text-blue-400 hover:text-blue-300 mr-2" title="Edit" data-id="${pos.id}"><i class="fa-solid fa-pen"></i></button>
         <button class="portfolio-delete-btn text-red-400 hover:text-red-300" title="Delete" data-id="${pos.id}"><i class="fa-solid fa-trash"></i></button>`;
       const notes = pos.notes || '';
@@ -186,34 +321,18 @@ async function renderPositions(positions) {
     });
   }
 
-  // --- CASH row at the bottom ---
-  const cashPercent = cashLeft > 0 ? ((cashLeft / totalPortfolioValue) * 100).toFixed(2) : '0.00';
-  const cashRow = document.createElement('tr');
-  cashRow.className = 'border-b border-slate-700 hover:bg-slate-700';
-  cashRow.innerHTML = `
-    <td class="px-3 py-2 text-green-400 font-bold">CASH</td>
-    <td class="px-3 py-2 text-gray-200">$${cashLeft.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-    <td class="px-3 py-2 text-gray-200">-</td>
-    <td class="px-3 py-2 text-gray-200">-</td>
-    <td class="px-3 py-2 text-green-300">${cashPercent}%</td>
-    <td class="px-3 py-2 text-gray-200">-</td>
-    <td class="px-3 py-2 text-gray-200">-</td>
-    <td class="px-3 py-2 text-gray-200">-</td>
-    <td class="px-3 py-2 text-gray-200">-</td>
-    <td class="px-3 py-2 text-gray-400">$${cashLeft.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-    <td class="px-3 py-2"></td>
-  `;
-  tbody.appendChild(cashRow);
+
 
   // Add event listeners for edit/delete buttons (use unique class names)
   tbody.querySelectorAll('.portfolio-edit-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
       const pos = positions.find(p => String(p.id) === String(id));
-      if (pos && pos.source !== 'robinhood') {
+      if (pos && pos.source !== 'robinhood' && pos.source !== 'robinhood_crypto') {
         openEditModal(pos);
-      } else if (pos && pos.source === 'robinhood') {
-        Utils.showNotification('Cannot edit Robinhood positions. They are read-only.', 'warning');
+      } else if (pos && (pos.source === 'robinhood' || pos.source === 'robinhood_crypto')) {
+        const sourceType = pos.source === 'robinhood_crypto' ? 'Robinhood crypto' : 'Robinhood';
+        Utils.showNotification(`Cannot edit ${sourceType} positions. They are read-only.`, 'warning');
       }
     });
   });
@@ -390,25 +509,33 @@ async function pullRobinhoodData(showSuccess = true) {
     // Show completion
     if (progressText) progressText.textContent = 'Complete!';
     
-    if (resp.ok) {
-      if (showSuccess) {
-        const positions = data.positions || {};
-        const orders = data.orders || {};
-        const dividends = data.dividends || {};
-        
-        const totalPositions = (positions.created || 0) + (positions.updated || 0);
-        const totalOrders = (orders.created || 0) + (orders.updated || 0);
-        const totalDividends = (dividends.created || 0) + (dividends.updated || 0);
-        
-        let message = `Successfully pulled data: `;
-        if (totalPositions > 0) message += `${totalPositions} positions `;
-        if (totalOrders > 0) message += `${totalOrders} orders `;
-        if (totalDividends > 0) message += `${totalDividends} dividends `;
-        
-        if (positions.deleted > 0) message += `(${positions.deleted} positions removed) `;
-        
-        Utils.showNotification(message, 'success');
-      }
+            if (resp.ok) {
+          if (showSuccess) {
+            const positions = data.positions || {};
+            const orders = data.orders || {};
+            const dividends = data.dividends || {};
+            
+            const totalPositions = (positions.total || 0);
+            const stockPositions = (positions.stocks || 0);
+            const cryptoPositions = (positions.crypto || 0);
+            const totalOrders = (orders.total || 0);
+            const stockOrders = (orders.stocks || 0);
+            const cryptoOrders = (orders.crypto || 0);
+            const totalDividends = (dividends.created || 0) + (dividends.updated || 0);
+            
+            let message = `Successfully pulled data: `;
+            if (totalPositions > 0) {
+              message += `${totalPositions} positions (${stockPositions} stocks, ${cryptoPositions} crypto) `;
+            }
+            if (totalOrders > 0) {
+              message += `${totalOrders} orders (${stockOrders} stocks, ${cryptoOrders} crypto) `;
+            }
+            if (totalDividends > 0) message += `${totalDividends} dividends `;
+            
+            if (positions.deleted > 0) message += `(${positions.deleted} positions removed) `;
+            
+            Utils.showNotification(message, 'success');
+          }
       await fetchRobinhoodStatus();
       fetchPositionsAndSettings(); // Refresh portfolio data
       // Close the modal after successful pull
@@ -542,14 +669,18 @@ export function initPortfolio() {
                       <thead>
                           <tr>
                               <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Symbol</th>
-                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Amount ($)</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase cursor-pointer hover:text-blue-400 transition-colors" 
+                                  data-sortable="true" data-column="amount">Amount ($)</th>
                               <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Avg Buy Price</th>
                               <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Market Value</th>
-                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">% of Portfolio</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase cursor-pointer hover:text-blue-400 transition-colors" 
+                                  data-sortable="true" data-column="percent">% of Portfolio</th>
                               <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Today's Return</th>
-                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Total Return</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase cursor-pointer hover:text-blue-400 transition-colors" 
+                                  data-sortable="true" data-column="total_return">Total Return</th>
                               <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Beta</th>
-                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Delta</th>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase cursor-pointer hover:text-blue-400 transition-colors" 
+                                  data-sortable="true" data-column="delta">Delta</th>
                               <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
                               <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
                           </tr>
@@ -848,6 +979,16 @@ export function initPortfolio() {
   if (addPositionBtn) {
     addPositionBtn.addEventListener('click', openAddModal);
   }
+  
+  // Add sorting event listeners
+  const sortableHeaders = document.querySelectorAll('#positionsTable th[data-sortable]');
+  sortableHeaders.forEach(header => {
+    header.addEventListener('click', function() {
+      const column = this.getAttribute('data-column');
+      console.log('[Portfolio] Header clicked:', column);
+      window.sortPositions(column);
+    });
+  });
   const cancelModalBtn = document.getElementById('cancelModalBtn');
   const cancelModalBtn2 = document.getElementById('cancelModalBtn2');
   if (cancelModalBtn) {
