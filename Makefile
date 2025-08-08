@@ -72,9 +72,13 @@ financial-analysis: results-dir
 market-check: results-dir
 	$(PYTHON) market_workflow_cli.py --force-refresh
 
-# Clean up results
+# Clean up results and build artifacts
 clean:
 	rm -rf public/results/*
+	rm -rf public/js/*
+	rm -rf public/css/*
+	rm -rf public/assets/*
+	@echo "Build artifacts cleaned from public/ directory"
 
 # Create results directory if it doesn't exist
 results-dir:
@@ -133,30 +137,38 @@ db-restore:
 		echo "❌ No current PocketBase data directory found"; \
 	fi
 
-db-init:
+db-init: ensure-venv
 	@echo "Initializing PocketBase database..."
 	@echo "Note: This must be run from the project root directory"
 	@echo "Current directory: $(PWD)"
-	@$(PYTHON) utils/db_init.py
+	@if [ ! -f "requirements.txt" ]; then \
+		echo "❌ Error: requirements.txt not found"; \
+		exit 1; \
+	fi
+	@$(PIP) install -r requirements.txt > /dev/null
+	@PYTHONPATH=$(PWD) $(PYTHON) scripts/db_init.py
 
 # Syntax checking and auto-fixing with flake8 and autopep8
 syntax-check:
 	@echo "🔧 Auto-fixing formatting issues with autopep8..."
-	@$(PYTHON) -m autopep8 --in-place --recursive --aggressive --aggressive server/ utils/ workflows/ strategies/
+	@$(PYTHON) -m autopep8 --in-place --recursive --aggressive --aggressive server/ config/ workflows/ strategies/ scripts/
 
 # Frontend development server
 dev-frontend:
 	@echo "Starting Vite development server..."
-	@echo "Frontend will be available at http://localhost:3001"
-	@echo "API proxy configured to http://localhost:8000"
+	@echo "Frontend: http://localhost:3001"
+	@echo "Backend API: http://localhost:8000 (run 'make dev-server' in another terminal)"
+	@echo "PocketBase: http://127.0.0.1:8090/_/ (run 'make db-start' in another terminal)"
 	@echo "Press Ctrl+C to stop the server"
 	npm run dev
 
 # Build frontend for production
 build-frontend:
 	@echo "Building frontend for production..."
+	@echo "Output: public/ directory (js/, css/, assets/)"
 	npm run build
 	@echo "Frontend built successfully!"
+	@echo "Assets ready for production serving"
 
 # Start FastAPI server (serves static and API)
 server: results-dir syntax-check build-frontend
@@ -168,17 +180,38 @@ server: results-dir syntax-check build-frontend
 	@sleep 2 && xdg-open http://localhost:8000 || open http://localhost:8000 || start http://localhost:8000 || echo "Please manually open: http://localhost:8000"
 	$(PYTHON) -m server.main
 
-# Development server with hot reload
+# Development server with hot reload (backend only)
 dev-server: results-dir syntax-check
-	@echo "Starting development server with hot reload..."
-	@echo "Backend: http://localhost:8000"
+	@echo "Starting backend development server with hot reload..."
+	@echo "Backend API: http://localhost:8000"
 	@echo "Frontend: http://localhost:3001 (run 'make dev-frontend' in another terminal)"
 	@echo "PocketBase: http://127.0.0.1:8090/_/ (run 'make db-start' in another terminal)"
-	@echo "Hot reload enabled - watching server/ and utils/ directories"
+	@echo "Hot reload enabled - watching server/, config/, and workflows/ directories"
 	@echo "Server will restart when Python files in these directories change"
-	@echo "Opening API page in browser..."
-	@sleep 2 && xdg-open http://localhost:8000 || open http://localhost:8000 || start http://localhost:8000 || echo "Please manually open: http://localhost:8000"
-	$(PYTHON) -m uvicorn server.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir server --reload-dir utils --log-level info
+	@echo "Opening API docs in browser..."
+	@sleep 2 && xdg-open http://localhost:8000/docs || open http://localhost:8000/docs || start http://localhost:8000/docs || echo "Please manually open: http://localhost:8000/docs"
+	$(PYTHON) -m uvicorn server.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir server --reload-dir config --reload-dir workflows --log-level info
+
+# Development workflow helper
+dev:
+	@echo "=== GreenArrow Labs Development Setup ==="
+	@echo ""
+	@echo "To start development, run these commands in separate terminals:"
+	@echo ""
+	@echo "Terminal 1 - Backend API:"
+	@echo "  make dev-server"
+	@echo ""
+	@echo "Terminal 2 - Frontend:"
+	@echo "  make dev-frontend"
+	@echo ""
+	@echo "Terminal 3 - Database (optional):"
+	@echo "  make db-start"
+	@echo ""
+	@echo "Then open:"
+	@echo "  Frontend: http://localhost:3001"
+	@echo "  API Docs: http://localhost:8000/docs"
+	@echo "  PocketBase: http://127.0.0.1:8090/_/"
+	@echo ""
 
 
 

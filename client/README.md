@@ -1,85 +1,95 @@
 # Frontend Client
 
-This directory contains the frontend application built with Vite.
+This directory contains the Vue.js 3 frontend application with TypeScript support.
 
-## Structure
+## 🏗️ Architecture
 
 ```
 client/
-├── src/
-│   ├── main.js              # Main application entry point
-│   ├── data_models.js       # Frontend data validation models
-│   ├── styles/
-│   │   └── main.css         # Main stylesheet with Tailwind CSS
-│   └── widgets/             # Widget components (to be moved)
-├── index.html               # Main HTML template
-└── README.md               # This file
+├── config/                 # Build and development configuration
+│   ├── vite.config.ts     # Vite build configuration
+│   ├── tsconfig.json      # TypeScript configuration
+│   ├── tsconfig.node.json # TypeScript config for Node tools
+│   └── .eslintrc.js       # ESLint configuration
+├── src/                   # Source code
+│   ├── components/        # Vue components
+│   │   ├── pages/         # Page components
+│   │   ├── widgets/       # Widget components
+│   │   └── ui/           # Reusable UI components
+│   ├── stores/           # Pinia state management
+│   ├── types/            # TypeScript type definitions
+│   ├── styles/           # CSS styles
+│   └── vue-app.ts        # Application entry point
+├── index.html            # HTML entry point
+└── README.md             # This file
 ```
 
-## Development
+## 🚀 Development
 
 ### Prerequisites
+- Node.js 18+
+- npm or yarn
 
-- Node.js 18+ installed
-- Dependencies installed: `npm install`
-
-### Development Server
-
-Start the Vite development server:
-
+### Setup
 ```bash
+# Install dependencies (from project root)
+npm install
+
+# Start development server
 npm run dev
-```
 
-This will start the frontend on `http://localhost:3000` with:
-- Hot Module Replacement (HMR)
-- API proxy to backend (`http://localhost:8000`)
-- Source maps for debugging
+# Type checking
+npm run type-check
 
-### Building for Production
+# Linting
+npm run lint
 
-Build the frontend for production:
-
-```bash
+# Build for production
 npm run build
 ```
 
-This will:
-- Bundle and minify all assets
-- Output to `../public/` directory
-- Generate optimized CSS and JavaScript
+## 🛠️ Technology Stack
 
-### Preview Production Build
+- **Vue.js 3** - Progressive JavaScript framework
+- **TypeScript** - Type-safe JavaScript
+- **Pinia** - State management
+- **Vue Router** - Client-side routing
+- **Tailwind CSS** - Utility-first CSS framework
+- **Vite** - Fast build tool and dev server
+- **ESLint** - Code linting
 
-Preview the production build locally:
+## 📁 Key Directories
 
-```bash
-npm run preview
-```
+### `src/components/`
+- **pages/**: Route-level components (LandingPage, DashboardPage, etc.)
+- **widgets/**: Feature-specific components (PortfolioWidget, etc.)
+- **ui/**: Reusable UI components (ToastContainer, etc.)
 
-## Integration with Backend
+### `src/stores/`
+Pinia stores for state management:
+- `auth.ts` - Authentication state
+- `portfolio.ts` - Portfolio data
+- `marketData.ts` - Market data and workflows
+- `toast.ts` - Toast notifications
 
-The frontend is designed to work with the Python FastAPI backend:
+### `src/types/`
+TypeScript type definitions for the application.
 
-1. **Development**: Vite dev server proxies API calls to `http://localhost:8000`
-2. **Production**: Built assets are served by the FastAPI server from `/public/`
+### `config/`
+Build and development configuration files.
 
-## Dependencies
+## 🔧 Configuration
 
-- **Vite**: Build tool and dev server
-- **Tailwind CSS**: Utility-first CSS framework
-- **Font Awesome**: Icon library
-- **Chart.js**: Charting library
-- **Preline**: UI component library
+All build configuration is contained in the `config/` directory:
+- **vite.config.ts**: Vite build and dev server configuration
+- **tsconfig.json**: TypeScript compiler options
+- **.eslintrc.js**: Code linting rules
 
-## Configuration
+## 🎯 Features
 
-- `vite.config.js`: Vite configuration
-- `tailwind.config.js`: Tailwind CSS configuration
-- `postcss.config.js`: PostCSS configuration
-
-## Workflow
-
-1. **Development**: Run `make dev-frontend` for frontend, `make dev-server` for backend
-2. **Production**: Run `make server` to build frontend and start backend
-3. **Hot Reload**: Changes to frontend files will automatically reload in development 
+- **Hot Module Replacement (HMR)** - Instant updates during development
+- **Type Safety** - Full TypeScript support throughout
+- **Component-Based Architecture** - Modular, reusable components
+- **State Management** - Centralized state with Pinia
+- **Routing** - Client-side routing with Vue Router
+- **Responsive Design** - Mobile-first with Tailwind CSS 

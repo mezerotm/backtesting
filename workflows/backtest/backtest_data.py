@@ -1,11 +1,11 @@
 import pandas as pd
 from datetime import datetime
 from typing import List, Optional
-from utils.logger import get_app_logger
+from config.backend.logger import get_app_logger
 from functools import wraps
 import time
 from polygon import RESTClient
-from utils.config import POLYGON_API_KEY
+from config.backend.settings import POLYGON_API_KEY
 from ..base_fetcher import BaseFetcher
 
 logger = get_app_logger(__name__)

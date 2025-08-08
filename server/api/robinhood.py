@@ -1,13 +1,23 @@
-import robin_stocks.robinhood as r
+import requests
+try:
+    import robin_stocks.robinhood as r
+    ROBIN_STOCKS_AVAILABLE = True
+except ImportError as e:
+    logger = get_api_logger("robinhood")
+    logger.error(f"robin_stocks library not available: {e}")
+    r = None
+    ROBIN_STOCKS_AVAILABLE = False
+
 from server.models import get_model_manager
-from server.api.auth import get_current_user_id
-from utils.logger import get_server_logger, get_data_validation_logger, get_api_logger
+from server.api.auth import get_current_user_id, security
+from config.backend.logger import get_server_logger, get_data_validation_logger, get_api_logger
 import os
 import logging
 from datetime import datetime
 import time
 from typing import List, Dict, Optional, Any
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -45,14 +55,14 @@ class RobinhoodStatus(BaseModel):
     connection_status: str = "unknown"
 
 
-async def get_robinhood_settings(request: Request) -> RobinhoodSettings:
+async def get_robinhood_settings(credentials: HTTPAuthorizationCredentials) -> RobinhoodSettings:
     """Get Robinhood settings from PocketBase portfolio data."""
     try:
         logger.debug("Getting Robinhood settings from PocketBase...")
         model_manager = get_model_manager()
 
         # Get user ID from authenticated session
-        user_id = await get_current_user_id(request)
+        user_id = await get_current_user_id(credentials)
 
         if not user_id:
             logger.warning(
@@ -451,7 +461,8 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                     validation_logger.warning(
                         f"SUSPICIOUS: Very large quantity for {clean_symbol}: {quantity}")
 
-                if buy_price > 10000:  # More than $10k per share
+                # For crypto, higher prices are normal (BTC, ETH, etc.)
+                if buy_price > 10000 and not market_data_service.is_crypto_symbol(clean_symbol):  # More than $10k per share for stocks only
                     validation_logger.warning(
                         f"SUSPICIOUS: Very high buy price for {clean_symbol}: ${buy_price}")
 
@@ -462,12 +473,57 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                     skipped_count += 1
                     continue
 
+                # Calculate market value and percent of portfolio
+                market_value = float(
+                    pos.get(
+                        'market_value',
+                        quantity *
+                        buy_price))
+                total_equity = float(pos.get('equity', 0))
+                percent_of_portfolio = (
+                    market_value /
+                    total_equity *
+                    100) if total_equity > 0 else 0
+                
+                # Calculate returns if we have both buy price and current price
+                current_price = float(pos.get('price', buy_price))
+                total_return = 0.0
+                total_return_percent = 0.0
+                todays_return = 0.0  # TODO: Calculate from historical data
+                if buy_price > 0 and current_price > 0:
+                    total_return = (current_price - buy_price) * quantity
+                    total_return_percent = ((current_price - buy_price) / buy_price) * 100
+
+                # Get beta from fundamentals if available
+                beta = None
+                try:
+                    fundamentals = pos.get('fundamentals', {})
+                    if isinstance(fundamentals, str):
+                        # If fundamentals is a URL, fetch it
+                        response = requests.get(fundamentals, timeout=5)
+                        if response.ok:
+                            fundamentals = response.json()
+                    if fundamentals and 'beta' in fundamentals:
+                        beta = float(fundamentals['beta'])
+                except Exception as e:
+                    validation_logger.warning(
+                        f"Failed to get beta for {clean_symbol}: {e}")
+
                 mapped_position = {
                     'symbol': clean_symbol,
                     'quantity': quantity,
                     'buy_price': buy_price,
+                    'market_value': market_value,
+                    'current_price': current_price,
+                    'total_return': total_return,
+                    'total_return_percent': total_return_percent,
+                    'todays_return': todays_return,
+                    'percent_of_portfolio': percent_of_portfolio,
+                    'beta': beta,
+                    'delta': None,  # Not available from Robinhood
                     'notes': pos.get('name', ''),
                     'source': 'robinhood',
+                    'is_crypto': False,  # Stock positions are not crypto
                     'pulled_at': datetime.now().isoformat(),
                     'user': user_id
                 }
@@ -486,8 +542,9 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                 error_count += 1
                 continue
 
-        validation_logger.info(f"Stock position mapping complete: {len(mapped)} mapped, {
-                               skipped_count} skipped, {error_count} errors")
+        validation_logger.info(
+            f"Stock position mapping complete: {
+                len(mapped)} mapped, {skipped_count} skipped, {error_count} errors")
         return mapped
     except Exception as e:
         validation_logger.error(
@@ -580,15 +637,19 @@ def map_crypto_positions(
 
                 # Log cost_bases array details
                 cost_bases = crypto_pos.get('cost_bases', [])
-                validation_logger.info(f"  - cost_bases array: {len(cost_bases)} items")
+                validation_logger.info(
+                    f"  - cost_bases array: {len(cost_bases)} items")
                 if cost_bases:
-                    validation_logger.info(f"  - First cost_bases item: {cost_bases[0]}")
-                
+                    validation_logger.info(
+                        f"  - First cost_bases item: {cost_bases[0]}")
+
                 # Log tax_lot_cost_bases array details
                 tax_lot_cost_bases = crypto_pos.get('tax_lot_cost_bases', [])
-                validation_logger.info(f"  - tax_lot_cost_bases array: {len(tax_lot_cost_bases)} items")
+                validation_logger.info(
+                    f"  - tax_lot_cost_bases array: {len(tax_lot_cost_bases)} items")
                 if tax_lot_cost_bases:
-                    validation_logger.info(f"  - First tax_lot_cost_bases item: {tax_lot_cost_bases[0]}")
+                    validation_logger.info(
+                        f"  - First tax_lot_cost_bases item: {tax_lot_cost_bases[0]}")
 
                 # Log all available date fields
                 validation_logger.info(f"Available date fields:")
@@ -607,43 +668,53 @@ def map_crypto_positions(
                     # First try to get cost basis from the cost_bases array
                     cost_basis = 0.0
                     buy_price = 0.0
-                    
-                    # Check cost_bases array first (this is where Robinhood stores the actual cost data)
+
+                    # Check cost_bases array first (this is where Robinhood
+                    # stores the actual cost data)
                     cost_bases = crypto_pos.get('cost_bases', [])
                     if cost_bases:
                         # Sum up all direct cost basis from the array
                         total_cost_basis = 0.0
                         total_quantity = 0.0
-                        
+
                         for cost_basis_item in cost_bases:
                             try:
-                                direct_cost_basis = float(cost_basis_item.get('direct_cost_basis', 0))
-                                direct_quantity = float(cost_basis_item.get('direct_quantity', 0))
+                                direct_cost_basis = float(
+                                    cost_basis_item.get('direct_cost_basis', 0))
+                                direct_quantity = float(
+                                    cost_basis_item.get('direct_quantity', 0))
                                 total_cost_basis += direct_cost_basis
                                 total_quantity += direct_quantity
-                                validation_logger.info(f"Cost basis item: direct_cost_basis={direct_cost_basis}, direct_quantity={direct_quantity}")
+                                validation_logger.info(f"Cost basis item: direct_cost_basis={
+                                                       direct_cost_basis}, direct_quantity={direct_quantity}")
                             except (ValueError, TypeError) as e:
-                                validation_logger.warning(f"Failed to parse cost basis item: {e}")
-                        
+                                validation_logger.warning(
+                                    f"Failed to parse cost basis item: {e}")
+
                         if total_quantity > 0 and total_cost_basis > 0:
                             cost_basis = total_cost_basis
                             buy_price = total_cost_basis / total_quantity
-                            validation_logger.info(f"Calculated from cost_bases array: cost_basis={cost_basis}, buy_price={buy_price}")
+                            validation_logger.info(f"Calculated from cost_bases array: cost_basis={
+                                                   cost_basis}, buy_price={buy_price}")
                         else:
-                            validation_logger.warning(f"Invalid totals from cost_bases array: total_cost_basis={total_cost_basis}, total_quantity={total_quantity}")
+                            validation_logger.warning(f"Invalid totals from cost_bases array: total_cost_basis={
+                                                      total_cost_basis}, total_quantity={total_quantity}")
                     else:
                         # Fallback to the old cost_basis field
                         cost_basis = float(crypto_pos.get('cost_basis', 0))
-                        validation_logger.info(f"Using fallback cost_basis: {cost_basis}")
+                        validation_logger.info(
+                            f"Using fallback cost_basis: {cost_basis}")
 
                         if quantity > 0 and cost_basis > 0:
                             buy_price = cost_basis / quantity
                             validation_logger.info(
                                 f"Calculated buy price from cost_basis: {buy_price}")
-                    
-                    # If we still don't have a valid buy price, try alternative fields
+
+                    # If we still don't have a valid buy price, try alternative
+                    # fields
                     if buy_price <= 0:
-                        validation_logger.warning(f"Cannot calculate buy price from cost_bases (quantity: {quantity}, cost_basis: {cost_basis})")
+                        validation_logger.warning(f"Cannot calculate buy price from cost_bases (quantity: {
+                                                  quantity}, cost_basis: {cost_basis})")
 
                         # Try alternative fields
                         alternative_buy_price = None
@@ -689,8 +760,8 @@ def map_crypto_positions(
                                         # Extract YYYY-MM-DD from ISO format
                                         buy_date = buy_date.split('T')[0]
 
-                                    from server.api.portfolio import get_crypto_historical_price
-                                    historical_price = get_crypto_historical_price(
+                                    from server.api.market_data import market_data_service
+                                    historical_price = market_data_service.get_crypto_historical_price(
                                         clean_symbol, buy_date)
                                     if historical_price and historical_price > 0:
                                         buy_price = historical_price
@@ -765,17 +836,48 @@ def map_crypto_positions(
                     skipped_count += 1
                     continue
 
+                # Calculate market value and percent of portfolio
+                market_value = float(
+                    crypto_pos.get(
+                        'market_value',
+                        quantity * buy_price))
+                total_equity = float(crypto_pos.get('equity', 0))
+                percent_of_portfolio = (
+                    market_value /
+                    total_equity *
+                    100) if total_equity > 0 else 0
+                
+                # Calculate returns if we have both buy price and current price
+                current_price = float(crypto_pos.get('price', buy_price))
+                total_return = 0.0
+                total_return_percent = 0.0
+                todays_return = 0.0  # TODO: Calculate from historical data
+                if buy_price > 0 and current_price > 0:
+                    total_return = (current_price - buy_price) * quantity
+                    total_return_percent = ((current_price - buy_price) / buy_price) * 100
+
                 mapped_position = {
                     'symbol': clean_symbol,
                     'quantity': quantity,
                     'buy_price': buy_price,
+                    'market_value': market_value,
+                    'current_price': current_price,
+                    'total_return': total_return,
+                    'total_return_percent': total_return_percent,
+                    'todays_return': todays_return,
+                    'percent_of_portfolio': percent_of_portfolio,
+                    'beta': None,  # Crypto doesn't have beta
+                    'delta': None,  # Crypto doesn't have delta
                     'notes': crypto_pos.get('currency', {}).get('name', clean_symbol),
-                    'source': 'robinhood_crypto',
+                    'source': 'robinhood',  # Changed from 'robinhood_crypto'
+                    'is_crypto': True,  # Mark as crypto
                     'pulled_at': datetime.now().isoformat(),
-                    'user': user_id}
+                    'user': user_id
+                }
+
                 mapped.append(mapped_position)
                 validation_logger.debug(f"MAPPED: Crypto Position {
-                    clean_symbol} - Qty: {quantity}, Price: ${buy_price}")
+                                        clean_symbol} - Qty: {quantity}, Price: ${buy_price}")
 
             except (ValueError, TypeError) as e:
                 validation_logger.error(
@@ -987,31 +1089,37 @@ def map_crypto_orders(
         return []
 
 
-@router.post("/pull")
-async def pull_robinhood_data(request: Request):
-    """Pull data from Robinhood and save to PocketBase."""
+async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials) -> Dict[str, Any]:
+    """Internal function to pull data from Robinhood - used by workflows"""
     logger.info("Starting Robinhood data pull...")
+
+    # Check if robin_stocks is available
+    if not ROBIN_STOCKS_AVAILABLE:
+        logger.error("robin_stocks library not available")
+        return {
+            "success": False,
+            "error": "robin_stocks library not available"}
 
     try:
         # Get user ID from authenticated session
-        user_id = await get_current_user_id(request)
+        user_id = await get_current_user_id(credentials)
         if not user_id:
-            raise HTTPException(
-                status_code=401,
-                detail="User not authenticated.")
+            return {"success": False, "error": "User not authenticated"}
+
         logger.info(f"Using user ID: {user_id}")
 
-        settings = await get_robinhood_settings(request)
+        settings = await get_robinhood_settings(credentials)
         if not settings.enabled:
-            raise HTTPException(status_code=400,
-                                detail="Robinhood integration is not enabled.")
+            return {
+                "success": False,
+                "error": "Robinhood integration is not enabled"}
 
         # Validate credentials before attempting authentication
         if not settings.username or not settings.password:
             logger.error("Robinhood credentials are missing")
-            raise HTTPException(
-                status_code=400,
-                detail="Robinhood credentials are missing. Please configure username and password in settings.")
+            return {
+                "success": False,
+                "error": "Robinhood credentials are missing"}
 
         logger.info(
             "Robinhood credentials validated, attempting authentication...")
@@ -1049,9 +1157,9 @@ async def pull_robinhood_data(request: Request):
             except Exception as update_error:
                 logger.error(f"Failed to update error status: {update_error}")
 
-            raise HTTPException(
-                status_code=401,
-                detail=f"Failed to authenticate with Robinhood: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to authenticate with Robinhood: {e}"}
 
         # Pull data from Robinhood with individual error handling
         raw_positions = {}
@@ -1108,38 +1216,53 @@ async def pull_robinhood_data(request: Request):
             logger.info("Pulling crypto orders from Robinhood...")
             # Try different crypto order functions that might exist
             raw_crypto_orders = []
-            
+
             # Try get_crypto_orders first
             try:
                 raw_crypto_orders = r.crypto.get_crypto_orders()
-                logger.info(f"Pulled {len(raw_crypto_orders)} crypto orders using get_crypto_orders")
+                logger.info(
+                    f"Pulled {
+                        len(raw_crypto_orders)} crypto orders using get_crypto_orders")
             except AttributeError:
-                logger.warning("get_crypto_orders not available, trying alternative methods...")
-                
+                logger.warning(
+                    "get_crypto_orders not available, trying alternative methods...")
+
                 # Try get_crypto_order_history
                 try:
                     raw_crypto_orders = r.crypto.get_crypto_order_history()
-                    logger.info(f"Pulled {len(raw_crypto_orders)} crypto orders using get_crypto_order_history")
+                    logger.info(
+                        f"Pulled {
+                            len(raw_crypto_orders)} crypto orders using get_crypto_order_history")
                 except AttributeError:
-                    logger.warning("get_crypto_order_history not available, trying get_crypto_orders_by_id...")
-                    
+                    logger.warning(
+                        "get_crypto_order_history not available, trying get_crypto_orders_by_id...")
+
                     # Try to get orders by getting account info first
                     try:
                         account = r.load_account_profile()
                         if account and 'crypto_account' in account:
                             crypto_account_id = account['crypto_account']
-                            raw_crypto_orders = r.crypto.get_crypto_orders_by_id(crypto_account_id)
-                            logger.info(f"Pulled {len(raw_crypto_orders)} crypto orders using get_crypto_orders_by_id")
+                            raw_crypto_orders = r.crypto.get_crypto_orders_by_id(
+                                crypto_account_id)
+                            logger.info(
+                                f"Pulled {
+                                    len(raw_crypto_orders)} crypto orders using get_crypto_orders_by_id")
                         else:
-                            logger.warning("No crypto account found in account profile")
+                            logger.warning(
+                                "No crypto account found in account profile")
                     except Exception as e:
-                        logger.warning(f"Failed to get crypto orders by account ID: {e}")
-            
+                        logger.warning(
+                            f"Failed to get crypto orders by account ID: {e}")
+
             # Log the raw crypto orders data structure
             if raw_crypto_orders:
                 logger.info("=== RAW CRYPTO ORDERS DATA ===")
-                logger.info(f"Number of crypto orders: {len(raw_crypto_orders)}")
-                logger.info(f"First crypto order sample: {raw_crypto_orders[0]}")
+                logger.info(
+                    f"Number of crypto orders: {
+                        len(raw_crypto_orders)}")
+                logger.info(
+                    f"First crypto order sample: {
+                        raw_crypto_orders[0]}")
                 logger.info("=== END RAW CRYPTO ORDERS DATA ===")
             else:
                 logger.info("No crypto orders found")
@@ -1199,75 +1322,7 @@ async def pull_robinhood_data(request: Request):
             logger.error(error_msg)
             raise HTTPException(status_code=500, detail=error_msg)
 
-        # FIRST: Populate symbol cache with current market data
-        try:
-            logger.info("Populating symbol cache with current market data...")
-            from server.api.portfolio import get_portfolio_symbols, fetch_symbol_data, save_symbol_data, calculate_and_save_betas
-
-            # Get all symbols from stock positions
-            stock_symbols = set()
-            for symbol in raw_positions.keys():
-                if symbol:
-                    stock_symbols.add(symbol)
-
-            # Get all symbols from crypto positions
-            crypto_symbols = set()
-            for crypto_pos in raw_crypto_positions:
-                crypto_symbol = crypto_pos.get('currency', {}).get('code', '')
-                if crypto_symbol:
-                    crypto_symbols.add(crypto_symbol)
-
-            # Combine all symbols
-            all_symbols = stock_symbols.union(crypto_symbols)
-
-            if all_symbols:
-                logger.info(
-                    f"Fetching market data for {
-                        len(all_symbols)} symbols ({
-                        len(stock_symbols)} stocks, {
-                        len(crypto_symbols)} crypto)...")
-                symbol_data = fetch_symbol_data(list(all_symbols))
-
-                # Use the new upsert method to avoid duplicates
-                if symbol_data:
-                    # Convert symbol_data from dict to list format for upsert
-                    symbol_data_list = []
-                    for symbol, data in symbol_data.items():
-                        symbol_record = {
-                            "symbol": symbol,
-                            "price": data.get("last_price"),
-                            "date": time.strftime('%Y-%m-%d'),
-                            "beta": data.get("beta"),
-                            "delta": None  # Delta not calculated yet
-                        }
-                        symbol_data_list.append(symbol_record)
-
-                    model_manager = get_model_manager()
-                    upsert_results = model_manager.upsert_symbol_cache_records(
-                        symbol_data_list)
-                    logger.info(
-                        f"Symbol cache upsert results: {upsert_results}")
-                else:
-                    logger.warning(
-                        "No symbol data fetched - this may be due to missing POLYGON_API_KEY")
-
-                # Calculate betas (only for stocks, not crypto)
-                if stock_symbols:
-                    calculate_and_save_betas(list(stock_symbols))
-                    logger.info(
-                        f"Market data and betas updated for {
-                            len(stock_symbols)} stock symbols")
-
-                if crypto_symbols:
-                    logger.info(
-                        f"Market data updated for {
-                            len(crypto_symbols)} crypto symbols")
-            else:
-                logger.info("No symbols to populate in symbol cache")
-        except Exception as e:
-            logger.error(f"Error populating symbol cache: {e}")
-
-        # SECOND: Map and save data to PocketBase
+        # Map and save data to PocketBase
         try:
             logger.info("Mapping and saving stock positions...")
             mapped_stock_positions = map_positions(raw_positions, user_id)
@@ -1455,17 +1510,22 @@ async def pull_robinhood_data(request: Request):
             "positions": {
                 "total": len(all_mapped_positions),
                 "stocks": len(mapped_stock_positions),
-                "crypto": len(mapped_crypto_positions)},
+                "crypto": len(mapped_crypto_positions),
+                "mapped": all_mapped_positions
+            },
             "orders": {
                 "total": len(all_mapped_orders),
                 "stocks": len(mapped_stock_orders),
-                "crypto": len(mapped_crypto_orders)},
-            "dividends_count": len(mapped_dividends),
-            "symbols_updated": len(all_symbols) if 'all_symbols' in locals() else 0,
-            "pull_timestamp": datetime.now().isoformat()}
+                "crypto": len(mapped_crypto_orders),
+                "mapped": all_mapped_orders
+            },
+            "dividends": {
+                "total": len(mapped_dividends),
+                "mapped": mapped_dividends
+            },
+            "pull_timestamp": datetime.now().isoformat()
+        }
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Unexpected error during Robinhood pull: {e}")
         # Update portfolio settings with error
@@ -1477,19 +1537,31 @@ async def pull_robinhood_data(request: Request):
         except Exception as update_error:
             logger.error(f"Failed to update error status: {update_error}")
 
-        raise HTTPException(status_code=500,
-                            detail=f"Unexpected error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/pull")
+async def pull_robinhood_data(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Public endpoint to pull data from Robinhood - for backward compatibility"""
+    result = await pull_robinhood_data_internal(credentials)
+
+    if not result.get('success'):
+        raise HTTPException(
+            status_code=500, detail=result.get(
+                'error', 'Unknown error'))
+
+    return result
 
 
 @router.get("/status", response_model=RobinhoodStatus)
-async def get_robinhood_status(request: Request):
+async def get_robinhood_status(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Get Robinhood integration status."""
     try:
-        settings = await get_robinhood_settings(request)
+        settings = await get_robinhood_settings(credentials)
         model_manager = get_model_manager()
 
         # Get counts from database
-        user_id = await get_current_user_id(request)
+        user_id = await get_current_user_id(credentials)
         if user_id:
             positions_count = len(model_manager.get_positions(user_id))
             orders_count = len(model_manager.get_orders(user_id))
@@ -1503,7 +1575,7 @@ async def get_robinhood_status(request: Request):
         last_pull = None
         last_error = None
         try:
-            user_id = await get_current_user_id(request)
+            user_id = await get_current_user_id(credentials)
             if user_id:
                 portfolio_data = model_manager.get_portfolio_data(user_id)
                 last_pull = portfolio_data.get("last_robinhood_pull")

@@ -3,7 +3,7 @@ import numpy as np
 import talib
 from backtesting import Strategy
 from typing import Dict, Any, List, Type
-from utils.logger import get_app_logger
+from config.backend.logger import get_app_logger
 
 logger = get_app_logger(__name__)
 

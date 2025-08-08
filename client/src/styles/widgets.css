@@ -1,0 +1,98 @@
+/* Widget Action Bar Styles */
+.widget-action-bar {
+  transition: max-height 0.3s ease-in-out, 
+              opacity 0.3s ease-in-out, 
+              transform 0.3s ease-in-out,
+              padding 0.3s ease-in-out,
+              margin 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.widget-action-bar.collapsed {
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* Widget Content Styles */
+.widget-content {
+  transition: max-height 0.3s ease-in-out, 
+              opacity 0.3s ease-in-out, 
+              transform 0.3s ease-in-out,
+              padding 0.3s ease-in-out,
+              margin 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.widget-content.collapsed {
+  max-height: 0 !important;
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* Minimize Button Animation */
+.minimize-btn {
+  transition: transform 0.2s ease-in-out;
+}
+
+.minimize-btn.rotated {
+  transform: rotate(180deg);
+}
+
+/* Smooth transitions for all collapsible elements */
+[id$='Content'], [id$='ActionBar'] {
+  transition: max-height 0.3s ease-in-out, 
+              opacity 0.3s ease-in-out, 
+              transform 0.3s ease-in-out,
+              padding 0.3s ease-in-out,
+              margin 0.3s ease-in-out;
+}
+
+/* Widget content spacing - adds space above content when visible */
+.widget-content:not(.collapsed) {
+  margin-top: 1rem !important;
+}
+
+/* Fade scale animations */
+.fade-scale-hide {
+  opacity: 0 !important;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+
+.fade-scale-show {
+  opacity: 1 !important;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* Global widget styles */
+[id$='ActionBar'] {
+  overflow: hidden;
+  transition: opacity 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Robinhood badges */
+.rh-badge {
+  background: linear-gradient(135deg, #00c805 0%, #00a004 100%);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  box-shadow: 0 1px 3px 0 rgba(0, 200, 5, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Crypto badge - using Bitcoin gold/yellow color */
+.rh-badge.crypto-badge {
+  background: linear-gradient(135deg, #eab308 0%, #fbbf24 100%);
+  color: #1a1a1a;
+  box-shadow: 0 1px 3px 0 rgba(234, 179, 8, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+} 

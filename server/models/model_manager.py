@@ -5,8 +5,8 @@ Handles PocketBase integration for database operations.
 
 from typing import Dict, List, Any, Optional
 from datetime import datetime
-from utils.pocketbase_client import PocketBaseClient
-from utils.logger import get_api_logger, get_data_validation_logger
+from server.database.pocketbase_client import PocketBaseClient
+from config.backend.logger import get_api_logger, get_data_validation_logger
 
 
 class ModelManager:
@@ -645,6 +645,13 @@ class ModelManager:
                 try:
                     # Add user_id if not present
                     record["user"] = user_id
+                    
+                    # Ensure all required fields are present with defaults
+                    record.setdefault("realized", 0.0)
+                    record.setdefault("unrealized", 0.0)
+                    record.setdefault("total", 0.0)
+                    record.setdefault("calculated_at", datetime.now().isoformat())
+                    record.setdefault("last_updated", datetime.now().isoformat())
 
                     # Generate unique key
                     key = f"{

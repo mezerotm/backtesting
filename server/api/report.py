@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from utils.logger import get_server_logger
-from utils.config import POLYGON_API_KEY
+from config.backend.logger import get_server_logger
+from config.backend.settings import POLYGON_API_KEY
 from typing import List, Dict
 import os
 import json

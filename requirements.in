@@ -45,6 +45,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 pytz==2025.1
 pywebview==5.4
+PyJWT==2.8.0
 PyYAML==6.0.2
 requests==2.32.3
 seaborn==0.13.2

@@ -1,10 +1,10 @@
 import pandas as pd
 import requests
 from typing import Dict, Any, Optional
-from utils.logger import get_app_logger
+from config.backend.logger import get_app_logger
 from workflows.base_fetcher import BaseFetcher
 from polygon import RESTClient
-from utils.config import POLYGON_API_KEY
+from config.backend.settings import POLYGON_API_KEY
 
 logger = get_app_logger(__name__)
 

@@ -1,169 +1,151 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+import os
+import time
+from config.backend.settings import ENV, DEV_MODE
+from config.backend.logger import get_api_logger
+
+# Import API routers
 from server.api.auth import router as auth_router
 from server.api.portfolio import router as portfolio_router
+from server.api.market_data import router as market_data_router
 from server.api.orders import router as orders_router
 from server.api.dividends import router as dividends_router
 from server.api.profit_loss import router as profit_loss_router
 from server.api.report import router as report_router
-from server.api.robinhood import router as robinhood_router
+from server.api.workflows import router as workflows_router
 from server.api.dashboard import router as dashboard_router
-from utils.logger import get_server_logger, auto_cleanup_logs, list_log_files, cleanup_old_logs, get_log_stats
-import os
+from server.api.logs import router as logs_router
+from server.api.robinhood import router as robinhood_router
 
-# Initialize logger for main server
-logger = get_server_logger("main")
+# Initialize logger
+logger = get_api_logger("main")
 
-app = FastAPI(title="Backtesting Dashboard", version="1.0.0")
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+# Create FastAPI app
+app = FastAPI(
+    title="GreenArrow Labs Dashboard",
+    description="Backend API for GreenArrow Labs Dashboard",
+    version="1.0.0"
 )
 
-# =============================================================================
-# SECURITY: STATIC FILE SERVING
-# =============================================================================
-# IMPORTANT: Only serve files from the 'public' directory!
-#
-# NEVER serve these directories as they contain source code:
-# - server/     (contains API source code, templates, etc.)
-# - utils/      (contains utility modules)
-# - strategies/ (contains trading strategy source code)
-# - workflows/  (contains workflow source code)
-# - libs/       (contains libraries and binaries)
-# - logs/       (contains sensitive log files)
-#
-# Only the 'public' directory should be served as it contains:
-# - Compiled/built assets (CSS, JS, images) from Vite
-# - Static files safe for public access
-# - No source code or sensitive information
-# =============================================================================
-app.mount("/static", StaticFiles(directory="public"), name="static")
+# Add CORS middleware
+app.add_middleware(CORSMiddleware,
+                   allow_origins=["http://localhost:3000",
+                                  "http://localhost:3001",
+                                  "http://localhost:3002",
+                                  "http://localhost:5173"],
+                   allow_credentials=True,
+                   allow_methods=["*"],
+                   allow_headers=["*"],
+                   expose_headers=["*"],
+                   )
 
-# Import and include routers
+# Request/Response logging middleware
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests and responses."""
+    start_time = time.time()
+
+    # Log request with headers for debugging
+    origin = request.headers.get("origin", "no-origin")
+    user_agent = request.headers.get("user-agent", "no-ua")
+    logger.info(f"Request: {request.method} {request.url.path} - Client: {
+                request.client.host if request.client else 'unknown'} - Origin: {origin} - UA: {user_agent[:50]}")
+
+    # Process request
+    response = await call_next(request)
+
+    # Calculate duration
+    duration = time.time() - start_time
+
+    # Log response
+    status_code = response.status_code
+    if status_code >= 400:
+        logger.error(f"Response: {request.method} {
+                     request.url.path} - Status: {status_code} - Duration: {duration:.3f}s")
+    else:
+        logger.info(f"Response: {request.method} {
+                    request.url.path} - Status: {status_code} - Duration: {duration:.3f}s")
+
+    return response
+
+# Include API routers
+app.include_router(auth_router)
 app.include_router(portfolio_router)
-app.include_router(profit_loss_router)
-app.include_router(robinhood_router)
+app.include_router(market_data_router)
 app.include_router(orders_router)
 app.include_router(dividends_router)
+app.include_router(profit_loss_router)
 app.include_router(report_router)
+app.include_router(workflows_router)
 app.include_router(dashboard_router)
-app.include_router(auth_router)
+app.include_router(logs_router)
+app.include_router(robinhood_router)
+
+# Mount static files in production
+if not DEV_MODE:
+    app.mount("/static", StaticFiles(directory="public"), name="static")
+    app.mount("/icons", StaticFiles(directory="public/icons"), name="icons")
+    app.mount("/js", StaticFiles(directory="public/js"), name="js")
+    app.mount("/css", StaticFiles(directory="public/css"), name="css")
 
 
-@app.get("/")
-async def read_root():
-    """API root endpoint - frontend is served by Vite dev server"""
-    return {
-        "message": "GreenArrow Labs API",
-        "status": "running",
-        "frontend": "http://localhost:3001",
-        "pocketbase": "http://127.0.0.1:8090/_/",
-        "docs": "/docs",
-        "hot_reload_test": "v1.0"
-    }
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """Root endpoint - serves different content based on environment."""
+    if DEV_MODE:
+        logger.info("GET / - Development mode - Redirecting to Vite dev server")
+        return """
+        <html>
+            <head><title>GreenArrow Labs Dashboard - Development</title></head>
+            <body>
+                <h1>GreenArrow Labs Dashboard - Development Mode</h1>
+                <p>Frontend is running on Vite dev server at <a href="http://localhost:5173">http://localhost:5173</a></p>
+                <p>API documentation available at <a href="/docs">/docs</a></p>
+            </body>
+        </html>
+        """
+    else:
+        logger.info("GET / - Production mode - Serving frontend")
+        try:
+            with open("public/index.html", "r") as f:
+                return HTMLResponse(content=f.read())
+        except FileNotFoundError:
+            logger.error("GET / - Production mode - index.html not found")
+            return HTMLResponse(
+                content="<h1>Frontend not built</h1>",
+                status_code=404)
 
-# Add startup event to show server is running
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    logger.info("GET /health - Health check")
+    return {"status": "healthy", "environment": ENV}
+
+# Startup event
 
 
 @app.on_event("startup")
 async def startup_event():
-    print("🚀 Backtesting Dashboard server is running on http://localhost:8000/")
-    print("📊 Dashboard: http://localhost:8000/")
-    print("📝 Logs: ./logs/")
-    print("Press Ctrl+C to stop the server")
+    """Log application startup."""
+    logger.info(
+        f"Application starting up - Environment: {ENV}, Dev Mode: {DEV_MODE}")
 
-    # Run automatic log cleanup on startup (quietly)
-    try:
-        deleted_count = auto_cleanup_logs()
-        if deleted_count > 0:
-            print(f"🧹 Cleaned up {deleted_count} old log files")
-    except Exception as e:
-        print(f"⚠️  Log cleanup failed: {e}")
-
-    print("✅ Server ready - check logs/ for detailed information")
+# Shutdown event
 
 
-@app.get("/logs")
-async def list_logs():
-    """List all available log files with their sizes and modification times."""
-    try:
-        log_files = list_log_files()
-        return {
-            "logs": log_files,
-            "total_files": len(log_files),
-            "total_size_mb": sum(log['size_mb'] for log in log_files)
-        }
-    except Exception as e:
-        logger.error(f"Error listing logs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/logs/{log_name}")
-async def get_log_content(log_name: str, lines: int = 100):
-    """Get the content of a specific log file."""
-    try:
-        log_path = os.path.join("logs", log_name)
-        if not os.path.exists(log_path):
-            raise HTTPException(status_code=404, detail="Log file not found")
-
-        with open(log_path, 'r') as f:
-            content = f.readlines()
-
-        # Return last N lines
-        last_lines = content[-lines:] if len(content) > lines else content
-
-        return {
-            "log_name": log_name,
-            "total_lines": len(content),
-            "returned_lines": len(last_lines),
-            "content": last_lines
-        }
-    except Exception as e:
-        logger.error(f"Error reading log {log_name}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/logs/cleanup")
-async def cleanup_logs(days_to_keep: int = 7):
-    """Clean up old log files."""
-    try:
-        deleted_count = cleanup_old_logs(days_to_keep)
-        return {"message": f"Cleaned up {
-            deleted_count} log files older than {days_to_keep} days"}
-    except Exception as e:
-        logger.error(f"Error cleaning up logs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/logs/auto-cleanup")
-async def auto_cleanup():
-    """Run automatic log cleanup (age + size based)."""
-    try:
-        deleted_count = auto_cleanup_logs()
-        return {"message": f"Auto cleanup complete. Deleted {
-            deleted_count} files."}
-    except Exception as e:
-        logger.error(f"Error in auto cleanup: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/logs/stats")
-async def get_logs_stats():
-    """Get log file statistics."""
-    try:
-        stats = get_log_stats()
-        return stats
-    except Exception as e:
-        logger.error(f"Error getting log stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Log application shutdown."""
+    logger.info("Application shutting down")
 
 if __name__ == "__main__":
     import uvicorn
+    import time
+    logger.info("Starting server with uvicorn")
     uvicorn.run(app, host="0.0.0.0", port=8000)

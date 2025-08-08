@@ -2,9 +2,9 @@ import os
 import traceback
 from typing import Dict, Any, Optional
 import openai
-from utils.config import OPENAI_API_KEY
+from config.backend.settings import OPENAI_API_KEY
 import json
-from utils.logger import get_app_logger
+from config.backend.logger import get_app_logger
 
 logger = get_app_logger(__name__)
 

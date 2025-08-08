@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 import pandas as pd
 import requests
-from utils.logger import get_app_logger
+from config.backend.logger import get_app_logger
 
 logger = get_app_logger(__name__)
 

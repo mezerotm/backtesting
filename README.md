@@ -84,15 +84,40 @@ make dev-server
 
 ### Frontend Structure
 
-- `client/` - Frontend application (Vite + React-like structure)
-  - `client/index.html` - Redirects to landing page
-  - `client/landing.html` - Marketing landing page
-  - `client/dashboard.html` - Main application dashboard
+- `client/` - Frontend application (Vue.js 3 + TypeScript)
+  - `client/index.html` - Application entry point
   - `client/src/` - Source files
-    - `client/src/main.js` - Main application logic
+    - `client/src/vue-app.ts` - Vue application entry point
+    - `client/src/components/` - Vue components
+      - `client/src/components/pages/` - Page components
+      - `client/src/components/widgets/` - Widget components
+      - `client/src/components/ui/` - UI components
+    - `client/src/stores/` - Pinia state management
+    - `client/src/types/` - TypeScript type definitions
     - `client/src/styles/` - CSS and styling
-    - `client/src/widgets/` - Individual widget components
-    - `client/src/data_models.js` - Frontend data validation
+
+### Backend Structure
+
+- `server/` - FastAPI backend
+  - `server/api/` - API endpoints
+  - `server/services/` - Business logic layer
+  - `server/database/` - Data access layer
+  - `server/models/` - Data models
+
+### Configuration
+
+- `config/` - Configuration files
+  - `config/frontend/` - Frontend configuration
+  - `config/backend/` - Backend configuration
+  - `config/shared/` - Shared configuration
+
+### Assets
+
+- `assets/` - Static assets
+  - `assets/icons/` - Icon files
+  - `assets/images/` - Image files
+  - `assets/fonts/` - Font files
+  - `assets/static/` - Other static files
 
 ### Backend Structure
 

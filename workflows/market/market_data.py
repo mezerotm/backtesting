@@ -15,8 +15,8 @@ from typing import Dict, Optional
 from polygon import RESTClient
 from polygon.rest.models import Timeframe, Sort, Order
 from workflows.base_fetcher import BaseFetcher
-from utils.config import POLYGON_API_KEY, FRED_API_KEY, TRADING_ECON_API_KEY
-from utils.most_recent import with_most_recent_data
+from config.backend.settings import POLYGON_API_KEY, FRED_API_KEY, TRADING_ECON_API_KEY
+from server.utils.most_recent import with_most_recent_data
 
 logger = logging.getLogger(__name__)
 

@@ -6,13 +6,13 @@
     <title>{% block title %}GreenArrow Labs Backtest{% endblock %}</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/static/site.webmanifest">
+    <link rel="icon" href="/assets/icons/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/assets/icons/favicon.ico" type="image/x-icon">
     
     <!-- Dark mode initialization script -->
     <script>
@@ -44,18 +44,18 @@
     <!-- Additional styles will be added by child templates -->
     {% endblock %}
 </head>
-<body class="bg-slate-900 min-h-screen flex flex-col">
+<body class="flex flex-col min-h-screen bg-slate-900">
     <!-- Header with bottom border and lighter background -->
-    <header class="site-header py-4 px-6 border-b border-slate-700 bg-slate-800">
+    <header class="px-6 py-4 border-b site-header border-slate-700 bg-slate-800">
         <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center">
-                <div class="flex items-center gap-4">
-                    <a href="/" class="flex items-center gap-3 text-2xl font-bold text-white">
-                        <img src="/favicon-32x32.png" alt="GreenArrow Labs Logo" class="w-10 h-10">
+                <div class="flex gap-4 items-center">
+                    <a href="/" class="flex gap-3 items-center text-2xl font-bold text-white">
+                        <img src="/assets/icons/favicon-32x32.png" alt="GreenArrow Labs Logo" class="w-10 h-10">
                         GreenArrow Labs
                     </a>
                 </div>
-                <div class="flex items-center gap-4">
+                <div class="flex gap-4 items-center">
                     {% block header_actions %}{% endblock %}
                 </div>
             </div>
@@ -72,10 +72,10 @@
     </main>
     
     <!-- Footer with top border and lighter background -->
-    <footer class="site-footer py-4 px-6 border-t border-slate-700 bg-slate-800">
+    <footer class="px-6 py-4 border-t site-footer border-slate-700 bg-slate-800">
         <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div class="text-slate-400 text-sm">
+            <div class="flex flex-col gap-4 justify-between items-center md:flex-row">
+                <div class="text-sm text-slate-400">
                     &copy; {{ current_year }} GreenArrow Labs. All rights reserved.
                 </div>
 

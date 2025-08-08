@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from jinja2 import Environment, FileSystemLoader
-from utils.logger import get_app_logger
+from config.backend.logger import get_app_logger
 from workflows.metadata_generator import generate_metadata, save_metadata
 
 logger = get_app_logger(__name__)

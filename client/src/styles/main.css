@@ -4,6 +4,9 @@
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+/* Import widget styles */
+@import './widgets.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -227,7 +230,64 @@
   }
 
   @keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Toast notification animations */
+@keyframes toastSlideIn {
+  from { 
+    transform: translateX(100%); 
+    opacity: 0; 
   }
+  to { 
+    transform: translateX(0); 
+    opacity: 1; 
+  }
+}
+
+@keyframes toastSlideOut {
+  from { 
+    transform: translateX(0); 
+    opacity: 1; 
+  }
+  to { 
+    transform: translateX(100%); 
+    opacity: 0; 
+  }
+}
+
+@keyframes toastFadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(-20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Header z-index to ensure it's above toasts */
+.site-header {
+  z-index: 10000;
+  position: relative;
+}
+
+/* Toast container styles */
+#toast-container {
+  pointer-events: none;
+  /* Ensure toasts are below header but above other content */
+  z-index: 9999;
+}
+
+#toast-container > div {
+  pointer-events: auto;
+}
+
+/* Toast hover effects */
+#toast-container > div:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
 } 

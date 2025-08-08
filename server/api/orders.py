@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, Body
 from server.models import get_model_manager, Order, validate_order_data, transform_pocketbase_record, transform_to_pocketbase_data
 from server.api.auth import get_current_user_id
-from utils.logger import get_server_logger
+from config.backend.logger import get_server_logger
 from typing import Dict, List
 
 logger = get_server_logger("orders")

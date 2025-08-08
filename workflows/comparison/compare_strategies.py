@@ -11,7 +11,7 @@ from backtesting import Strategy
 from datetime import datetime
 from typing import List, Dict, Any
 from backtesting import Backtest
-from utils.logger import get_app_logger
+from config.backend.logger import get_app_logger
 
 logger = get_app_logger(__name__)
 

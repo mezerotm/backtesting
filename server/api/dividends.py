@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, Body
 from server.models import get_model_manager, Dividend, validate_dividend_data, transform_pocketbase_record, transform_to_pocketbase_data
 from server.api.auth import get_current_user_id
-from utils.logger import get_server_logger
+from config.backend.logger import get_server_logger
 from typing import List, Dict
 from datetime import datetime
 

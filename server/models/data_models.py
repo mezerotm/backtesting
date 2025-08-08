@@ -13,17 +13,82 @@ Key Features:
 """
 
 from pydantic import BaseModel, Field, validator, model_validator
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, ClassVar, Type
 from datetime import datetime, date
 from decimal import Decimal
 import time
+import logging
 
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # BASE MODELS
 # =============================================================================
 
-class BaseRecord(BaseModel):
+
+class BaseModelWithFrontend(BaseModel):
+    """Base model with frontend data conversion methods."""
+
+    # Override this in child classes to define field mappings
+    # Format: Dict[frontend_field_name, backend_field_name]
+    frontend_field_map: ClassVar[Dict[str, str]] = {}
+
+    def to_frontend_dict(self) -> dict:
+        """Convert model to frontend-friendly dictionary with mapped field names."""
+        data = self.model_dump()
+        logger.debug(
+            f"[{self.__class__.__name__}] Converting to frontend dict - Input: {data}")
+
+        # Create a copy to avoid modifying the original
+        converted_data = data.copy()
+
+        # Map backend field names to frontend field names
+        # Note: We need to reverse the mapping for to_frontend_dict
+        backend_to_frontend = {v: k for k,
+                               v in self.frontend_field_map.items()}
+        for backend_field, frontend_field in backend_to_frontend.items():
+            if backend_field in converted_data:
+                converted_data[frontend_field] = converted_data.pop(
+                    backend_field)
+
+        logger.debug(
+            f"[{self.__class__.__name__}] Converted to frontend dict - Output: {converted_data}")
+        return converted_data
+
+    @classmethod
+    def from_frontend_dict(
+            cls: Type['BaseModelWithFrontend'],
+            data: dict) -> 'BaseModelWithFrontend':
+        """Create instance from frontend data with mapped field names."""
+        logger.debug(
+            f"[{cls.__name__}] Converting from frontend dict - Input: {data}")
+        logger.debug(f"[{cls.__name__}] Using field map: {
+                     cls.frontend_field_map}")
+
+        # Create a copy of the data to avoid modifying the original
+        converted_data = data.copy()
+
+        # Map frontend field names to backend field names
+        for frontend_field, backend_field in cls.frontend_field_map.items():
+            if frontend_field in converted_data:
+                logger.debug(f"[{cls.__name__}] Mapping {
+                             frontend_field} -> {backend_field}")
+                converted_data[backend_field] = converted_data.pop(
+                    frontend_field)
+
+        logger.debug(f"[{cls.__name__}] Creating instance with data: {
+                     converted_data}")
+        try:
+            instance = cls(**converted_data)
+            logger.debug(
+                f"[{cls.__name__}] Successfully created instance: {instance}")
+            return instance
+        except Exception as e:
+            logger.error(f"[{cls.__name__}] Error creating instance: {str(e)}")
+            raise
+
+
+class BaseRecord(BaseModelWithFrontend):
     """Base model for all database records."""
     id: Optional[str] = Field(None, description="Record ID")
     created: Optional[str] = Field(None, description="Creation timestamp")
@@ -46,85 +111,157 @@ class BaseRecord(BaseModel):
 
 class PortfolioSettings(BaseRecord):
     """Portfolio settings and configuration."""
+    # Frontend field mapping (frontend_name: backend_name)
+    frontend_field_map: ClassVar[Dict[str, str]] = {
+        "total_portfolio_cash": "total_portfolio_cash",  # Same name
+        "robinhood_enabled": "robinhood_enabled",       # Same name
+        "total_portfolio_btc": "total_portfolio_btc",   # Same name
+        "btc_avg_buy_price": "btc_avg_buy_price",      # Same name
+        "robinhood_username": "robinhood_username",     # Same name
+        "robinhood_password": "robinhood_password",     # Same name
+        "robinhood_mfa": "robinhood_mfa"               # Same name
+    }
+
     user: str = Field(..., description="User ID")
-    total_portfolio_cash: float = Field(
-        0.0, description="Total cash in portfolio")
-    total_portfolio_btc: float = Field(
-        0.0, description="Total BTC value in USD")
-    btc_avg_buy_price: float = Field(0.0, description="Average BTC buy price")
+    total_portfolio_cash: Decimal = Field(
+        default=Decimal('0'),
+        description="Total cash in portfolio")
+    total_portfolio_btc: Decimal = Field(
+        default=Decimal('0'),
+        description="Total BTC value in USD")
+    btc_avg_buy_price: Decimal = Field(
+        default=Decimal('0'),
+        description="Average BTC buy price")
     robinhood_enabled: bool = Field(
-        False, description="Whether Robinhood integration is enabled")
-    robinhood_display: bool = Field(
-        False, description="Whether to display Robinhood data")
+        default=False,
+        description="Whether Robinhood integration is enabled")
     robinhood_username: Optional[str] = Field(
         None, description="Robinhood username")
     robinhood_password: Optional[str] = Field(
-        None, description="Robinhood password (encrypted)")
+        None, description="Robinhood password")
     robinhood_mfa: Optional[str] = Field(
         None, description="Robinhood MFA token")
-    last_robinhood_pull: Optional[str] = Field(
-        None, description="Last Robinhood pull timestamp")
-    robinhood_last_successful_pull: Optional[str] = Field(
-        None, description="Last successful Robinhood pull")
-    robinhood_last_error: Optional[str] = Field(
-        None, description="Last Robinhood error message")
+    sync_interval: int = Field(default=600,
+                               description="Sync interval in seconds")
 
     @validator('total_portfolio_cash',
                'total_portfolio_btc',
                'btc_avg_buy_price')
     def validate_non_negative(cls, v):
+        """Ensure numeric values are non-negative."""
         if v < 0:
             raise ValueError('Value must be non-negative')
-        return round(v, 2)
+        return v
 
     @validator('robinhood_username', 'robinhood_password', 'robinhood_mfa')
     def validate_robinhood_fields(cls, v):
-        if v is not None and len(v.strip()) == 0:
+        """Clean up Robinhood credential fields."""
+        if v is not None and len(str(v).strip()) == 0:
             return None
+        return v
+
+    @validator('sync_interval')
+    def validate_sync_interval(cls, v):
+        """Ensure sync interval is reasonable."""
+        if v < 60:  # Minimum 1 minute
+            raise ValueError('Sync interval must be at least 60 seconds')
+        if v > 86400:  # Maximum 24 hours
+            raise ValueError(
+                'Sync interval must be at most 86400 seconds (24 hours)')
         return v
 
 
 class Position(BaseRecord):
-    """Portfolio position model."""
-    user: str = Field(..., description="User ID")
-    symbol: str = Field(..., description="Stock/ETF symbol")
-    quantity: float = Field(..., description="Number of shares")
-    buy_price: float = Field(..., description="Average buy price per share")
-    notes: Optional[str] = Field(None, description="Position notes")
-    source: Optional[str] = Field(
-        "manual", description="Data source (manual/robinhood)")
-    pulled_at: Optional[str] = Field(None, description="Last pull timestamp")
+    """Position model for individual holdings."""
+    # Frontend field mapping
+    frontend_field_map: ClassVar[Dict[str, str]] = {
+        "quantity": "amount",
+        "buy_price": "avg_buy_price",
+        "pulled_at": "created_at"
+    }
 
-    # Computed fields (not stored in DB)
-    market_value: Optional[float] = Field(
-        None, description="Current market value")
-    todays_return: Optional[float] = Field(
-        None, description="Today's return percentage")
-    total_return: Optional[float] = Field(
-        None, description="Total return percentage")
-    beta: Optional[float] = Field(None, description="Stock beta")
-    delta: Optional[float] = Field(None, description="Position delta")
-    percent_of_portfolio: Optional[float] = Field(
-        None, description="Percentage of total portfolio")
+    user: str  # Changed from user_id to match DB schema
+    symbol: str
+    quantity: Decimal
+    buy_price: Decimal  # Changed from cost_basis to match DB schema
+    market_value: Optional[Decimal] = None
+    current_price: Optional[Decimal] = None
+    total_return: Optional[Decimal] = None
+    total_return_percent: Optional[Decimal] = None
+    percent_of_portfolio: Optional[Decimal] = None
+    beta: Optional[Decimal] = None
+    delta: Optional[Decimal] = None
+    is_crypto: bool = False
+    source: str = "manual"  # manual, robinhood, etc.
+    notes: Optional[str] = None
+    pulled_at: Optional[str] = None
+    updated_at: Optional[datetime] = None
 
     @validator('symbol')
     def validate_symbol(cls, v):
         if not v or len(v.strip()) == 0:
             raise ValueError('Symbol cannot be empty')
+        if len(v) > 10:  # Most symbols are 1-5 chars, allow up to 10 for crypto
+            raise ValueError('Symbol too long')
         return v.strip().upper()
 
-    @validator('quantity', 'buy_price')
-    def validate_positive(cls, v):
+    @validator('quantity')
+    def validate_quantity(cls, v):
         if v <= 0:
-            raise ValueError('Value must be positive')
-        return round(v, 6) if isinstance(v, float) else v
+            raise ValueError('Quantity must be positive')
+        if v > 1_000_000_000:  # Reasonable upper limit
+            raise ValueError('Quantity exceeds maximum allowed')
+        return round(v, 8)  # Allow 8 decimal places for crypto
 
-    @validator('market_value', 'todays_return', 'total_return',
-               'beta', 'delta', 'percent_of_portfolio')
-    def validate_computed_fields(cls, v):
+    @validator('buy_price')
+    def validate_buy_price(cls, v):
+        if v <= 0:
+            raise ValueError('Buy price must be positive')
+        if v > 1_000_000:  # Reasonable upper limit
+            raise ValueError('Buy price exceeds maximum allowed')
+        return round(v, 8)  # Allow 8 decimal places for crypto
+
+    @validator('market_value', 'current_price')
+    def validate_prices(cls, v):
         if v is not None:
+            if v < 0:
+                raise ValueError('Price cannot be negative')
+            if v > 1_000_000:
+                raise ValueError('Price exceeds maximum allowed')
             return round(v, 2)
         return v
+
+    @validator('total_return', 'total_return_percent', 'percent_of_portfolio')
+    def validate_percentages(cls, v):
+        if v is not None:
+            if v < -100_000 or v > 100_000:  # Allow large gains but set reasonable limits
+                raise ValueError('Percentage out of reasonable range')
+            return round(v, 4)  # 4 decimal places for percentages
+        return v
+
+    @validator('beta', 'delta')
+    def validate_metrics(cls, v):
+        if v is not None:
+            if abs(v) > 10:  # Most betas/deltas are between -3 and 3
+                raise ValueError('Metric exceeds reasonable range')
+            return round(v, 4)
+        return v
+
+    @validator('notes')
+    def validate_notes(cls, v):
+        if v is not None:
+            if len(v) > 1000:  # Reasonable limit for notes
+                raise ValueError('Notes too long')
+        return v
+
+    @validator('source')
+    def validate_source(cls, v):
+        valid_sources = {'manual', 'robinhood', 'api'}
+        if v.lower() not in valid_sources:
+            raise ValueError(
+                f'Invalid source. Must be one of: {
+                    ", ".join(valid_sources)}')
+        return v.lower()
 
 
 # =============================================================================
@@ -133,6 +270,13 @@ class Position(BaseRecord):
 
 class Order(BaseRecord):
     """Trade order model."""
+    # Frontend field mapping
+    frontend_field_map: ClassVar[Dict[str, str]] = {
+        "price": "execution_price",
+        "pulled_at": "created_at",
+        "pl": "profit_loss"
+    }
+
     user: str = Field(..., description="User ID")
     symbol: str = Field(..., description="Stock/ETF symbol")
     type: str = Field(..., description="Order type (buy/sell)")
@@ -188,6 +332,12 @@ class Order(BaseRecord):
 
 class Dividend(BaseRecord):
     """Dividend payment model."""
+    # Frontend field mapping
+    frontend_field_map: ClassVar[Dict[str, str]] = {
+        "pulled_at": "created_at",
+        "date": "payment_date"
+    }
+
     user: str = Field(..., description="User ID")
     symbol: str = Field(..., description="Stock/ETF symbol")
     amount: float = Field(..., description="Dividend amount")
@@ -299,6 +449,14 @@ class SymbolCache(BaseRecord):
 
 class ProfitLoss(BaseRecord):
     """Profit/Loss record model."""
+    # Frontend field mapping
+    frontend_field_map: ClassVar[Dict[str, str]] = {
+        "amount": "value",
+        "type": "pl_type",
+        "calculated_at": "timestamp",
+        "date": "trade_date"
+    }
+
     user: str = Field(..., description="User ID")
     symbol: str = Field(..., description="Stock/ETF symbol")
     type: str = Field(..., description="P/L type (Unrealized/Realized)")
@@ -335,6 +493,15 @@ class ProfitLoss(BaseRecord):
 
 class ProfitLossCache(BaseRecord):
     """Profit/Loss summary cache model."""
+    # Frontend field mapping
+    frontend_field_map: ClassVar[Dict[str, str]] = {
+        "total": "total_pl",
+        "unrealized": "unrealized_pl",
+        "realized": "realized_pl",
+        "calculated_at": "timestamp",
+        "last_updated": "updated_timestamp"
+    }
+
     user: str = Field(..., description="User ID")
     period: str = Field(..., description="Time period (1W/1M/3M/YTD/MAX)")
     total: float = Field(..., description="Total P/L")
@@ -433,6 +600,15 @@ def get_collection_schemas() -> Dict[str, Dict[str, Any]]:
             "symbol": {"type": "text", "required": True},
             "quantity": {"type": "number", "required": True},
             "buy_price": {"type": "number", "required": True},
+            "market_value": {"type": "number", "required": False},
+            "current_price": {"type": "number", "required": False},
+            "total_return": {"type": "number", "required": False},
+            "total_return_percent": {"type": "number", "required": False},
+            # Added
+            "percent_of_portfolio": {"type": "number", "required": False},
+            "beta": {"type": "number", "required": False},  # Added
+            "delta": {"type": "number", "required": False},  # Added
+            "is_crypto": {"type": "bool", "required": False},
             "notes": {"type": "text", "required": False},
             "source": {"type": "text", "required": False},
             "pulled_at": {"type": "text", "required": False}

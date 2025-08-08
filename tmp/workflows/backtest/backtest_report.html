@@ -1,0 +1,525 @@
+{% extends "../base_layout.html" %}
+
+{% block title %}Backtest Results for {{ symbol }}{% endblock %}
+
+{% block additional_styles %}
+<style>
+/* Tooltip styling - improved positioning */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 250px;
+    background-color: #1e293b;
+    color: #f8fafc;
+    text-align: left;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    position: absolute;
+    z-index: 100;
+    bottom: 150%; /* Increased distance from icon */
+    left: 0; /* Align with left edge of icon */
+    transform: translateX(-50%); /* Center the tooltip */
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-weight: normal;
+    font-size: 0.85rem;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    pointer-events: none; /* Prevents tooltip from blocking mouse events */
+}
+
+.tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1e293b transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Value colors */
+.positive {
+    color: #4ade80 !important; /* green-400 */
+}
+
+.negative {
+    color: #f87171 !important; /* red-400 */
+}
+
+.neutral {
+    color: #60a5fa !important; /* blue-400 */
+}
+
+/* Glossary item icons */
+.glossary-item i {
+    color: #4ade80 !important; /* green-400 */
+    width: 20px;
+    text-align: center;
+}
+
+/* Metric row styling with info icon */
+.metric-row {
+    display: flex;
+    align-items: center;
+    position: relative; /* Ensure proper positioning context */
+}
+
+.info-icon {
+    margin-right: 8px;
+    position: relative; /* For tooltip positioning */
+}
+
+.metric-name {
+    flex: 1;
+}
+
+/* Ensure tooltips are visible and not clipped */
+.overflow-x-auto {
+    overflow: visible !important; /* Override to prevent tooltip clipping */
+}
+
+table {
+    position: relative;
+    z-index: 1;
+}
+
+td {
+    position: relative;
+}
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<a href="/" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border shadow-sm disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600 bg-slate-800 text-white hover:bg-slate-700">
+    <i class="fa-solid fa-arrow-left"></i>
+    Back to Dashboard
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 shadow-md">
+    <h1 class="text-2xl font-bold mb-1 text-white">Backtest Results for {{ symbol }}</h1>
+    <p class="text-lg text-slate-300">Period: {{ start_date }} to {{ end_date }}</p>
+    {% if has_ai_explanations %}
+    <div class="mt-4 text-slate-300">
+        <h3 class="text-lg font-medium mb-2">AI Strategy Analysis</h3>
+        <p>{{ ai_explanations[strategies[0]]['overview'] }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Test Parameters Card -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm">
+    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-gear text-green-400"></i>
+        Test Parameters
+    </h2>
+    <div class="overflow-visible">
+        <table class="min-w-full divide-y divide-slate-700">
+            <thead>
+                <tr>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Parameter</th>
+                    <th class="px-6 py-3 text-right text-sm font-medium text-slate-300 uppercase bg-slate-900 w-1/2">Value</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700">
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">Initial Capital</td>
+                    <td class="px-6 py-4 text-sm text-right text-slate-300">${{ initial_capital|format_number }}</td>
+                </tr>
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">Commission</td>
+                    <td class="px-6 py-4 text-sm text-right text-slate-300">{{ commission }}%</td>
+                </tr>
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">Timeframe</td>
+                    <td class="px-6 py-4 text-sm text-right text-slate-300">{{ timeframe }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Strategy Results Card -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm">
+    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-chart-line text-green-400"></i>
+        Strategy Results
+    </h2>
+    
+    <!-- Results Table -->
+    <div class="overflow-visible mb-6">
+        <table class="min-w-full divide-y divide-slate-700">
+            <thead>
+                <tr>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: 20%">Metric</th>
+                    {% if has_ai_explanations %}
+                    <th class="px-6 py-3 text-left text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: auto;">AI Explanation</th>
+                    {% endif %}
+                    {% for strategy in strategies %}
+                    <th class="px-6 py-3 text-right text-sm font-medium text-slate-300 uppercase bg-slate-900" style="width: {{ ((40 / strategies|length)|round)|string + '%' }}">{{ strategy }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700">
+                {% for metric in metrics %}
+                <tr class="bg-slate-800 hover:bg-slate-700">
+                    <td class="px-6 py-4 text-sm text-slate-300">
+                        <div class="metric-row">
+                            <div class="tooltip info-icon">
+                                <i class="fa-solid fa-circle-info text-blue-400 cursor-help text-sm"></i>
+                                <span class="tooltiptext">{{ metric_descriptions[metric] }}</span>
+                            </div>
+                            <span class="metric-name">{{ metric }}</span>
+                        </div>
+                    </td>
+                    {% if has_ai_explanations %}
+                    <td class="px-6 py-4 text-sm text-left text-slate-300">
+                        {{ ai_explanations[strategies[0]][metric] }}
+                    </td>
+                    {% endif %}
+                    {% for strategy in strategies %}
+                    <td class="px-6 py-4 text-sm text-right {{ get_value_class(metric, results[strategy][metric]) }}">
+                        {{ results[strategy][metric]|format_value }}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Key Metrics Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        <!-- Return Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">Return (%)</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-chart-line text-green-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 {{ 'positive' if strategies and strategies|length > 0 and strategies[0] in results and 'Return [%]' in results[strategies[0]] and results[strategies[0]]['Return [%]'] > 0 else 'negative' }}">
+                {% if strategies and strategies|length > 0 and strategies[0] in results and 'Return [%]' in results[strategies[0]] %}
+                    {{ results[strategies[0]]['Return [%]']|format_value }}%
+                {% else %}
+                    0.00%
+                {% endif %}
+            </div>
+            <div class="text-sm text-slate-400">
+                The total percentage return of the strategy over the backtest period.
+            </div>
+        </div>
+        
+        <!-- Buy & Hold Return Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">Buy & Hold Return (%)</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-hand-holding-dollar text-blue-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 {{ 'positive' if results[strategies[0]]['Buy & Hold Return [%]'] > 0 else 'negative' }}">
+                {{ results[strategies[0]]['Buy & Hold Return [%]']|format_value }}%
+            </div>
+            <div class="text-sm text-slate-400">
+                The percentage return from buying and holding the asset for the entire backtest period.
+            </div>
+        </div>
+        
+        <!-- Max Drawdown Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">Max. Drawdown (%)</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-arrow-trend-down text-red-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 negative">
+                {{ results[strategies[0]]['Max. Drawdown [%]']|format_value }}%
+            </div>
+            <div class="text-sm text-slate-400">
+                The maximum observed loss from a peak to a trough during the backtest period.
+            </div>
+        </div>
+        
+        <!-- Sharpe Ratio Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">Sharpe Ratio</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-scale-balanced text-purple-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 neutral">
+                {{ results[strategies[0]]['Sharpe Ratio']|format_value }}
+            </div>
+            <div class="text-sm text-slate-400">
+                A measure of risk-adjusted return. Higher values indicate better risk-adjusted performance.
+            </div>
+        </div>
+        
+        <!-- Win Rate Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">Trades</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-check text-emerald-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 neutral">
+                {{ results[strategies[0]]['# Trades']|format_value }}
+            </div>
+            <div class="text-sm text-slate-400">
+                The total number of trades executed during the backtest period.
+            </div>
+        </div>
+        
+        <!-- SQN Metric -->
+        <div class="bg-slate-900 rounded-lg p-5 border border-slate-700">
+            <div class="flex justify-between items-start mb-4">
+                <div class="font-semibold text-lg text-slate-200">SQN</div>
+                <div class="bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-700">
+                    <i class="fa-solid fa-star text-yellow-400 text-lg"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold mb-2 neutral">
+                {{ results[strategies[0]]['SQN']|format_value }}
+            </div>
+            <div class="text-sm text-slate-400">
+                A metric that rates trading systems based on the consistency and size of profits relative to risk.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trading Charts Section -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm">
+    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-chart-line text-green-400"></i>
+        Trading Chart
+    </h2>
+
+    {% if has_charts %}
+        {% if is_comparison %}
+            <div class="tabs bg-slate-900 p-2 rounded-lg mb-4">
+                {% for strategy_name, chart_path in chart_paths.items() %}
+                <button class="tablinks py-2 px-4 rounded-lg mr-2 {% if loop.first %}bg-green-500 text-slate-900 active{% else %}text-slate-300 hover:bg-slate-700{% endif %}" 
+                        onclick="openChart(event, '{{ strategy_name }}')">
+                    {{ strategy_name }}
+                </button>
+                {% endfor %}
+            </div>
+            
+            {% for strategy_name, chart_path in chart_paths.items() %}
+            <div id="{{ strategy_name }}" class="tabcontent" {% if loop.first %}style="display:block;"{% else %}style="display:none;"{% endif %}>
+                <iframe src="{{ chart_path if '/' in chart_path else './chart.html' }}" 
+                        width="100%" 
+                        height="{{ chart_height|default(900) }}" 
+                        frameborder="0" 
+                        class="rounded-lg border border-slate-700"
+                        data-has-trades="{{ has_trades|default(true) }}"></iframe>
+            </div>
+            {% endfor %}
+            
+            <script>
+            function openChart(evt, chartName) {
+                var i, tabcontent, tablinks;
+                tabcontent = document.getElementsByClassName("tabcontent");
+                for (i = 0; i < tabcontent.length; i++) {
+                    tabcontent[i].style.display = "none";
+                }
+                tablinks = document.getElementsByClassName("tablinks");
+                for (i = 0; i < tablinks.length; i++) {
+                    tablinks[i].className = tablinks[i].className.replace(" bg-green-500 text-slate-900 active", " text-slate-300 hover:bg-slate-700");
+                }
+                document.getElementById(chartName).style.display = "block";
+                evt.currentTarget.className = evt.currentTarget.className.replace(" text-slate-300 hover:bg-slate-700", " bg-green-500 text-slate-900 active");
+            }
+            </script>
+        {% else %}
+            <iframe src="./chart.html" 
+                    width="100%" 
+                    height="{{ chart_height|default(900) }}" 
+                    frameborder="0" 
+                    class="rounded-lg border border-slate-700"
+                    data-has-trades="{{ has_trades|default(true) }}"></iframe>
+        {% endif %}
+
+        <!-- Chart Legend Explanation -->
+        <div class="bg-slate-900 rounded-lg p-5 mt-4 border border-slate-700">
+            <h3 class="text-lg font-medium mb-3 text-slate-100">Chart Legend Explanation</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Price Chart Elements -->
+                <div>
+                    <h4 class="font-medium text-green-400 mb-2">Price Chart</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 bg-red-500 mr-2 mt-1"></div>
+                            <span><strong>Red Candles</strong>: Price closed lower than it opened (bearish)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 bg-green-500 mr-2 mt-1"></div>
+                            <span><strong>Green Candles</strong>: Price closed higher than it opened (bullish)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-blue-400"></div>
+                            </div>
+                            <span><strong>Blue Lines</strong>: Fast moving average (typically shorter period)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-orange-400"></div>
+                            </div>
+                            <span><strong>Orange Lines</strong>: Slow moving average (typically longer period)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="w-6 h-6 flex items-center justify-center mr-2">
+                                <i class="fa-solid fa-circle text-green-400 text-xs"></i>
+                            </div>
+                            <span><strong>Green Markers</strong>: Entry points for trades</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="w-6 h-6 flex items-center justify-center mr-2">
+                                <i class="fa-solid fa-circle text-red-400 text-xs"></i>
+                            </div>
+                            <span><strong>Red Markers</strong>: Exit points for trades</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="w-6 h-6 flex items-center justify-center mr-2">
+                                <i class="fa-solid fa-rectangle-list text-slate-300 text-sm"></i>
+                            </div>
+                            <span><strong>OHLC</strong>: Open-High-Low-Close price data</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Performance Indicators -->
+                <div>
+                    <h4 class="font-medium text-green-400 mb-2">Performance Indicators</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-blue-500"></div>
+                            </div>
+                            <span><strong>Equity Curve</strong>: Shows portfolio value over time</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-blue-500"></div>
+                            </div>
+                            <span><strong>Return</strong>: Percentage return over time</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-red-500"></div>
+                            </div>
+                            <span><strong>Drawdown</strong>: Percentage decline from previous peak</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 overflow-hidden mr-2 mt-1 relative">
+                                <div class="absolute inset-0 border-t-2 border-gray-400"></div>
+                            </div>
+                            <span><strong>Profit/Loss</strong>: Cumulative profit or loss from trades</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 w-8 h-4 mr-2 mt-1">
+                                <div class="h-full w-2 bg-green-500 inline-block"></div>
+                                <div class="h-full w-2 bg-red-500 inline-block"></div>
+                            </div>
+                            <span><strong>Volume</strong>: Trading volume (green for up, red for down)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="w-6 h-6 flex items-center justify-center mr-2">
+                                <span class="text-cyan-400 font-bold">P</span>
+                            </div>
+                            <span><strong>Peak</strong>: Highest point in equity or maximum drawdown</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="w-6 h-6 flex items-center justify-center mr-2">
+                                <span class="text-blue-600 font-bold">F</span>
+                            </div>
+                            <span><strong>Final</strong>: Final value at the end of the backtest</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="mt-4 text-sm text-slate-400">
+                <p><strong>Note:</strong> Chart components may vary depending on the strategy being tested. The legend above is for general reference.</p>
+            </div>
+        </div>
+        <!-- End Chart Legend Explanation -->
+    {% else %}
+        <div class="bg-slate-900 p-6 rounded-lg text-center">
+            <p class="text-slate-400">No charts available for this backtest.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Glossary Section -->
+<div class="bg-slate-800 rounded-xl p-6 mt-8 border border-slate-700 shadow-sm">
+    <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-slate-700 flex items-center gap-2">
+        <i class="fa-solid fa-book text-green-400"></i>
+        Glossary of Terms
+    </h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Only including terms not already in the metrics table -->
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                <i class="fa-solid fa-chart-pie mr-2"></i>
+                Profit Factor
+            </h3>
+            <p class="text-sm text-slate-400">
+                The ratio of gross profits to gross losses. Calculated as (Sum of Profitable Trades / Sum of Losing Trades). Values greater than 1 indicate a profitable system.
+            </p>
+        </div>
+        
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                <i class="fa-solid fa-chart-area mr-2"></i>
+                Expectancy
+            </h3>
+            <p class="text-sm text-slate-400">
+                The average amount you can expect to win (or lose) per dollar at risk. Calculated as (Win Rate × Average Win) - ((1 - Win Rate) × Average Loss).
+            </p>
+        </div>
+        
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                <i class="fa-solid fa-arrows-up-down mr-2"></i>
+                Volatility
+            </h3>
+            <p class="text-sm text-slate-400">
+                A measure of the price fluctuations of an asset. Higher volatility indicates larger price swings and potentially higher risk.
+            </p>
+        </div>
+        
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-medium mb-2 text-slate-100 flex items-center">
+                <i class="fa-solid fa-calendar-days mr-2"></i>
+                Holding Period
+            </h3>
+            <p class="text-sm text-slate-400">
+                The average duration of trades from entry to exit, measured in days or bars.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block generation_date %}{{ generation_date }}{% endblock %} 
