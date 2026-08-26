@@ -106,8 +106,7 @@ class PocketBaseClient:
             # Check if binary exists
             if not os.path.exists(self.pb_binary_path):
                 self.logger.error(
-                    f"PocketBase binary not found at {
-                        self.pb_binary_path}")
+                    f"PocketBase binary not found at {self.pb_binary_path}")
                 return False
 
             # Start PocketBase server
@@ -133,8 +132,7 @@ class PocketBaseClient:
                     if response.status_code == 200:
                         self.is_running = True
                         self.logger.info(
-                            f"PocketBase server started on port {
-                                self.port}")
+                            f"PocketBase server started on port {self.port}")
                         return True
                 except requests.RequestException:
                     pass
@@ -214,8 +212,7 @@ class PocketBaseClient:
                         "Authentication failed: no token in response")
                     return False
             else:
-                self.logger.error(f"Authentication failed: {
-                                  response.status_code} - {response.text}")
+                self.logger.error(f"Authentication failed: {response.status_code} - {response.text}")
                 return False
         except Exception as e:
             self.logger.error(f"Error during authentication: {e}")
@@ -246,8 +243,7 @@ class PocketBaseClient:
                 )
 
                 self.logger.info(
-                    f"Authentication response received: {
-                        bool(auth_data)}")
+                    f"Authentication response received: {bool(auth_data)}")
 
                 if auth_data and auth_data.token:
                     self.logger.info(
@@ -264,8 +260,7 @@ class PocketBaseClient:
                                 'username',
                                 identity))}
                 else:
-                    self.logger.error(f"User authentication failed for {
-                                      identity}: no token in response")
+                    self.logger.error(f"User authentication failed for {identity}: no token in response")
 
             except Exception as e:
                 self.logger.error(
@@ -422,8 +417,7 @@ class PocketBaseClient:
                             self.logger.warning(
                                 "Admin authentication failed: no token received")
                     else:
-                        self.logger.warning(f"Admin authentication failed: {
-                                            auth_response.status_code} - {auth_response.text}")
+                        self.logger.warning(f"Admin authentication failed: {auth_response.status_code} - {auth_response.text}")
             except Exception as e:
                 self.logger.warning(f"Admin authentication failed: {e}")
 
@@ -474,8 +468,7 @@ class PocketBaseClient:
                     # Handle relation fields
                     options = field_config.get("options", {})
                     collection_id = options.get("collectionId", "")
-                    self.logger.info(f"Creating relation field '{
-                                     field_name}' with collectionId: '{collection_id}'")
+                    self.logger.info(f"Creating relation field '{field_name}' with collectionId: '{collection_id}'")
                     field_def = {
                         "name": field_name,
                         "type": "relation",
@@ -524,8 +517,7 @@ class PocketBaseClient:
 
             # Debug: Log the payload for relation fields
             if any(field.get("type") == "relation" for field in pb_fields):
-                self.logger.info(f"Collection payload for {
-                                 name}: {collection_payload}")
+                self.logger.info(f"Collection payload for {name}: {collection_payload}")
 
             # Special debugging for profit_loss collection
             if name == "profit_loss":
@@ -537,14 +529,9 @@ class PocketBaseClient:
                     if field.get("name") == "amount":
                         self.logger.info(f"Amount field config: {field}")
                         self.logger.info(
-                            f"Amount field options: {
-                                field.get(
-                                    'options', {})}")
+                            f"Amount field options: {field.get( 'options', {})}")
                         self.logger.info(
-                            f"Amount field nonZero setting: {
-                                field.get(
-                                    'options', {}).get(
-                                    'nonZero', 'NOT_SET')}")
+                            f"Amount field nonZero setting: {field.get( 'options', {}).get( 'nonZero', 'NOT_SET')}")
                         break
 
             headers = {
@@ -570,8 +557,7 @@ class PocketBaseClient:
                     pass
                 return True
             else:
-                self.logger.error(f"Failed to create collection {name}: {
-                                  response.status_code} - {response.text}")
+                self.logger.error(f"Failed to create collection {name}: {response.status_code} - {response.text}")
                 return False
         except Exception as e:
             self.logger.error(f"Error creating collection {name}: {e}")
@@ -615,8 +601,7 @@ class PocketBaseClient:
                             self.logger.warning(
                                 "Admin authentication failed: no token received")
                     else:
-                        self.logger.warning(f"Admin authentication failed: {
-                                            auth_response.status_code} - {auth_response.text}")
+                        self.logger.warning(f"Admin authentication failed: {auth_response.status_code} - {auth_response.text}")
             except Exception as e:
                 self.logger.warning(f"Admin authentication failed: {e}")
 
@@ -636,8 +621,7 @@ class PocketBaseClient:
                 self.logger.info(f"Successfully deleted collection: {name}")
                 return True
             else:
-                self.logger.error(f"Failed to delete collection {name}: {
-                                  response.status_code} - {response.text}")
+                self.logger.error(f"Failed to delete collection {name}: {response.status_code} - {response.text}")
                 return False
         except Exception as e:
             self.logger.error(f"Error deleting collection {name}: {e}")
@@ -682,8 +666,7 @@ class PocketBaseClient:
                 result = response.json()
                 return result.get("items", [])
             else:
-                self.logger.error(f"Failed to get records from {collection}: {
-                                  response.status_code} - {response.text}")
+                self.logger.error(f"Failed to get records from {collection}: {response.status_code} - {response.text}")
                 return []
         except Exception as e:
             self.logger.error(f"Error getting records from {collection}: {e}")
@@ -705,15 +688,11 @@ class PocketBaseClient:
                 self.logger.debug(
                     f"PROFIT_LOSS SEND: Serialized data: {serialized_data}")
                 self.logger.debug(
-                    f"PROFIT_LOSS SEND: Amount in raw: {
-                        data.get('amount')}")
+                    f"PROFIT_LOSS SEND: Amount in raw: {data.get('amount')}")
                 self.logger.debug(
-                    f"PROFIT_LOSS SEND: Amount in serialized: {
-                        serialized_data.get('amount')}")
+                    f"PROFIT_LOSS SEND: Amount in serialized: {serialized_data.get('amount')}")
                 self.logger.debug(
-                    f"PROFIT_LOSS SEND: All keys in serialized: {
-                        list(
-                            serialized_data.keys())}")
+                    f"PROFIT_LOSS SEND: All keys in serialized: {list( serialized_data.keys())}")
 
             self.logger.debug(f"Sending data to PocketBase: {serialized_data}")
 
@@ -723,8 +702,7 @@ class PocketBaseClient:
                     self.logger.warning(
                         f"Found None value for key '{key}' in {collection}")
                 elif isinstance(value, float) and (value != value or value == float('inf') or value == float('-inf')):
-                    self.logger.warning(f"Found invalid number for key '{
-                                        key}': {value} in {collection}")
+                    self.logger.warning(f"Found invalid number for key '{key}': {value} in {collection}")
 
             headers = {
                 "Content-Type": "application/json"
@@ -745,8 +723,7 @@ class PocketBaseClient:
                     f"Successfully created record in {collection}")
                 return result
             else:
-                self.logger.error(f"Failed to create record in {collection}: {
-                                  response.status_code} - {response.text}")
+                self.logger.error(f"Failed to create record in {collection}: {response.status_code} - {response.text}")
                 return None
         except Exception as e:
             self.logger.error(f"Error creating record in {collection}: {e}")
@@ -777,16 +754,13 @@ class PocketBaseClient:
 
             if response.status_code == 200:
                 result = response.json()
-                self.logger.info(f"Successfully updated record {
-                                 record_id} in {collection}")
+                self.logger.info(f"Successfully updated record {record_id} in {collection}")
                 return result
             else:
-                self.logger.error(f"Failed to update record {record_id} in {
-                                  collection}: {response.status_code} - {response.text}")
+                self.logger.error(f"Failed to update record {record_id} in {collection}: {response.status_code} - {response.text}")
                 return None
         except Exception as e:
-            self.logger.error(f"Error updating record {
-                              record_id} in {collection}: {e}")
+            self.logger.error(f"Error updating record {record_id} in {collection}: {e}")
             return None
 
     def delete_record(self, collection: str, record_id: str) -> bool:
@@ -837,14 +811,12 @@ class PocketBaseClient:
             }
 
             self.logger.info(
-                f"Creating portfolio settings for user {
-                    data['user_id']}")
+                f"Creating portfolio settings for user {data['user_id']}")
             serialized_data = self._serialize_data(portfolio_data)
             record = self.client.collection(
                 'portfolio').create(serialized_data)
             self.logger.info(
-                f"Successfully created portfolio settings for user {
-                    data['user_id']}")
+                f"Successfully created portfolio settings for user {data['user_id']}")
             return self._serialize_data(record.__dict__)
         except Exception as e:
             self.logger.error(f"Error creating portfolio settings: {e}")
