@@ -798,7 +798,7 @@ class PocketBaseClient:
             # Map the data to match the portfolio collection schema
             portfolio_data = {
                 # This is the relation field to users collection
-                "user": data["user_id"],
+                "user": data["user"],
                 # Use the correct field name
                 "total_portfolio_cash": str(data.get("total_portfolio_cash", "0")),
                 "total_portfolio_btc": str(data.get("total_portfolio_btc", "0")),
@@ -811,12 +811,12 @@ class PocketBaseClient:
             }
 
             self.logger.info(
-                f"Creating portfolio settings for user {data['user_id']}")
+                f"Creating portfolio settings for user {data['user']}")
             serialized_data = self._serialize_data(portfolio_data)
             record = self.client.collection(
                 'portfolio').create(serialized_data)
             self.logger.info(
-                f"Successfully created portfolio settings for user {data['user_id']}")
+                f"Successfully created portfolio settings for user {data['user']}")
             return self._serialize_data(record.__dict__)
         except Exception as e:
             self.logger.error(f"Error creating portfolio settings: {e}")
