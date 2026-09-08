@@ -2,12 +2,12 @@
   <!-- Portfolio Action Bar (only shown when expanded) -->
   <div 
     v-show="widgetStore.showPortfolioActionBar"
-    class="bg-slate-800 rounded-xl shadow flex justify-between items-center w-full p-6 mb-2 widget-action-bar"
+    class="bg-slate-800 rounded-xl shadow flex flex-wrap gap-3 justify-between items-center w-full p-6 mb-2 widget-action-bar"
   >
-    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+    <h2 class="text-lg font-bold text-white flex items-center gap-2 cursor-pointer select-none" @click.stop="widgetStore.toggleWidget('portfolio')">
       Portfolio
       <button 
-        @click="widgetStore.toggleWidget('portfolio')"
+        @click.stop="widgetStore.toggleWidget('portfolio')"
         class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none transition-transform minimize-btn"
         title="Minimize Portfolio"
       >
@@ -35,10 +35,10 @@
   <div class="bg-slate-800 rounded-xl shadow-sm p-6 w-full" :class="{ 'mt-2': widgetStore.showPortfolioActionBar }">
     <!-- Collapsed Header (shown when minimized) -->
     <div v-show="widgetStore.isPortfolioMinimized" class="flex justify-between items-center">
-      <h2 class="text-lg font-bold text-white flex items-center gap-2">
+      <h2 class="text-lg font-bold text-white flex items-center gap-2 cursor-pointer select-none" @click.stop="widgetStore.toggleWidget('portfolio')">
         Portfolio
         <button 
-          @click="widgetStore.toggleWidget('portfolio')"
+          @click.stop="widgetStore.toggleWidget('portfolio')"
           class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none transition-transform minimize-btn"
           title="Expand Portfolio"
         >
@@ -89,13 +89,13 @@
                 Total Return
                 <i v-if="sortColumn === 'total_return'" :class="getSortIcon(sortDirection)"></i>
               </th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Beta</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase hidden lg:table-cell">Beta</th>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase cursor-pointer hover:text-blue-400 transition-colors"
                   @click="sortBy('delta')">
                 Delta
                 <i v-if="sortColumn === 'delta'" :class="getSortIcon(sortDirection)"></i>
               </th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase hidden lg:table-cell">Notes</th>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
             </tr>
           </thead>
@@ -127,13 +127,13 @@
               <td class="px-3 py-2" :class="getReturnClass(position.total_return)">
                 {{ formatPercentage(position.total_return) }}
               </td>
-              <td class="px-3 py-2 text-gray-200">
+              <td class="px-3 py-2 text-gray-200 hidden lg:table-cell">
                 {{ position.beta ? position.beta.toFixed(2) : '-' }}
               </td>
               <td class="px-3 py-2" :class="getReturnClass(position.delta)">
                 {{ formatCurrency(position.delta) }}
               </td>
-              <td class="px-3 py-2 text-gray-400">
+              <td class="px-3 py-2 text-gray-400 hidden lg:table-cell">
                 {{ position.notes || '-' }}
               </td>
                           <td class="px-3 py-2">
@@ -406,7 +406,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePortfolioStore } from '../../stores/portfolio'
 import { useMarketDataStore } from '../../stores/marketData'
 import { useToastStore } from '../../stores/toast'
@@ -469,6 +469,12 @@ const sortedPositions = computed(() => {
 
 onMounted(async () => {
   await portfolioStore.fetchPortfolioData()
+  // Header "Settings / Account" menu dispatches this to reveal the settings modal
+  window.addEventListener('open-portfolio-settings', openSettingsModal)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('open-portfolio-settings', openSettingsModal)
 })
 
 function sortBy(column) {
@@ -541,14 +547,8 @@ async function refreshData() {
   await portfolioStore.fetchPortfolioData()
 }
 
-async function pullRobinhoodData() {
-  try {
-    await portfolioStore.pullRobinhoodData()
-    toastStore.show('Robinhood data pulled successfully', 'success')
-  } catch (error) {
-    toastStore.show('Failed to pull Robinhood data', 'error')
-  }
-}
+// Note: pullRobinhoodData was renamed to syncMarketData (see store portfolio.ts line 312)
+// The "Sync Market Data" button and the workflow below are the active code path.
 
 async function loadSettings() {
   try {

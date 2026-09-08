@@ -17,6 +17,7 @@
     font-family: 'Inter', sans-serif;
     background-color: #0f172a; /* slate-900 */
     color: #f8fafc; /* slate-50 */
+    overflow-x: hidden;
   }
 }
 
@@ -289,5 +290,36 @@
 #toast-container > div:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Mobile responsiveness --- */
+
+/* Guard against horizontal scroll caused by any wide element on small screens */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* Touch-friendly minimum tap targets on phones */
+@media (max-width: 767px) {
+  .primary-btn,
+  .reset-btn,
+  .time-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Stack modal action buttons (Cancel/Save/Generate/Delete) full-width and
+     touch-friendly on phones so thumbs don't have to hit tiny targets. */
+  .flex.justify-end.gap-2 {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .flex.justify-end.gap-2 > button {
+    width: 100%;
+    min-height: 44px;
+  }
 }
 } 

@@ -6,8 +6,8 @@
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-4">
             <router-link to="/" class="flex items-center gap-3 text-2xl font-bold text-white">
-              <img src="/icons/logo-32x32.png" alt="GreenArrow Labs Logo" class="w-10 h-10">
-              GreenArrow Labs
+              <img src="/icons/logo-32x32.png" alt="Finance Dashboard Logo" class="w-10 h-10">
+              Finance Dashboard
             </router-link>
           </div>
           <div class="flex items-center gap-4">
@@ -71,7 +71,7 @@
       <div class="py-20 bg-slate-800">
         <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center mb-16">
-            <h2 class="text-4xl font-bold text-white mb-4">Why Choose GreenArrow Labs?</h2>
+            <h2 class="text-4xl font-bold text-white mb-4">Why Choose Finance Dashboard?</h2>
             <p class="text-xl text-slate-300 max-w-2xl mx-auto">
               Institutional-grade tools for retail traders. Think like a market maker, trade like a hedge fund.
             </p>
@@ -165,7 +165,8 @@
       <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row justify-between items-center gap-4">
           <div class="text-slate-400 text-sm">
-            &copy; 2025 GreenArrow Labs. All rights reserved.
+            &copy; 2026 Finance Dashboard. All rights reserved.
+            <span class="text-xs text-slate-500 ml-2">v1.0.0</span>
           </div>
           <div class="flex items-center gap-6 text-slate-400 text-sm">
             <a href="#" class="hover:text-white transition-colors">Privacy</a>
@@ -310,7 +311,7 @@ async function handleSubmit() {
       return
     }
     
-    const success = await authStore.createAccount(form.email, form.password)
+    const success = await authStore.createAccount(form.email, form.password, '')
     console.log('[LandingPage] createAccount result:', { success, error: authStore.error })
     if (success) {
       toastStore.show('Account created successfully!', 'success')

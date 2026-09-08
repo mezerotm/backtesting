@@ -10,6 +10,10 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
+  // When true, auto-login is suppressed (set after an explicit logout) so the
+  // user reaches the login screen and can re-authenticate/switch accounts.
+  const autoLoginDisabled = ref(false)
+
   // Getters
   const isAuthenticated = computed(() => !!currentUser.value?.id && !!accessToken.value)
   const userEmail = computed(() => currentUser.value?.email || '')
@@ -65,7 +69,46 @@ export const useAuthStore = defineStore('auth', () => {
       // Clear localStorage
       localStorage.removeItem('accessToken')
       
+      // Suppress auto-login this session so the user reaches the login
+      // screen and can re-authenticate / switch accounts if they want to.
+      autoLoginDisabled.value = true
+      
       logAuthAction('logout', { success: true })
+    }
+  }
+
+  // Auto-login as the single default user (mezerotm@gmail.com). The token is
+  // obtained server-side via POST /api/auth/auto — the password never lives in
+  // the client bundle. Suppressed after an explicit logout.
+  async function autoLogin(): Promise<boolean> {
+    if (autoLoginDisabled.value) {
+      logInfo('Auth', 'Auto-login suppressed after explicit logout')
+      return false
+    }
+    isLoading.value = true
+    error.value = null
+
+    try {
+      logAuthAction('autoLogin')
+
+      const response = await ApiService.post(API_ENDPOINTS.AUTH_AUTO)
+
+      if (!response.access_token || !response.user?.id) {
+        throw new Error('Auto-login returned no session')
+      }
+
+      accessToken.value = response.access_token
+      currentUser.value = response.user
+      localStorage.setItem('accessToken', response.access_token)
+
+      logAuthAction('autoLogin', { success: true, userId: response.user.id })
+      return true
+    } catch (err) {
+      logAuthError('autoLogin', err)
+      error.value = err instanceof Error ? err.message : 'Auto-login failed'
+      return false
+    } finally {
+      isLoading.value = false
     }
   }
 
@@ -76,8 +119,8 @@ export const useAuthStore = defineStore('auth', () => {
       // Check if we have a token in localStorage
       const storedToken = localStorage.getItem('accessToken')
       if (!storedToken) {
-        logInfo('Auth', 'No stored token found')
-        return false
+        logInfo('Auth', 'No stored token found, attempting default auto-login')
+        return autoLogin()
       }
 
       // Set token in state
@@ -96,11 +139,12 @@ export const useAuthStore = defineStore('auth', () => {
         logAuthAction('checkAuthStatus', { success: true, userId: user.id })
         return true
       } catch (err) {
-        // If token verification fails, clear everything
+        // If token verification fails, clear everything and try auto-login
         currentUser.value = null
         accessToken.value = null
         localStorage.removeItem('accessToken')
-        throw err
+        logAuthError('checkAuthStatus', err)
+        return autoLogin()
       }
     } catch (err) {
       logAuthError('checkAuthStatus', err)
@@ -154,6 +198,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
     login,
     logout,
+    autoLogin,
     checkAuthStatus,
     createAccount
   }

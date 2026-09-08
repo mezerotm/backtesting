@@ -38,6 +38,10 @@ if not ENABLE_AI_EXPLANATIONS and IS_PRODUCTION and OPENAI_API_KEY:
     print("Note: AI explanations are disabled in non-production environments.")
 
 # PocketBase configuration
+# POCKETBASE_URL points the SDK at a running PocketBase. Defaults to the
+# locally-spawned instance (127.0.0.1:8090). In the containerized stack it is
+# set to the sidecar service (e.g. http://pocketbase:8090) via POCKETBASE_URL.
+POCKETBASE_URL = os.getenv('POCKETBASE_URL', 'http://127.0.0.1:8090')
 POCKETBASE_EMAIL = os.getenv('PB_EMAIL')
 POCKETBASE_PASSWORD = os.getenv('PB_PASSWORD')
 

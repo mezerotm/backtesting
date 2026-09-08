@@ -2,12 +2,12 @@
   <!-- Profit/Loss Action Bar (only shown when expanded) -->
   <div 
     v-show="widgetStore.showProfitLossActionBar"
-    class="bg-slate-800 rounded-xl shadow flex justify-between items-center w-full p-6 mb-2 widget-action-bar"
+    class="bg-slate-800 rounded-xl shadow flex flex-wrap gap-3 justify-between items-center w-full p-6 mb-2 widget-action-bar"
   >
-    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+    <h2 class="text-lg font-bold text-white flex items-center gap-2 cursor-pointer select-none" @click.stop="widgetStore.toggleWidget('profitLoss')">
       Profit/Loss
       <button 
-        @click="widgetStore.toggleWidget('profitLoss')"
+        @click.stop="widgetStore.toggleWidget('profitLoss')"
         class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none transition-transform minimize-btn"
         title="Minimize Profit/Loss"
       >
@@ -23,10 +23,10 @@
   <div class="bg-slate-800 rounded-xl shadow-sm p-6 w-full" :class="{ 'mt-2': widgetStore.showProfitLossActionBar }">
     <!-- Collapsed Header (shown when minimized) -->
     <div v-show="widgetStore.isProfitLossMinimized" class="flex justify-between items-center">
-      <h2 class="text-lg font-bold text-white flex items-center gap-2">
+      <h2 class="text-lg font-bold text-white flex items-center gap-2 cursor-pointer select-none" @click.stop="widgetStore.toggleWidget('profitLoss')">
         Profit/Loss
         <button 
-          @click="widgetStore.toggleWidget('profitLoss')"
+          @click.stop="widgetStore.toggleWidget('profitLoss')"
           class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none transition-transform minimize-btn"
           title="Expand Profit/Loss"
         >
@@ -44,7 +44,7 @@
       <!-- Summary Section -->
       <div class="mb-6">
         <h3 class="text-md font-semibold text-white mb-3">Summary</h3>
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="text-center">
             <div class="text-2xl font-bold" :class="getPLClass(summary.total)">{{ formatCurrency(summary.total) }}</div>
             <div class="text-xs text-gray-400">Total P/L</div>
@@ -62,9 +62,9 @@
 
       <!-- Chart Section -->
       <div class="mb-6">
-        <div class="flex justify-between items-center mb-3">
+        <div class="flex flex-wrap gap-2 justify-between items-center mb-3">
           <h3 class="text-md font-semibold text-white">Performance Chart</h3>
-          <div class="flex space-x-1">
+          <div class="flex flex-wrap gap-1">
             <button 
               v-for="period in timeRanges" 
               :key="period.value"

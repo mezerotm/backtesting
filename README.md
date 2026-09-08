@@ -1,4 +1,4 @@
-# GreenArrow Labs - Trading Strategy Suite
+# Finance Dashboard - Trading Strategy Suite
 
 This framework provides tools for backtesting trading strategies using TA-Lib indicators and the Backtesting.py library. It allows for easy comparison between different strategies on historical data.
 

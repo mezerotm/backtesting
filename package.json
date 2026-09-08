@@ -1,7 +1,7 @@
 {
-  "name": "greenarrow-labs",
+  "name": "finance-dashboard",
   "version": "1.0.0",
-  "description": "GreenArrow Labs - Advanced Trading Strategy Suite for backtesting and analysis using TA-Lib indicators and the Backtesting.py library.",
+  "description": "Finance Dashboard - Advanced Trading Strategy Suite for backtesting and analysis using TA-Lib indicators and the Backtesting.py library.",
   "type": "module",
   "scripts": {
     "dev": "cd client && vite",

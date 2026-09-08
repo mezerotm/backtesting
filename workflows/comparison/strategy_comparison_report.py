@@ -187,7 +187,7 @@ def create_html_report(
     <!DOCTYPE html>
     <html>
     <head>
-        <title>GreenArrow Labs Strategy Comparison Report</title>
+        <title>Finance Dashboard Strategy Comparison Report</title>
         <style>
             body {font - family: Arial, sans-serif; margin: 20px; }
             h1, h2, h3 {color: #2c3e50; }
@@ -202,7 +202,7 @@ def create_html_report(
         </style>
     </head>
     <body>
-        <h1>GreenArrow Labs Strategy Comparison Report</h1>
+        <h1>Finance Dashboard Strategy Comparison Report</h1>
         <p>Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
 
         <div class="container">

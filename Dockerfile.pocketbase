@@ -1,0 +1,20 @@
+# PocketBase service image.
+#
+# Uses the EXACT bundled binary (v0.21.3, statically linked) rather than a
+# tagged docker image so the existing pb_data remains fully compatible.
+
+FROM alpine:3.19
+
+# PocketBase binary - COPY is filtered by Dockerignore, but libs/pocketbase is
+# allowed through explicitly in this build context.
+COPY libs/pocketbase /usr/local/bin/pocketbase
+
+# Run as non-root; the data dir is a mounted named volume.
+RUN adduser -D -u 1000 pbuser && \
+    chmod +x /usr/local/bin/pocketbase
+USER 1000
+ENV WORKDIR=/pb
+WORKDIR /pb
+
+EXPOSE 8090
+ENTRYPOINT ["/usr/local/bin/pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb_data"]

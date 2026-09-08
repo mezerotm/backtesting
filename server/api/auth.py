@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any
 from server.services.auth_service import AuthService
 from config.backend.logger import get_api_logger
+from config.backend.settings import POCKETBASE_EMAIL, POCKETBASE_PASSWORD
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 security = HTTPBearer()
@@ -14,6 +15,34 @@ security = HTTPBearer()
 # Initialize services and logger
 auth_service = AuthService()
 logger = get_api_logger("auth")
+
+
+@router.post("/auto")
+async def auto_login() -> Dict[str, Any]:
+    """Auto-login as the single default user.
+
+    The default credentials come from server config (PB_EMAIL/PB_PASSWORD in
+    config/shared/.env) and are used server-side only — the client never
+    receives or needs the password. Returns the same shape as POST /login.
+    """
+    logger.info("POST /auto - attempting default-user auto-login")
+
+    try:
+        result = await auth_service.authenticate_user(
+            POCKETBASE_EMAIL, POCKETBASE_PASSWORD)
+
+        if not result.get("success"):
+            error_msg = result.get("error", "Auto-login failed")
+            logger.error(
+                f"POST /auto failed - Error: {error_msg}")
+            raise HTTPException(status_code=401, detail=error_msg)
+
+        logger.info("POST /auto successful - default user authenticated")
+        return result["data"]
+    except Exception as e:
+        logger.error(
+            f"POST /auto exception - Error: {str(e)}")
+        raise
 
 
 @router.post("/login")

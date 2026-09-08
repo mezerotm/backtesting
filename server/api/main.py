@@ -19,14 +19,15 @@ from server.api.workflows import router as workflows_router
 from server.api.dashboard import router as dashboard_router
 from server.api.logs import router as logs_router
 from server.api.robinhood import router as robinhood_router
+from server.api.files import router as files_router
 
 # Initialize logger
 logger = get_api_logger("main")
 
 # Create FastAPI app
 app = FastAPI(
-    title="GreenArrow Labs Dashboard",
-    description="Backend API for GreenArrow Labs Dashboard",
+    title="Finance Dashboard",
+    description="Backend API for Finance Dashboard",
     version="1.0.0"
 )
 
@@ -35,7 +36,8 @@ app.add_middleware(CORSMiddleware,
                    allow_origins=["http://localhost:3000",
                                   "http://localhost:3001",
                                   "http://localhost:3002",
-                                  "http://localhost:5173"],
+                                  "http://localhost:5173",
+                                  "https://finance.mezerotm.com"],
                    allow_credentials=True,
                    allow_methods=["*"],
                    allow_headers=["*"],
@@ -53,8 +55,8 @@ async def log_requests(request: Request, call_next):
     # Log request with headers for debugging
     origin = request.headers.get("origin", "no-origin")
     user_agent = request.headers.get("user-agent", "no-ua")
-    logger.info(f"Request: {request.method} {request.url.path} - Client: {
-                request.client.host if request.client else 'unknown'} - Origin: {origin} - UA: {user_agent[:50]}")
+    logger.info(f"Request: {request.method} {request.url.path} - Client: "
+                f"{request.client.host if request.client else 'unknown'} - Origin: {origin} - UA: {user_agent[:50]}")
 
     # Process request
     response = await call_next(request)
@@ -65,11 +67,11 @@ async def log_requests(request: Request, call_next):
     # Log response
     status_code = response.status_code
     if status_code >= 400:
-        logger.error(f"Response: {request.method} {
-                     request.url.path} - Status: {status_code} - Duration: {duration:.3f}s")
+        logger.error(f"Response: {request.method} "
+                     f"{request.url.path} - Status: {status_code} - Duration: {duration:.3f}s")
     else:
-        logger.info(f"Response: {request.method} {
-                    request.url.path} - Status: {status_code} - Duration: {duration:.3f}s")
+        logger.info(f"Response: {request.method} "
+                    f"{request.url.path} - Status: {status_code} - Duration: {duration:.3f}s")
 
     return response
 
@@ -85,6 +87,7 @@ app.include_router(workflows_router)
 app.include_router(dashboard_router)
 app.include_router(logs_router)
 app.include_router(robinhood_router)
+app.include_router(files_router)
 
 # Mount static files in production
 if not DEV_MODE:
@@ -92,6 +95,11 @@ if not DEV_MODE:
     app.mount("/icons", StaticFiles(directory="public/icons"), name="icons")
     app.mount("/js", StaticFiles(directory="public/js"), name="js")
     app.mount("/css", StaticFiles(directory="public/css"), name="css")
+    # Alias /assets/icons -> public/icons so generated reports that reference
+    # /assets/icons/... (a path baked into already-written report HTML) resolve.
+    # MUST be mounted before /assets (longer prefix wins by registration order).
+    app.mount("/assets/icons", StaticFiles(directory="public/icons"), name="assets-icons")
+    app.mount("/assets", StaticFiles(directory="public/assets"), name="assets")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -101,9 +109,9 @@ async def root():
         logger.info("GET / - Development mode - Redirecting to Vite dev server")
         return """
         <html>
-            <head><title>GreenArrow Labs Dashboard - Development</title></head>
+            <head><title>Finance Dashboard - Development</title></head>
             <body>
-                <h1>GreenArrow Labs Dashboard - Development Mode</h1>
+                <h1>Finance Dashboard - Development Mode</h1>
                 <p>Frontend is running on Vite dev server at <a href="http://localhost:5173">http://localhost:5173</a></p>
                 <p>API documentation available at <a href="/docs">/docs</a></p>
             </body>

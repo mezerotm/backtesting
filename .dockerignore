@@ -1,0 +1,21 @@
+# Secrets / credentials — never bake into the image
+config/shared/.env
+*.log
+cookies.txt
+headers.txt
+token.txt
+test_cookies.txt
+
+# Heavy / local-only
+.git
+.venv
+node_modules
+__pycache__
+*.pyc
+.codegraph
+tmp
+results
+public/results
+pb_data
+pb_migrations
+logs

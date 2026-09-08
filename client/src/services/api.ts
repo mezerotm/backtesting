@@ -1,5 +1,4 @@
 // Centralized API service
-import { useAuthStore } from '@/stores/auth'
 import { logApiRequest, logApiResponse, logApiError } from './logger'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || ''
@@ -127,6 +126,7 @@ export class ApiService {
 export const API_ENDPOINTS = {
   // Auth
   AUTH_LOGIN: '/api/auth/login',
+  AUTH_AUTO: '/api/auth/auto',
   AUTH_LOGOUT: '/api/auth/logout',
   AUTH_ME: '/api/auth/me',
   AUTH_REGISTER: '/api/auth/register',

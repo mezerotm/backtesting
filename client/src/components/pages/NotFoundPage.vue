@@ -7,7 +7,7 @@
           <div class="flex items-center gap-4">
             <router-link to="/" class="flex items-center gap-3 text-2xl font-bold text-white">
               <i class="fas fa-chart-line text-blue-500"></i>
-              GreenArrow Labs
+              Finance Dashboard
             </router-link>
           </div>
           <div class="flex items-center gap-4">
@@ -71,7 +71,7 @@
               Dashboard
             </router-link>
             
-            <a href="mailto:support@greenarrowlabs.com" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-3 rounded-lg transition-colors flex items-center gap-2">
+            <a href="mailto:support@financedashboard.com" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-3 rounded-lg transition-colors flex items-center gap-2">
               <i class="fas fa-envelope"></i>
               Contact Support
             </a>

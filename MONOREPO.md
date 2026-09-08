@@ -1,6 +1,6 @@
 # Vite + FastAPI Monorepo Setup
 
-This document explains the modern monorepo architecture for the GreenArrow Labs application, combining Vue.js frontend with FastAPI backend.
+This document explains the modern monorepo architecture for the Finance Dashboard application, combining Vue.js frontend with FastAPI backend.
 
 ## 🏗️ Architecture Overview
 

@@ -10,7 +10,12 @@ import subprocess
 import time
 import requests
 from pocketbase import PocketBase
-from config.backend.settings import POCKETBASE_EMAIL, POCKETBASE_PASSWORD
+from config.backend.settings import (
+    POCKETBASE_EMAIL,
+    POCKETBASE_PASSWORD,
+    POCKETBASE_URL,
+)
+from urllib.parse import urlparse
 from config.backend.logger import get_server_logger
 
 
@@ -33,7 +38,7 @@ class PocketBaseClient:
         self.pb_binary_path = pb_binary_path
         self.pb_data_dir = pb_data_dir
         self.port = port
-        self.base_url = f"http://127.0.0.1:{port}"
+        self.base_url = POCKETBASE_URL
         self.logger = get_server_logger("pocketbase")
         self.process = None
         self.is_running = False
@@ -46,6 +51,12 @@ class PocketBaseClient:
 
         # Ensure data directory exists
         os.makedirs(pb_data_dir, exist_ok=True)
+
+    def _is_external_url(self) -> bool:
+        """Whether we are connecting to an externally-managed PocketBase
+        (e.g. a Docker sidecar) rather than a locally-spawned binary."""
+        host = urlparse(self.base_url).hostname or ""
+        return host not in ("127.0.0.1", "localhost", "::1", "0.0.0.0")
 
     def _serialize_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Serialize data to ensure it's JSON-compatible, handling datetime objects and invalid values."""
@@ -101,6 +112,13 @@ class PocketBaseClient:
         """Start PocketBase server."""
         if self.is_running:
             return True
+
+        # When POCKETBASE_URL points at an externally-managed instance
+        # (Docker sidecar), never try to spawn a local binary — just probe.
+        if self._is_external_url():
+            self.logger.info(
+                f"External PocketBase configured ({self.base_url}) - not spawning local binary")
+            return self.is_server_running()
 
         try:
             # Check if binary exists

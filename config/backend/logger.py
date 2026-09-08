@@ -5,12 +5,11 @@ from datetime import datetime
 from pathlib import Path
 
 # Create logs directory if it doesn't exist
-# Use absolute path to ensure logs go to the correct location
+# Use absolute path at project root to ensure logs go to the correct location
 LOGS_DIR = os.path.join(
     os.path.dirname(
         os.path.dirname(
             os.path.dirname(__file__))),
-    "config",
     "logs")
 os.makedirs(LOGS_DIR, exist_ok=True)
 
@@ -233,10 +232,7 @@ def auto_cleanup_logs():
     stats = get_log_stats()
 
     print(f"✅ Cleanup complete: {deleted} files deleted")
-    print(
-        f"📊 Total logs: {
-            stats['total_files']} files, {
-            stats['total_size_mb']:.2f}MB")
+    print(f"📊 Total logs: {stats['total_files']} files, {stats['total_size_mb']:.2f}MB")
 
     return deleted
 

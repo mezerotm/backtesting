@@ -15,7 +15,20 @@ import ServerDownPage from './components/pages/ServerDownPage.vue'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'landing',
+    name: 'dashboard',
+    component: DashboardPage,
+    alias: '/dashboard',
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/dashboard.html',
+    name: 'dashboard-alt',
+    component: DashboardPage,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/login',
+    name: 'login',
     component: LandingPage,
     meta: { requiresAuth: false }
   },
@@ -36,18 +49,6 @@ const routes: RouteRecordRaw[] = [
     name: 'create-account-alt',
     component: CreateAccountPage,
     meta: { requiresAuth: false }
-  },
-  {
-    path: '/dashboard',
-    name: 'dashboard',
-    component: DashboardPage,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/dashboard.html',
-    name: 'dashboard-alt',
-    component: DashboardPage,
-    meta: { requiresAuth: true }
   },
   {
     path: '/server-down',
@@ -98,14 +99,14 @@ router.beforeEach(async (to, from, next) => {
   // Check if route requires authentication
   if (to.meta.requiresAuth) {
     if (!authStore.isAuthenticated) {
-      console.log('[Router] Route requires auth, redirecting to landing')
-      next({ name: 'landing' })
+      console.log('[Router] Route requires auth, redirecting to login')
+      next({ name: 'login' })
       return
     }
   }
   
-  // If user is authenticated and trying to access landing page, redirect to dashboard
-  if (authStore.isAuthenticated && to.name === 'landing') {
+  // If user is authenticated and trying to access the login page, redirect to dashboard
+  if (authStore.isAuthenticated && (to.name === 'login' || to.name === 'landing-alt')) {
     console.log('[Router] User authenticated, redirecting to dashboard')
     next({ name: 'dashboard' })
     return

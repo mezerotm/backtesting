@@ -1,0 +1,84 @@
+# Finance Dashboard — Portainer / docker stack
+#
+# Two services on the shared `npm` docker network so Nginx Proxy Manager can
+# route a public domain to the backend by service name:
+#
+#   finance-dashboard  - FastAPI + built Vue frontend (served together on :8000)
+#   pocketbase         - PocketBase DB (exact bundled v0.21.3 binary), data on
+#                        the named volume `pb_data`
+#
+# Host port map:
+#   :9129 -> finance-dashboard:8000   (LAN-only access, bound to the LAN
+#                                     interface 192.168.1.184 — NOT public).
+#                                     Public exposure removed 2026-09-08:
+#                                     NPM proxy host (finance.mezerotm.com)
+#                                     deleted + Cloudflare DNS record removed.
+#
+# There is no host publication for PocketBase (:8090 stays internal to the npm
+# network; a native dev instance continues to run on the host at 127.0.0.1:8090).
+#
+# Runtime secrets (Poligon/FRED API keys, PB_EMAIL/PB_PASSWORD) are read from
+# ./config/shared/.env, which is bind-mounted read-only into the backend. The
+# built image itself contains NO secrets (see .dockerignore).
+
+name: finance-dashboard
+
+services:
+  finance-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: finance-dashboard:latest
+    container_name: finance-dashboard
+    restart: unless-stopped
+    networks:
+      - npm
+    environment:
+      ENV: production
+      VITE_API_URL: ""
+      POCKETBASE_URL: http://pocketbase:8090
+    volumes:
+      - ./config/shared:/app/config/shared:ro
+      # Share the generated report results dir so reports written inside the
+      # container persist on the host AND are served by /static/results/...
+      # (the backend mounts public/ as /static and REPORTS_DIR = public/results).
+      - ./public/results:/app/public/results
+      # Mount rebuilt Vue frontend from host so we don't need to rebuild the
+      # Docker image on every frontend change.
+      - ./public:/app/public:ro
+    ports:
+      - "192.168.1.184:9129:8000"
+    depends_on:
+      - pocketbase
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  pocketbase:
+    build:
+      context: .
+      dockerfile: Dockerfile.pocketbase
+    image: finance-dashboard-pocketbase:0.21.3
+    container_name: finance-pocketbase
+    restart: unless-stopped
+    networks:
+      - npm
+    volumes:
+      - pb_data:/pb_data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8090/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pb_data:
+    name: finance-dashboard_pb_data
+
+networks:
+  npm:
+    external: true

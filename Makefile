@@ -194,7 +194,7 @@ dev-server: results-dir syntax-check
 
 # Development workflow helper
 dev:
-	@echo "=== GreenArrow Labs Development Setup ==="
+	@echo "=== Finance Dashboard Development Setup ==="
 	@echo ""
 	@echo "To start development, run these commands in separate terminals:"
 	@echo ""

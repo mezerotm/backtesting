@@ -131,26 +131,71 @@
         margin-bottom: 32px;
     }
     
-    .chart-container, .chart-container-inflation {
-        position: relative;
-        width: 100%;
-        max-width: 700px;
-        min-height: 400px;
-        margin: 20px auto;
-        background: transparent;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-    
-    .chart-container iframe, .chart-container-inflation iframe {
-        width: 100%;
-        height: 420px;   /* Match Plotly chart height */
-        min-height: 0;
-        border: none;
-        background: transparent;
-        display: block;
-        overflow: hidden;
-    }
+    /* Responsive chart frames: height derives from width (aspect-ratio)
+           so charts never stretch into a fixed tall block and fit small screens smoothly. */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            aspect-ratio: 16 / 9;
+            min-height: 260px;
+            margin:  20px auto;
+            background: transparent;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .chart-container iframe {
+            width:  100%;
+            height:  100%;
+            border: none;
+            background: transparent;
+            display: block;
+            overflow: hidden;
+        }
+
+        /* The style-box heatmap is square (3x3), so size it to a compact
+           near-square frame instead of the wide 16:9 banner. */
+        .chart-container-heatmap {
+            position: relative;
+            width: 100%;
+            max-width: 420px;
+            aspect-ratio: 1;
+            min-height: 300px;
+            margin:  20px auto;
+            background: transparent;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .chart-container-heatmap iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            display: block;
+            overflow: hidden;
+        }
+
+        /* Market-index (TradingView/Plotly) charts: cap the height and let
+           wide charts scroll horizontally on small screens instead of a tall column. */
+        .market-chart-scroll {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top:  0.5rem;
+            padding-bottom: 4px;
+        }
+
+        .market-chart-scroll iframe {
+            display: block;
+            width: 100%;
+            min-width: 560px;
+            height: min(420px, 64vh);
+            border: none;
+            margin:  0;
+            padding: 0;
+        }
     
     .chart-title, .chart-legend {
         display: none !important;
@@ -362,7 +407,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
         {% if style_box_heatmap_path %}
         <div class="bg-slate-900 p-4 rounded-lg">
-            <div class="chart-container">
+            <div class="chart-container-heatmap">
                 <iframe src="{{ style_box_heatmap_path }}" frameborder="0"></iframe>
             </div>
             <div class="chart-description">
@@ -473,9 +518,9 @@
                     <span class="font-medium">{{ idx.change }}</span>
                 </div>
                 {% if market_index_charts[idx.name] is defined and market_index_charts[idx.name] %}
-                <div class="chart-container mt-2" style="max-width: 99vw; width: 100%; height: 900px; min-height: 900px; overflow: hidden; margin: 0; padding: 0;">
-                    <iframe src="{{ market_index_charts[idx.name] }}" frameborder="0" style="width: 100%; height: 900px; min-height: 900px; overflow: hidden; margin: 0; padding: 0;"></iframe>
-                </div>
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="{{ market_index_charts[idx.name] }}" frameborder="0"></iframe>
+                                </div>
                 {% endif %}
             </div>
             {% endif %}
@@ -493,5 +538,5 @@
 <!-- No Clean Results logic here; it belongs in the report widget. -->
 {% endblock %}
 
-    <link rel="icon" href="/assets/icons/favicon.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="/assets/icons/favicon.ico" type="image/x-icon"> 
+    <link rel="icon" href="/icons/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/icons/favicon.ico" type="image/x-icon"> 

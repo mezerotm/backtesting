@@ -2,12 +2,12 @@
   <!-- Orders Action Bar (only shown when expanded) -->
   <div 
     v-show="widgetStore.showOrdersActionBar"
-    class="bg-slate-800 rounded-xl shadow flex justify-between items-center w-full p-6 mb-2 widget-action-bar"
+    class="bg-slate-800 rounded-xl shadow flex flex-wrap gap-3 justify-between items-center w-full p-6 mb-2 widget-action-bar"
   >
-    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+    <h2 class="text-lg font-bold text-white flex items-center gap-2 cursor-pointer select-none" @click.stop="widgetStore.toggleWidget('orders')">
       Orders
       <button 
-        @click="widgetStore.toggleWidget('orders')"
+        @click.stop="widgetStore.toggleWidget('orders')"
         class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none transition-transform minimize-btn"
         title="Minimize Orders"
       >
@@ -28,10 +28,10 @@
   <div class="bg-slate-800 rounded-xl shadow-sm p-6 w-full" :class="{ 'mt-2': widgetStore.showOrdersActionBar }">
     <!-- Collapsed Header (shown when minimized) -->
     <div v-show="widgetStore.isOrdersMinimized" class="flex justify-between items-center">
-      <h2 class="text-lg font-bold text-white flex items-center gap-2">
+      <h2 class="text-lg font-bold text-white flex items-center gap-2 cursor-pointer select-none" @click.stop="widgetStore.toggleWidget('orders')">
         Orders
         <button 
-          @click="widgetStore.toggleWidget('orders')"
+          @click.stop="widgetStore.toggleWidget('orders')"
           class="ml-2 text-slate-400 hover:text-blue-400 focus:outline-none transition-transform minimize-btn"
           title="Expand Orders"
         >

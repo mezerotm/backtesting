@@ -7,7 +7,7 @@
           <div class="flex items-center gap-4">
             <router-link to="/" class="flex items-center gap-3 text-2xl font-bold text-white">
               <i class="fas fa-chart-line text-blue-500"></i>
-              GreenArrow Labs
+              Finance Dashboard
             </router-link>
           </div>
           <div class="flex items-center gap-4">
@@ -95,12 +95,12 @@
         <div class="mt-12 pt-8 border-t border-slate-700">
           <h3 class="text-lg font-semibold text-white mb-4">Need Help?</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <a href="mailto:support@greenarrowlabs.com" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-3 rounded-lg transition-colors flex items-center gap-2">
+            <a href="mailto:support@financedashboard.com" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-3 rounded-lg transition-colors flex items-center gap-2">
               <i class="fas fa-envelope"></i>
               Contact Support
             </a>
             
-            <a href="https://status.greenarrowlabs.com" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-3 rounded-lg transition-colors flex items-center gap-2">
+            <a href="https://status.financedashboard.com" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-3 rounded-lg transition-colors flex items-center gap-2">
               <i class="fas fa-chart-line"></i>
               Status Page
             </a>

@@ -95,7 +95,7 @@ TRADING_ECON_API_KEY=your_trading_economics_api_key_here
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Application Configuration
-VITE_APP_NAME=GreenArrow Labs Dashboard
+VITE_APP_NAME=Finance Dashboard
 ```
 
 ## 🔄 Configuration Updates

@@ -6,8 +6,8 @@
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-4">
             <router-link to="/" class="flex items-center gap-3 text-2xl font-bold text-white">
-              <img src="/icons/logo-32x32.png" alt="GreenArrow Labs Logo" class="w-10 h-10">
-              GreenArrow Labs
+              <img src="/icons/logo-32x32.png" alt="Finance Dashboard Logo" class="w-10 h-10">
+              Finance Dashboard
             </router-link>
           </div>
           <div class="flex items-center gap-4">
@@ -39,7 +39,7 @@
               <i class="fa-solid fa-user-plus text-2xl text-white"></i>
             </div>
             <h1 class="text-3xl font-bold text-white mb-2">Create Your Account</h1>
-            <p class="text-slate-400">Join thousands of traders using GreenArrow Labs</p>
+            <p class="text-slate-400">Join thousands of traders using Finance Dashboard</p>
           </div>
           
           <!-- Registration Form -->
@@ -113,18 +113,18 @@
             <!-- Submit Button -->
             <button 
               type="submit"
-              :disabled="authStore.isAuthenticating"
+              :disabled="authStore.isLoading"
               class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-green-800 disabled:to-green-900 text-white py-3 px-4 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
             >
               <i class="fa-solid fa-rocket mr-2"></i>
-              <span v-if="authStore.isAuthenticating">Creating Account...</span>
+              <span v-if="authStore.isLoading">Creating Account...</span>
               <span v-else>Create Account</span>
             </button>
           </form>
           
           <!-- Error Display -->
-          <div v-if="authStore.authError" class="mt-4 text-red-400 text-sm">
-            {{ authStore.authError }}
+          <div v-if="authStore.error" class="mt-4 text-red-400 text-sm">
+            {{ authStore.error }}
           </div>
           
           <!-- Login Link -->
@@ -184,7 +184,8 @@
       <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row justify-between items-center gap-4">
           <div class="text-slate-400 text-sm">
-            &copy; 2024 GreenArrow Labs. All rights reserved.
+            &copy; 2026 Finance Dashboard. All rights reserved.
+            <span class="text-xs text-slate-500 ml-2">v1.0.0</span>
           </div>
           <div class="flex items-center gap-6 text-slate-400 text-sm">
             <a href="#" class="hover:text-white transition-colors">Privacy</a>
@@ -206,7 +207,7 @@
         @click.stop
       >
         <div class="flex justify-between items-center mb-6">
-          <h3 class="text-xl font-bold text-white">Login to GreenArrow Labs</h3>
+          <h3 class="text-xl font-bold text-white">Login to Finance Dashboard</h3>
           <button
             @click="showLoginModal = false"
             class="text-gray-400 hover:text-white"
@@ -248,10 +249,10 @@
           <div class="flex items-center justify-between">
             <button
               type="submit"
-              :disabled="authStore.isAuthenticating"
+              :disabled="authStore.isLoading"
               class="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-4 py-2 rounded-md transition-colors"
             >
-              <span v-if="authStore.isAuthenticating">Loading...</span>
+              <span v-if="authStore.isLoading">Loading...</span>
               <span v-else>Login</span>
             </button>
             <button 
@@ -264,8 +265,8 @@
           </div>
         </form>
 
-        <div v-if="authStore.authError" class="mt-4 text-red-400 text-sm">
-          {{ authStore.authError }}
+        <div v-if="authStore.error" class="mt-4 text-red-400 text-sm">
+          {{ authStore.error }}
         </div>
       </div>
     </div>
@@ -313,23 +314,23 @@ async function handleSubmit() {
     return
   }
   
-  const result = await authStore.createAccount(form.email, form.password)
-  if (result.success) {
+  const ok = await authStore.createAccount(form.email, form.password, form.name)
+  if (ok) {
     toastStore.show('Account created successfully!', 'success')
     router.push('/dashboard')
   } else {
-    toastStore.show(result.error, 'error')
+    toastStore.show(authStore.error || 'Account creation failed', 'error')
   }
 }
 
 async function handleLogin() {
-  const result = await authStore.login(loginForm.email, loginForm.password)
-  if (result.success) {
+  const ok = await authStore.login(loginForm.email, loginForm.password)
+  if (ok) {
     toastStore.show('Login successful!', 'success')
     showLoginModal.value = false
     router.push('/dashboard')
   } else {
-    toastStore.show(result.error, 'error')
+    toastStore.show(authStore.error || 'Login failed', 'error')
   }
 }
 </script> 

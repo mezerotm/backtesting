@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
 import type { Position, PortfolioSettings, PortfolioSummary, ApiResponse } from '@/types'
 import { ApiService, API_ENDPOINTS } from '@/services/api'
-import { logInfo, logError, logWidgetAction, logWidgetError } from '@/services/logger'
+import { logInfo, logWidgetAction, logWidgetError } from '@/services/logger'
 
 export const usePortfolioStore = defineStore('portfolio', () => {
   // State

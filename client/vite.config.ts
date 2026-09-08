@@ -32,5 +32,5 @@ export default defineConfig({
       '@': resolve(__dirname, 'src')
     }
   },
-  publicDir: '../public'
+  publicDir: 'public', // static assets (icons, favicon) to copy into outDir on build
 }) 
