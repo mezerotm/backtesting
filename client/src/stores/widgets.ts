@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 type WidgetState = {
   isMinimized: boolean
@@ -16,15 +16,25 @@ type WidgetStates = {
 
 type WidgetName = keyof WidgetStates
 
-export const useWidgetStore = defineStore('widgets', () => {
-  // Widget states - all start minimized by default
-  const widgetStates = ref<WidgetStates>({
+const STORAGE_KEY = 'finance_widget_states'
+
+function loadSavedState(): WidgetStates {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) return JSON.parse(saved)
+  } catch {}
+  return {
     portfolio: { isMinimized: true, showActionBar: false },
     orders: { isMinimized: true, showActionBar: false },
     dividends: { isMinimized: true, showActionBar: false },
     profitLoss: { isMinimized: true, showActionBar: false },
     reports: { isMinimized: true, showActionBar: false }
-  })
+  }
+}
+
+export const useWidgetStore = defineStore('widgets', () => {
+  // Widget states - loaded from localStorage or default minimized
+  const widgetStates = ref<WidgetStates>(loadSavedState())
 
   // Computed getters for each widget
   const isPortfolioMinimized = computed(() => widgetStates.value.portfolio.isMinimized)
@@ -75,12 +85,19 @@ export const useWidgetStore = defineStore('widgets', () => {
     }
   }
 
-  // Initialize all widgets as minimized
+  // Initialize all widgets as minimized (but loadSavedState already does this)
   function initializeWidgets() {
     Object.keys(widgetStates.value).forEach(widgetName => {
       minimizeWidget(widgetName as WidgetName)
     })
   }
+
+  // Auto-save to localStorage on every state change
+  watch(widgetStates, (val) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
+    } catch {}
+  }, { deep: true })
 
   return {
     // State
