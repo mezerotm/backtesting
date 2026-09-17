@@ -17,6 +17,47 @@ class AuthService(BaseService):
         self.algorithm = "HS256"
         self.access_token_expire_minutes = 1440  # 24 hours instead of 30 minutes
 
+    async def get_default_user_token(self) -> Dict[str, Any]:
+        """Get an auth token for the single default user without password.
+        
+        Uses the PocketBase admin API to generate a user auth token 
+        for the single app user. Bypasses password verification since 
+        this is a single-user app.
+        """
+        try:
+            import sqlite3
+            self.log_operation("get_default_user_token")
+
+            # Read the single user directly from the db
+            db = sqlite3.connect("/app/pb_data/data.db")
+            row = db.execute("SELECT id, email FROM users LIMIT 1").fetchone()
+            db.close()
+
+            if not row:
+                return self.handle_error(
+                    Exception("No user found in database"), "get_default_user_token")
+
+            user_id, email = row
+
+            # Generate the same JWT the authed path would
+            access_token = self._create_access_token(
+                data={"sub": user_id})
+
+            return {
+                "success": True,
+                "data": {
+                    "access_token": access_token,
+                    "token_type": "bearer",
+                    "user": {
+                        "id": user_id,
+                        "email": email,
+                        "name": ""
+                    }
+                }
+            }
+        except Exception as e:
+            return self.handle_error(e, "get_default_user_token")
+
     async def authenticate_user(
             self, email: str, password: str) -> Dict[str, Any]:
         """Authenticate a user with email and password."""
@@ -201,6 +242,15 @@ class AuthService(BaseService):
         try:
             # Ensure we're authenticated as admin
             if not self.pb_client.authenticate():
+                # Fall back to direct sqlite read
+                import sqlite3, os
+                pb_path = "/app/pb_data/data.db"
+                if os.path.exists(pb_path):
+                    db = sqlite3.connect(pb_path)
+                    row = db.execute("SELECT id, email FROM users WHERE id=?", (user_id,)).fetchone()
+                    db.close()
+                    if row:
+                        return {"id": row[0], "email": row[1], "name": ""}
                 self.logger.error("Failed to authenticate as admin")
                 return None
 

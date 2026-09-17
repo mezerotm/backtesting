@@ -2,7 +2,7 @@
 Authentication API endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any
 from server.services.auth_service import AuthService
@@ -21,15 +21,13 @@ logger = get_api_logger("auth")
 async def auto_login() -> Dict[str, Any]:
     """Auto-login as the single default user.
 
-    The default credentials come from server config (PB_EMAIL/PB_PASSWORD in
-    config/shared/.env) and are used server-side only — the client never
-    receives or needs the password. Returns the same shape as POST /login.
+    Since this is a single-user app, we generate a token directly
+    from the user's PocketBase record without requiring password re-entry.
     """
-    logger.info("POST /auto - attempting default-user auto-login")
+    logger.info("POST /auto - attempting direct single-user auto-login")
 
     try:
-        result = await auth_service.authenticate_user(
-            POCKETBASE_EMAIL, POCKETBASE_PASSWORD)
+        result = await auth_service.get_default_user_token()
 
         if not result.get("success"):
             error_msg = result.get("error", "Auto-login failed")
@@ -61,12 +59,8 @@ async def login(credentials: Dict[str, str]) -> Dict[str, Any]:
             raise HTTPException(status_code=401, detail=error_msg)
 
         logger.info(
-            f"POST /login successful - Email: {email}, User ID: {
-                result.get(
-                    'data',
-                    {}).get(
-                    'user',
-                    {}).get('id')}")
+            f"POST /login successful - Email: {email}, User ID: "
+            f"{result.get('data', {}).get('user', {}).get('id')}")
         return result["data"]
     except Exception as e:
         logger.error(
@@ -151,9 +145,22 @@ async def register(user_data: Dict[str, str]) -> Dict[str, Any]:
 
 
 async def get_current_user_id(
-        credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    """Get current user ID from token."""
-    token = credentials.credentials
+        request_or_credentials: HTTPAuthorizationCredentials | Request = Depends(security)) -> str:
+    """Get current user ID from token.
+
+    Supports two call patterns:
+    - Direct: ``await get_current_user_id(request)`` where request is a FastAPI Request
+    - Dependency: ``Depends(get_current_user_id)`` via HTTPAuthorizationCredentials injection
+    """
+    if isinstance(request_or_credentials, Request):
+        auth_header = request_or_credentials.headers.get("authorization", "")
+        token = auth_header.replace("Bearer ", "") if auth_header else ""
+        if not token:
+            raise HTTPException(
+                status_code=401, detail="Missing authorization header")
+    else:
+        token = request_or_credentials.credentials
+
     result = await auth_service.get_current_user(token)
 
     if not result.get("success"):
