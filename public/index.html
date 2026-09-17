@@ -1,0 +1,2295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%231e293b'/><text x='16' y='24' text-anchor='middle' font-size='20' fill='%2334d399'>$</text></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+<style>
+/* ═══════════════ Design System — CSS Custom Properties ═══════════════ */
+:root {
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-hover: #263348;
+  --color-surface-elevated: #334155;
+  --color-surface-inset: #0f172a;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-tertiary: #64748b;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #60a5fa;
+  --color-accent-subtle: rgba(59,130,246,0.12);
+  --color-success: #22c55e;
+  --color-success-subtle: rgba(34,197,94,0.12);
+  --color-warning: #f59e0b;
+  --color-warning-subtle: rgba(245,158,11,0.12);
+  --color-error: #ef4444;
+  --color-error-subtle: rgba(239,68,68,0.12);
+  --color-info: #3b82f6;
+  --color-border: rgba(255,255,255,0.06);
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-elevated: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* Custom scrollbar — thin, dark, matches site theme */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+::-webkit-scrollbar-corner { background: transparent; }
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
+html, body { height: 100%; }
+body { background: var(--color-bg); color: var(--color-text-primary); font-family: var(--font-sans); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+/* ═══════════════ Layout ═══════════════ */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+.header { background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: var(--space-4) var(--space-6); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
+.header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: center; gap: var(--space-2); }
+.header .sub { color: var(--color-text-tertiary); font-size: 13px; }
+.header .status-area { display: flex; gap: var(--space-4); align-items: center; }
+.connection-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: #ef4444; transition: all .3s ease; flex-shrink: 0; margin-top:1px; }
+.connection-dot.connected { background: var(--color-success); box-shadow: 0 0 6px rgba(34,197,94,0.7); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+.main-content { flex: 1; padding: var(--space-6); max-width: 85rem; margin: 0 auto; width: 100%; }
+
+/* ═══════════════ Footer ═══════════════ */
+.footer { padding: var(--space-4) var(--space-6); border-top: 1px solid var(--color-border); background: var(--color-surface); text-align: center; color: var(--color-text-tertiary); font-size: 13px; }
+
+/* ═══════════════ Buttons ═══════════════ */
+.btn { display: inline-flex; align-items: center; gap: var(--space-2); padding: 8px 16px; border-radius: var(--radius-lg); font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all .15s ease; font-family: var(--font-sans); }
+.btn-primary { background: var(--color-accent); color: white; }
+.btn-primary:hover { background: var(--color-accent-hover); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-success { background: #16a34a; color: white; }
+.btn-success:hover { background: #15803d; }
+.btn-danger { background: #dc2626; color: white; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-ghost { background: transparent; color: var(--color-text-secondary); padding: 6px 10px; border-radius: var(--radius-md); }
+.btn-ghost:hover { background: var(--color-surface-hover); color: var(--color-text-primary); }
+.btn-sm { padding: 4px 10px; font-size: 12px; border-radius: var(--radius-md); }
+.btn-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); border: none; cursor: pointer; background: transparent; color: var(--color-text-tertiary); transition: all .15s ease; }
+.btn-icon:hover { background: var(--color-surface-hover); color: var(--color-text-primary); }
+
+/* ═══════════════ Cards ═══════════════ */
+.card { background: var(--color-surface); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); padding: var(--space-5); margin-bottom: var(--space-4); }
+.card-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.card-header h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: var(--space-2); }
+
+/* ═══════════════ Tables ═══════════════ */
+.table-wrap { overflow-x: auto; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-text-tertiary); padding: 10px 12px; border-bottom: 1px solid var(--color-border); white-space: nowrap; }
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--color-accent); }
+.symbol-cell { display: flex; flex-direction: column; line-height: 1.2; max-width: 150px; }
+.symbol-name { font-weight: 600; font-size: 13px; letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.symbol-notes { font-size: 10.5px; color: var(--color-text-tertiary); letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.num { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+td { padding: 8px 12px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+tr:hover td { background: rgba(255,255,255,0.02); }
+tr:last-child td { border-bottom: none; }
+.text-green { color: var(--color-success); }
+.text-red { color: var(--color-error); }
+.text-yellow { color: var(--color-warning); }
+.text-muted { color: var(--color-text-tertiary); }
+
+/* ═══════════════ Forms ═══════════════ */
+input, select, textarea { background: var(--color-surface-elevated); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 8px 12px; border-radius: var(--radius-md); font-size: 14px; font-family: var(--font-sans); width: 100%; outline: none; transition: border .15s ease; }
+input:focus, select:focus, textarea:focus { border-color: var(--color-accent); }
+label { display: block; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: var(--space-1); }
+.form-group { margin-bottom: var(--space-4); }
+.form-row { display: flex; gap: var(--space-3); }
+.form-row > * { flex: 1; }
+
+/* ═══════════════ Modals ═══════════════ */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 50; padding: var(--space-4); }
+.modal { background: var(--color-surface); border-radius: var(--radius-xl); box-shadow: var(--shadow-elevated); padding: var(--space-6); width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-5); }
+.modal-header h3 { font-size: 18px; font-weight: 700; }
+
+/* ═══════════════ Toast ═══════════════ */
+.toast-container { position: fixed; top: var(--space-5); right: var(--space-5); z-index: 100; display: flex; flex-direction: column; gap: var(--space-2); }
+.toast { padding: 12px 18px; border-radius: var(--radius-lg); box-shadow: var(--shadow-elevated); display: flex; align-items: center; gap: var(--space-3); font-size: 14px; font-weight: 500; min-width: 280px; max-width: 420px; animation: toastIn .3s ease-out; }
+.toast-success { background: #166534; border-left: 4px solid var(--color-success); }
+.toast-error { background: #991b1b; border-left: 4px solid var(--color-error); }
+.toast-warning { background: #92400e; border-left: 4px solid var(--color-warning); }
+.toast-info { background: #1e3a5f; border-left: 4px solid var(--color-accent); }
+.toast .close { margin-left: auto; cursor: pointer; opacity: .7; }
+.toast .close:hover { opacity: 1; }
+@keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ═══════════════ Hero/Landing ═══════════════ */
+.hero { position: relative; overflow: hidden; background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a); padding: 80px 0; text-align: center; }
+.hero-bg { position: absolute; inset: 0; }
+.hero-bg div { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .1; }
+.hero-bg .b1 { top: 80px; left: 40px; width: 288px; height: 288px; background: #22c55e; animation: pulse 4s ease-in-out infinite; }
+.hero-bg .b2 { bottom: 80px; right: 40px; width: 384px; height: 384px; background: #3b82f6; animation: pulse 4s ease-in-out infinite 1s; }
+.hero-bg .b3 { top: 50%; left: 50%; transform: translate(-50%,-50%); width: 320px; height: 320px; background: #a855f7; animation: pulse 4s ease-in-out infinite 2s; }
+.hero-content { position: relative; z-index: 10; max-width: 85rem; margin: 0 auto; padding: 0 var(--space-6); }
+.hero h1 { font-size: clamp(2rem,5vw,4rem); font-weight: 800; margin-bottom: var(--space-5); line-height: 1.2; }
+.hero h1 span { background: linear-gradient(to right, #22c55e, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero p { font-size: clamp(1rem,2vw,1.25rem); color: var(--color-text-secondary); max-width: 48rem; margin: 0 auto var(--space-8); line-height: 1.6; }
+.hero p span { color: var(--color-success); font-weight: 600; }
+.hero-cta { display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap; }
+.features { padding: 80px 0; background: var(--color-surface); }
+.features h2 { font-size: 2rem; font-weight: 700; text-align: center; margin-bottom: var(--space-4); }
+.features .subtitle { text-align: center; color: var(--color-text-secondary); font-size: 1.125rem; margin-bottom: var(--space-8); max-width: 36rem; margin-left: auto; margin-right: auto; }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-6); max-width: 85rem; margin: 0 auto; padding: 0 var(--space-6); }
+.feature-card { background: var(--color-surface-elevated); border-radius: var(--radius-xl); padding: var(--space-8); transition: all .2s ease; cursor: default; }
+.feature-card:hover { transform: scale(1.03); }
+.feature-icon { width: 64px; height: 64px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6); font-size: 24px; color: white; }
+.feature-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-4); }
+.feature-card p { color: var(--color-text-secondary); line-height: 1.6; }
+.stats { padding: 80px 0; display: grid; grid-template-columns: repeat(2,1fr); gap: var(--space-6); max-width: 85rem; margin: 0 auto; padding-left: var(--space-6); padding-right: var(--space-6); }
+@media (min-width: 768px) { .stats { grid-template-columns: repeat(4,1fr); } }
+.stat { text-align: center; }
+.stat-value { font-size: 2rem; font-weight: 700; margin-bottom: var(--space-1); }
+.stat-label { color: var(--color-text-tertiary); }
+
+/* ═══════════════ User Menu ═══════════════ */
+.user-menu-wrap { position: relative; }
+.user-menu { position: absolute; right: 0; top: calc(100% + 8px); width: 220px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); box-shadow: var(--shadow-elevated); z-index: 50; padding: var(--space-2); }
+.user-menu-item { display: flex; align-items: center; gap: var(--space-3); padding: 10px 12px; width: 100%; text-align: left; border: none; background: none; color: var(--color-text-primary); font-size: 14px; cursor: pointer; border-radius: var(--radius-md); font-family: var(--font-sans); }
+.user-menu-item:hover { background: var(--color-surface-hover); }
+.user-menu-item i { width: 16px; text-align: center; color: var(--color-text-tertiary); }
+
+/* ═══════════════ Widget Mini/Collapse ═══════════════ */
+.widget-content { transition: max-height .3s ease, opacity .3s ease; overflow: hidden; }
+.widget-content.collapsed { max-height: 0; opacity: 0; padding: 0; margin: 0; }
+.widget-content.expanded { max-height: 10000px; opacity: 1; }
+.minimize-btn { cursor: pointer; color: var(--color-text-tertiary); transition: color .2s; }
+.minimize-btn:hover { color: var(--color-accent); }
+
+/* ═══════════════ Badges ═══════════════ */
+.badge { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+.badge-rh { background: rgba(34,197,94,0.15); color: var(--color-success); }
+.badge-crypto { background: rgba(234,179,8,0.15); color: #eab308; }
+.badge-btc { background: rgba(234,179,8,0.15); color: #eab308; }
+
+/* ═══════════════ Spinner ═══════════════ */
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════ Toggle Switch ═══════════════ */
+.toggle-switch { display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; font-size: 13px; color: var(--color-text-secondary); user-select: none; }
+.toggle-switch input[type="checkbox"] { display: none; }
+.toggle-track { width: 36px; height: 20px; background: var(--color-surface-elevated); border-radius: 10px; border: 1px solid var(--color-border); position: relative; transition: all .2s ease; flex-shrink: 0; }
+.toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--color-text-tertiary); border-radius: 50%; transition: all .2s ease; }
+.toggle-switch input:checked + .toggle-track { background: var(--color-accent); border-color: var(--color-accent); }
+.toggle-switch input:checked + .toggle-track::after { left: 18px; background: white; }
+.toggle-switch:hover .toggle-track { border-color: var(--color-text-tertiary); }
+
+/* ═══════════════ Symbol Dropdown ═══════════════ */
+.symbol-dropdown { position: absolute; z-index: 50; width: 100%; margin-top: 2px; max-height: 220px; overflow-y: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-elevated); }
+.symbol-option { padding: var(--space-2) var(--space-3); cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; }
+.symbol-option:hover, .symbol-option.highlight { background: var(--color-accent-subtle); }
+.symbol-option .sym { font-weight: 600; }
+.symbol-option .name { color: var(--color-text-tertiary); font-size: 12px; }
+
+/* ═══════════════ Mobile Responsive (412px Pixel 9 and under) ═══════════════ */
+@media (max-width: 640px) {
+  .header { padding: var(--space-2) var(--space-3); gap: var(--space-2); flex-wrap: nowrap; }
+  .header h1 { font-size: 16px; }
+  .header .status-area { gap: var(--space-2); white-space: nowrap; flex-shrink: 0; }
+  .header .sub { font-size: 11px; display: none; }
+  .main-content { padding: var(--space-3); }
+  .card { padding: var(--space-3); }
+  .card-header { flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+  .card-header .flex.items-center.gap-2 { flex-wrap: wrap; }
+  .modal { max-width: calc(100vw - 24px); padding: var(--space-4); margin: var(--space-2); }
+  .modal-header h3 { font-size: 16px; }
+  .modal-header .btn-icon { width: 32px; height: 32px; }
+  .form-row { flex-direction: column; gap: var(--space-2); }
+  .filters-panel { max-width: 100%; }
+  .report-layout { flex-direction: column; }
+  .footer { padding: var(--space-2) var(--space-3); flex-direction: column; gap: var(--space-1); text-align: center; }
+  .toast-container { right: var(--space-2); top: var(--space-2); left: var(--space-2); }
+  .toast { min-width: 0; max-width: 100%; font-size: 13px; padding: 10px 14px; }
+  .btn { font-size: 13px; padding: 6px 12px; }
+  .btn-sm { font-size: 11px; padding: 3px 8px; }
+  .btn-icon { width: 32px; height: 32px; font-size: 14px; }
+  table { font-size: 12px; }
+  th, td { padding: 5px 6px; }
+  th { font-size: 10px; }
+  .user-menu { right: 0; left: auto; width: 200px; }
+  .stats { grid-template-columns: repeat(2, 1fr); gap: var(--space-3); padding-left: var(--space-3); padding-right: var(--space-3); }
+  .features-grid { grid-template-columns: 1fr; padding: 0 var(--space-3); }
+  .hero { padding: 40px 0; }
+  .hero-content { padding: 0 var(--space-3); }
+  .features { padding: 40px 0; }
+  .stats { padding: 40px 0; }
+  .symbol-dropdown { width: 100%; }
+  .settings-overlay { padding-top: var(--space-4); }
+  .settings-panel { width: calc(100vw - 16px); max-width: 100%; max-height: 85vh; }
+  .hero-cta .btn { font-size: 14px !important; padding: 10px 20px !important; }
+  .pl-summary-grid { grid-template-columns: 1fr !important; gap: var(--space-2) !important; }
+  .card-header .flex.gap-1 { flex-wrap: wrap; }
+  td .flex.gap-1 { flex-wrap: wrap; }
+  .card-header .btn-icon { width: 28px; height: 28px; font-size: 12px; }
+}
+
+/* ═══════════════ Misc ═══════════════ */
+.loading-state, .error-state { text-align: center; padding: 32px; }
+.loading-state { color: var(--color-text-tertiary); }
+.error-state { color: var(--color-error); }
+.error-state .retry { margin-top: var(--space-3); }
+.text-center { text-align: center; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-4 { margin-top: var(--space-4); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-4 { margin-bottom: var(--space-4); }
+.w-full { width: 100%; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sticky-top { position: sticky; top: 0; z-index: 5; background: var(--color-surface); }
+.uppercase { text-transform: uppercase; }
+.text-xs { font-size: 11px; }
+.text-sm { font-size: 13px; }
+.text-lg { font-size: 16px; }
+
+/* ═══════════════ Report Filters Panel ═══════════════ */
+.filters-panel { width: 100%; max-width: 320px; flex-shrink: 0; }
+@media (min-width: 1024px) { .filters-panel { max-width: 300px; } }
+.report-layout { display: flex; flex-direction: column; gap: var(--space-4); }
+@media (min-width: 1024px) { .report-layout { flex-direction: row; } }
+</style>
+</head>
+<body>
+<div x-data="app()" class="app">
+  <!-- Toast Container -->
+  <template x-teleport="body">
+    <div class="toast-container" x-data="{}">
+      <template x-for="t in $store.toast.list" :key="t.id">
+        <div class="toast" :class="'toast-' + t.type">
+          <i x-show="t.type==='success'" class="fa-solid fa-check-circle"></i>
+          <i x-show="t.type==='error'" class="fa-solid fa-triangle-exclamation"></i>
+          <i x-show="t.type==='warning'" class="fa-solid fa-exclamation-circle"></i>
+          <i x-show="t.type==='info'" class="fa-solid fa-circle-info"></i>
+          <span x-text="t.message"></span>
+          <i class="fa-solid fa-xmark close" @click="$store.toast.remove(t.id)"></i>
+        </div>
+      </template>
+    </div>
+  </template>
+
+  <!-- ═══════════════ LANDING PAGE ═══════════════ -->
+  <template x-if="currentView === 'landing'">
+    <div style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <header class="header">
+        <div class="flex items-center gap-3">
+          <a href="/" class="flex items-center gap-3">
+            <img src="/icons/logo-32x32.png" alt="" class="w-8 h-8" onerror="this.style.display='none'">
+            <h1>Finance Dashboard</h1>
+          </a>
+        </div>
+        <div class="flex items-center gap-3">
+          <button class="btn btn-primary" @click="showLoginModal = true">
+            <i class="fa-solid fa-sign-in-alt"></i> Login
+          </button>
+        </div>
+      </header>
+
+      <div class="hero">
+        <div class="hero-bg">
+          <div class="b1"></div>
+          <div class="b2"></div>
+          <div class="b3"></div>
+        </div>
+        <div class="hero-content">
+          <h1><span>Trade Like a Pro</span></h1>
+          <p>Transform from intermediate to professional trader with institutional-grade tools. <span>Built by retail, for retail — no hidden information.</span></p>
+          <div class="hero-cta">
+            <a href="/create-account" @click.prevent="navigate('/create-account')" class="btn btn-success" style="font-size:16px;padding:14px 32px">
+              <i class="fa-solid fa-rocket"></i> Get Started Free
+            </a>
+            <button class="btn btn-ghost" style="border:2px solid var(--color-border);font-size:16px;padding:14px 32px">Learn More</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="features">
+        <h2>Why Choose Finance Dashboard?</h2>
+        <p class="subtitle">Institutional-grade tools for retail traders. Think like a market maker, trade like a hedge fund.</p>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon" style="background:linear-gradient(to right,#22c55e,#16a34a)"><i class="fa-solid fa-chart-pie"></i></div>
+            <h3>Portfolio Management</h3>
+            <p>Hedge fund-level portfolio analysis with beta calculations, correlation matrices, and institutional-grade performance metrics.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon" style="background:linear-gradient(to right,#3b82f6,#2563eb)"><i class="fa-solid fa-robot"></i></div>
+            <h3>AI Finance Assistant</h3>
+            <p>Ask direct questions about your portfolio with programmatic finance calculations. AI-powered insights with mathematical precision to prevent hallucinations.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon" style="background:linear-gradient(to right,#a855f7,#9333ea)"><i class="fa-solid fa-shield-halved"></i></div>
+            <h3>Risk Controls</h3>
+            <p>Professional risk management with position sizing, drawdown limits, and real-time portfolio monitoring to protect your capital.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats" style="background:var(--color-bg)">
+        <div class="stat"><div class="stat-value" style="color:var(--color-success)">Real-Time</div><div class="stat-label">Market Data</div></div>
+        <div class="stat"><div class="stat-value" style="color:var(--color-accent)">100+</div><div class="stat-label">Technical Indicators</div></div>
+        <div class="stat"><div class="stat-value" style="color:#a855f7">10M+</div><div class="stat-label">Data Points</div></div>
+        <div class="stat"><div class="stat-value" style="color:#eab308">Research</div><div class="stat-label">Platform</div></div>
+      </div>
+
+      <div style="padding:80px 0;background:linear-gradient(to right,#16a34a,#2563eb);text-align:center">
+        <div style="max-width:85rem;margin:0 auto;padding:0 var(--space-6)">
+          <h2 style="font-size:2rem;font-weight:700;margin-bottom:var(--space-4);color:white">Ready to Trade Like a Professional?</h2>
+          <p style="font-size:1.125rem;color:rgba(255,255,255,0.85);margin-bottom:var(--space-8);max-width:36rem;margin-left:auto;margin-right:auto">
+            Join retail traders who are leveling up with institutional-grade tools.
+          </p>
+          <a href="/create-account" @click.prevent="navigate('/create-account')" class="btn" style="background:white;color:#16a34a;font-size:16px;padding:14px 32px">
+            <i class="fa-solid fa-arrow-up"></i> Start Your Journey
+          </a>
+        </div>
+      </div>
+
+      <footer class="footer">
+        &copy; 2026 Finance Dashboard. <span class="text-xs" style="color:var(--color-text-tertiary)">v1.0.0</span>
+      </footer>
+
+      <!-- Login Modal (on landing) -->
+      <div x-show="showLoginModal" class="modal-overlay" @click="showLoginModal = false">
+        <div class="modal" @click.stop>
+          <div class="modal-header">
+            <h3 x-text="isRegistering ? 'Create Account' : 'Login'"></h3>
+            <button class="btn-icon" @click="showLoginModal = false"><i class="fa-solid fa-times"></i></button>
+          </div>
+          <form @submit.prevent="handleAuthSubmit">
+            <div class="form-group">
+              <label for="loginEmail">Email</label>
+              <input type="email" id="loginEmail" x-model="authForm.email" required placeholder="Enter your email" x-ref="loginEmailInput">
+            </div>
+            <div class="form-group">
+              <label for="loginPassword">Password</label>
+              <input type="password" id="loginPassword" x-model="authForm.password" required placeholder="Enter your password">
+            </div>
+            <div x-show="isRegistering" class="form-group">
+              <label for="loginConfirm">Confirm Password</label>
+              <input type="password" id="loginConfirm" x-model="authForm.confirmPassword" placeholder="Confirm your password">
+            </div>
+            <div x-show="authError" class="text-red" style="font-size:13px;margin-bottom:var(--space-3)" x-text="authError"></div>
+            <button type="submit" class="btn btn-primary w-full" :disabled="authLoading">
+              <span x-show="authLoading"><span class="spinner" style="margin-right:6px"></span></span>
+              <span x-text="isRegistering ? 'Create Account' : 'Login'"></span>
+            </button>
+          </form>
+          <div class="text-center mt-4">
+            <button @click="isRegistering = !isRegistering" style="color:var(--color-accent);background:none;border:none;cursor:pointer;font-size:13px">
+              <span x-text="isRegistering ? 'Already have an account? Login' : 'Need an account? Register'"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ═══════════════ CREATE ACCOUNT PAGE ═══════════════ -->
+  <template x-if="currentView === 'create-account'">
+    <div style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <header class="header">
+        <div class="flex items-center gap-3">
+          <a href="/" class="flex items-center gap-2">
+            <img src="/icons/logo-32x32.png" alt="" class="w-8 h-8" onerror="this.style.display='none'">
+            <span style="font-weight:700;font-size:1.25rem">Finance Dashboard</span>
+          </a>
+        </div>
+        <div>
+          <a href="/" @click.prevent="navigate('/')" style="color:var(--color-text-secondary);font-size:13px;margin-right:var(--space-4)">
+            <i class="fa-solid fa-arrow-left"></i> Back to Home
+          </a>
+          <button class="btn btn-primary btn-sm" @click="showLoginModal = true">Login</button>
+        </div>
+      </header>
+      <main class="main-content" style="display:flex;align-items:center;justify-content:center">
+        <div style="max-width:420px;width:100%">
+          <div class="card">
+            <div class="text-center" style="margin-bottom:var(--space-6)">
+              <div style="width:64px;height:64px;background:linear-gradient(to right,#22c55e,#16a34a);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-4);font-size:24px;color:white">
+                <i class="fa-solid fa-user-plus"></i>
+              </div>
+              <h1 style="font-size:1.5rem;font-weight:700;margin-bottom:var(--space-2)">Create Your Account</h1>
+              <p style="color:var(--color-text-tertiary);font-size:14px">Join thousands of traders using Finance Dashboard</p>
+            </div>
+            <form @submit.prevent="handleCreateAccount">
+              <div class="form-group">
+                <label for="caName">Full Name</label>
+                <input type="text" id="caName" x-model="caForm.name" required placeholder="Enter your full name">
+              </div>
+              <div class="form-group">
+                <label for="caEmail">Email Address</label>
+                <input type="email" id="caEmail" x-model="caForm.email" required placeholder="Enter your email address">
+              </div>
+              <div class="form-group">
+                <label for="caPassword">Password</label>
+                <input type="password" id="caPassword" x-model="caForm.password" required placeholder="Create a strong password" minlength="8">
+                <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:4px">Must be at least 8 characters long</div>
+              </div>
+              <div class="form-group">
+                <label for="caConfirm">Confirm Password</label>
+                <input type="password" id="caConfirm" x-model="caForm.confirmPassword" required placeholder="Confirm your password">
+              </div>
+              <div class="form-group" style="display:flex;align-items:start;gap:var(--space-2)">
+                <input type="checkbox" id="caTerms" x-model="caForm.terms" style="width:auto;margin-top:2px">
+                <label for="caTerms" style="font-weight:400;font-size:13px;margin:0">
+                  I agree to the <a href="#" style="color:var(--color-success)">Terms of Service</a> and <a href="#" style="color:var(--color-success)">Privacy Policy</a>
+                </label>
+              </div>
+              <div x-show="authError" class="text-red" style="font-size:13px;margin-bottom:var(--space-3)" x-text="authError"></div>
+              <button type="submit" class="btn btn-success w-full" :disabled="authLoading" style="padding:12px 16px">
+                <span x-show="authLoading"><span class="spinner" style="margin-right:6px"></span></span>
+                <span x-text="authLoading ? 'Creating Account...' : 'Create Account'"></span>
+              </button>
+            </form>
+            <div class="text-center mt-4">
+              <p style="color:var(--color-text-tertiary);font-size:13px">
+                Already have an account?
+                <button @click="showLoginModal = true; $el.closest('template').__x.$data.showLoginModal = true" style="color:var(--color-success);background:none;border:none;cursor:pointer;font-weight:500">
+                  Sign in here
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+      <footer class="footer">
+        &copy; 2026 Finance Dashboard. v1.0.0
+      </footer>
+    </div>
+  </template>
+
+  <!-- ═══════════════ DASHBOARD ═══════════════ -->
+  <template x-if="currentView === 'dashboard'">
+    <div style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <!-- Dashboard Header -->
+      <header class="header">
+        <div class="flex items-center gap-3">
+          <a href="/" class="flex items-center gap-2" style="text-decoration:none;color:inherit">
+            <img src="/icons/favicon-32x32.png" alt="" class="w-8 h-8" onerror="this.style.display='none'">
+            <h1 style="font-size:1.35rem;font-weight:700;color:#f1f5f9;letter-spacing:-0.3px">Finance Dashboard</h1>
+          </a>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="connection-dot" :class="isConnected ? 'connected' : ''" title="Connection status"></span>
+          <div class="user-menu-wrap">
+            <button class="btn-icon" @click="showUserMenu = !showUserMenu" style="background:#16a34a;color:white;border-radius:var(--radius-lg);width:40px;height:40px">
+              <i class="fa-solid fa-bars" style="font-size:16px"></i>
+            </button>
+            <div x-show="showUserMenu" class="user-menu" @click.outside="showUserMenu = false">
+              <button class="user-menu-item" @click="showSettingsModal = true; showUserMenu = false">
+                <i class="fa-solid fa-sliders-h" style="width:18px"></i> Portfolio Settings
+              </button>
+              <button class="user-menu-item" @click="showPortfolioViewSettings = true; showUserMenu = false">
+                <i class="fa-solid fa-chart-pie" style="width:18px"></i> View Settings
+              </button>
+              <button class="user-menu-item" @click="generateReport(); showUserMenu = false">
+                <i class="fa-solid fa-file-invoice" style="width:18px"></i> Generate Report
+              </button>
+              <button class="user-menu-item" @click="cleanResults(); showUserMenu = false">
+                <i class="fa-solid fa-trash-can" style="width:18px"></i> Clean Results
+              </button>
+              <hr style="border:0;border-top:1px solid var(--color-border);margin:var(--space-1) 0">
+              <button class="user-menu-item" @click="navigate('/'); showUserMenu = false">
+                <i class="fa-solid fa-right-from-bracket" style="width:18px"></i> Home
+              </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <!-- Portfolio Widget -->
+        <div class="card">
+          <div class="card-header">
+            <h2 @click="toggleWidget('portfolio')" style="cursor:pointer">
+              Portfolio
+              <i class="fa-solid minimize-btn" :class="widgetStates.portfolio.minimized ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+            </h2>
+            <div class="flex items-center gap-2" x-show="!widgetStates.portfolio.minimized">
+              <span x-show="lastSyncTime" class="text-xs text-muted" x-text="'Last sync: ' + timeAgo(lastSyncTime)"></span>
+              <button class="btn-icon" @click="openPortfolioViewSettings()" title="View Settings"><i class="fa-solid fa-cog"></i></button>
+              <button class="btn btn-primary btn-sm" @click="openAddPositionModal()"><i class="fa-solid fa-plus"></i> Add Position</button>
+            </div>
+          </div>
+          <!-- Sync status banner (visible outside settings) -->
+          <div x-show="syncStatus === 'running'" style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-accent-subtle);border-radius:var(--radius-md);margin-bottom:var(--space-2);font-size:13px">
+            <span class="spinner" style="color:var(--color-accent);width:14px;height:14px;border-width:2px"></span>
+            <span style="color:var(--color-accent);font-weight:500">Syncing: <span x-text="syncProgress"></span></span>
+            <span class="text-xs text-muted" x-text="'[' + fmtElapsed(syncElapsed) + ']'"></span>
+          </div>
+          <template x-if="!widgetStates.portfolio.minimized">
+          <div class="widget-content expanded">
+            <div x-show="portfolioLoading" class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading portfolio data...</div>
+            <div x-show="portfolioError && !portfolioLoading" class="error-state">
+              <p x-text="portfolioError"></p>
+              <button class="btn btn-primary btn-sm retry" @click="fetchPortfolio()"><i class="fa-solid fa-rotate"></i> Retry</button>
+            </div>
+            <div x-show="!portfolioLoading && !portfolioError" class="table-wrap" style="max-height:400px">
+              <table>
+                <thead class="sticky-top">
+                  <tr>
+                    <th class="sortable" @click="sortBy('symbol')">Symbol <i x-show="sortCol==='symbol'" :class="sortDir==='asc'?'fa-solid fa-sort-up':'fa-solid fa-sort-down'"></i></th>
+                    <th class="sortable" @click="sortBy('amount')">Shares <i x-show="sortCol==='amount'" :class="sortDir==='asc'?'fa-solid fa-sort-up':'fa-solid fa-sort-down'"></i></th>
+                    <th class="sortable" @click="sortBy('buy_price')">Cost <i x-show="sortCol==='buy_price'" :class="sortDir==='asc'?'fa-solid fa-sort-up':'fa-solid fa-sort-down'"></i></th>
+                    <th class="sortable" @click="sortBy('percent')">Portfolio <i x-show="sortCol==='percent'" :class="sortDir==='asc'?'fa-solid fa-sort-up':'fa-solid fa-sort-down'"></i></th>
+                    <th class="sortable" @click="sortBy('todays_return')">Today <i x-show="sortCol==='todays_return'" :class="sortDir==='asc'?'fa-solid fa-sort-up':'fa-solid fa-sort-down'"></i></th>
+                    <th class="sortable" @click="sortBy('total_return')">Return <i x-show="sortCol==='total_return'" :class="sortDir==='asc'?'fa-solid fa-sort-up':'fa-solid fa-sort-down'"></i></th>
+                    <th>Return %</th>
+                    <th class="sortable" @click="sortBy('market_value')">Value <i x-show="sortCol==='market_value'" :class="sortDir==='asc'?'fa-solid fa-sort-up':'fa-solid fa-sort-down'"></i></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="pos in sortedPositions" :key="pos.symbol + '_' + pos.id">
+                    <tr>
+                      <td>
+                        <div class="symbol-cell">
+                          <span :class="pos.is_cash ? 'text-green' : pos.is_btc ? 'text-yellow' : ''" class="symbol-name" x-text="pos.symbol"></span>
+                          <span class="symbol-notes" x-text="pos.notes || ''"></span>
+                        </div>
+                      </td>
+                      <td class="num" x-text="fmtShares(pos.amount)"></td>
+                      <td class="num" x-text="pos.avg_buy_price ? fmtCurrency(pos.avg_buy_price) : '-'"></td>
+                      <td class="num" x-text="fmtPct(pos.percent_of_portfolio)"></td>
+                      <td :class="'num ' + (pos.todays_return >= 0 ? 'text-green' : 'text-red')" x-text="fmtCurrency(pos.todays_return)"></td>
+                      <td :class="'num ' + (pos.total_return >= 0 ? 'text-green' : 'text-red')" x-text="fmtCurrency(pos.total_return)"></td>
+                      <td :class="'num ' + (pos.total_return >= 0 ? 'text-green' : 'text-red')" x-text="fmtPct(pos.total_return_percent)"></td>
+                      <td class="num" x-text="fmtCurrency(pos.market_value)"></td>
+                    </tr>
+                  </template>
+                  <tr x-show="sortedPositions.length === 0">
+                    <td colspan="8" class="text-center text-muted">No positions found.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          </template>
+        </div>
+
+        <!-- Dividends Widget -->
+        <div class="card">
+          <div class="card-header">
+            <h2 @click="toggleWidget('dividends')" style="cursor:pointer">
+              Dividends
+              <i class="fa-solid minimize-btn" :class="widgetStates.dividends.minimized ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+            </h2>
+            <div class="flex items-center gap-2" x-show="!widgetStates.dividends.minimized">
+            </div>
+          </div>
+          <template x-if="!widgetStates.dividends.minimized">
+          <div class="widget-content expanded">
+            <!-- Tabs -->
+            <div class="flex gap-0" style="border-bottom:1px solid var(--color-border);margin-bottom:var(--space-4)">
+              <button class="btn btn-sm" :class="divTab==='history'?'btn-primary':'btn-ghost'" @click="divTab='history'" style="border-radius:0;padding:8px 16px;font-size:13px">History</button>
+              <button class="btn btn-sm" :class="divTab==='dca'?'btn-primary':'btn-ghost'" @click="divTab='dca'" style="border-radius:0;padding:8px 16px;font-size:13px">BTCI DCA</button>
+            </div>
+
+            <!-- History Tab -->
+            <div x-show="divTab==='history'">
+              <div x-show="dividendsLoading" class="loading-state"><span class="spinner"></span> Loading dividends...</div>
+              <div x-show="!dividendsLoading">
+                <!-- Summary cards -->
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-bottom:var(--space-4)">
+                  <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
+                    <div style="font-size:1.4rem;font-weight:700" class="text-green" x-text="fmtCurrency(divTotalAll)"></div>
+                    <div class="text-xs text-muted">Total Earned</div>
+                  </div>
+                  <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
+                    <div style="font-size:1.4rem;font-weight:700" class="text-green" x-text="divTotalYear"></div>
+                    <div class="text-xs text-muted">This Year</div>
+                  </div>
+                  <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
+                    <div style="font-size:1.4rem;font-weight:700" x-text="divCount"></div>
+                    <div class="text-xs text-muted">Payments</div>
+                  </div>
+                </div>
+                <!-- By symbol breakdown -->
+                <div style="margin-bottom:var(--space-3)">
+                  <div class="flex items-center justify-between" style="margin-bottom:var(--space-2)">
+                    <h3 style="font-size:13px;font-weight:600;text-transform:uppercase;color:var(--color-text-tertiary)">By Symbol</h3>
+                    <label class="toggle-switch" style="font-size:11px;gap:4px">
+                      <input type="checkbox" x-model="hideLowDivSymbols">
+                      <span class="toggle-track" style="width:28px;height:16px"></span>
+                      <span class="text-xs text-muted">Hide &lt;$1k</span>
+                    </label>
+                  </div>
+                  <div style="display:grid;gap:var(--space-2)">
+                    <template x-for="s in divBySymbolFiltered" :key="s.symbol">
+                      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--color-surface-elevated);border-radius:var(--radius-md)">
+                        <div>
+                          <span style="font-weight:600;font-size:13px" x-text="s.symbol"></span>
+                          <span class="text-xs text-muted" style="margin-left:6px" x-text="s.count + ' payments'"></span>
+                        </div>
+                        <span class="text-green" style="font-weight:600;font-size:13px" x-text="fmtCurrency(s.total)"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <!-- All payments table -->
+                <div class="table-wrap" style="max-height:300px;border:1px solid var(--color-border);border-radius:var(--radius-md)">
+                  <table>
+                    <thead class="sticky-top"><tr><th>Date</th><th>Symbol</th><th>Amount</th></tr></thead>
+                    <tbody>
+                      <template x-for="d in dividends" :key="d.id">
+                        <tr>
+                          <td class="text-muted" x-text="fmtDate(d.date || d.payable_date)"></td>
+                          <td style="font-weight:600" x-text="d.symbol"></td>
+                          <td class="text-green" x-text="fmtCurrency(d.amount)"></td>
+                        </tr>
+                      </template>
+                      <tr x-show="dividends.length===0"><td colspan="3" class="text-center text-muted">No dividends yet.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- DCA Tab -->
+            <div x-show="divTab==='dca'">
+              <div x-show="dcaLoading" class="loading-state"><span class="spinner"></span> Loading...</div>
+              <div x-show="!dcaLoading">
+                <!-- BTCI Position Card -->
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-bottom:var(--space-4)">
+                  <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
+                    <div style="font-size:1.3rem;font-weight:700" x-text="dcaShares.toFixed(2) + ' sh'"></div>
+                    <div class="text-xs text-muted">BTCI Shares</div>
+                  </div>
+                  <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
+                    <div style="font-size:1.3rem;font-weight:700" x-text="fmtCurrency(dcaAvgPrice)"></div>
+                    <div class="text-xs text-muted">Avg Cost</div>
+                  </div>
+                  <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
+                    <div style="font-size:1.3rem;font-weight:700" x-text="fmtCurrency(dcaMktVal)"></div>
+                    <div class="text-xs text-muted">Market Value</div>
+                  </div>
+                </div>
+
+                <!-- Dividend Income → DCA Power -->
+                <div style="margin-bottom:var(--space-4)">
+                  <h3 style="font-size:13px;font-weight:600;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:var(--space-2)">Dividend → DCA Power</h3>
+                  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-2)">
+                    <div style="background:var(--color-surface-elevated);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-size:1.1rem;font-weight:700" class="text-green" x-text="fmtCurrency(dcaMonthlyDiv)"></div>
+                      <div class="text-xs text-muted">Monthly Div</div>
+                    </div>
+                    <div style="background:var(--color-surface-elevated);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-size:1.1rem;font-weight:700" x-text="dcaMonthlyShares.toFixed(2)"></div>
+                      <div class="text-xs text-muted">Shares/Mo</div>
+                    </div>
+                    <div style="background:var(--color-surface-elevated);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-size:1.1rem;font-weight:700" x-text="dcaYearShares.toFixed(2)"></div>
+                      <div class="text-xs text-muted">Shares/Yr</div>
+                    </div>
+                    <div style="background:var(--color-surface-elevated);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-size:1.1rem;font-weight:700" x-text="dcaYearPct.toFixed(1) + '%'"></div>
+                      <div class="text-xs text-muted">vs Current</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- DCA Simulator -->
+                <div style="margin-bottom:var(--space-4);padding:var(--space-3);background:var(--color-surface-elevated);border-radius:var(--radius-lg)">
+                  <h3 style="font-size:13px;font-weight:600;margin-bottom:var(--space-3)">DCA Simulator</h3>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-3)">
+                    <div>
+                      <label class="text-xs text-muted">Daily Investment</label>
+                      <input type="number" x-model="dcaDaily" step="10" min="0" style="width:100%;padding:6px 8px;font-size:12px">
+                    </div>
+                    <div>
+                      <label class="text-xs text-muted">Target Price</label>
+                      <input type="number" x-model="dcaTargetPrice" step="1" min="1" style="width:100%;padding:6px 8px;font-size:12px">
+                    </div>
+                    <div>
+                      <label class="text-xs text-muted">Days</label>
+                      <input type="number" x-model="dcaDays" step="30" min="7" style="width:100%;padding:6px 8px;font-size:12px">
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-2)">
+                    <div style="background:var(--color-bg);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-weight:600;font-size:13px" x-text="fmtCurrency(dcaTotalInvested)"></div>
+                      <div class="text-xs text-muted">Invested</div>
+                    </div>
+                    <div style="background:var(--color-bg);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-weight:600;font-size:13px" x-text="dcaSimShares.toFixed(2)"></div>
+                      <div class="text-xs text-muted">Shares</div>
+                    </div>
+                    <div style="background:var(--color-bg);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-weight:600;font-size:13px" :class="dcaSimFinalVal >= dcaTotalInvested ? 'text-green' : 'text-red'" x-text="fmtCurrency(dcaSimFinalVal)"></div>
+                      <div class="text-xs text-muted">Value at Target</div>
+                    </div>
+                    <div style="background:var(--color-bg);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-weight:600;font-size:13px" :class="dcaSimProfit >= 0 ? 'text-green' : 'text-red'" x-text="fmtCurrency(dcaSimProfit)"></div>
+                      <div class="text-xs text-muted">Projected Profit</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </template>
+        </div>
+
+        <!-- Reports Widget -->
+        <div class="card">
+          <div class="card-header">
+            <h2 @click="toggleWidget('reports')" style="cursor:pointer">
+              Reports
+              <i class="fa-solid minimize-btn" :class="widgetStates.reports.minimized ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+            </h2>
+            <div class="flex items-center gap-2" x-show="!widgetStates.reports.minimized">
+              <button class="btn btn-danger btn-sm" @click="cleanResults()"><i class="fa-solid fa-trash"></i> Clean Results</button>
+              <button class="btn btn-primary btn-sm" @click="openGenerateReportModal()"><i class="fa-solid fa-plus"></i> Generate Report</button>
+            </div>
+          </div>
+          <div class="widget-content" :class="widgetStates.reports.minimized ? 'collapsed' : 'expanded'">
+            <!-- Error Banner -->
+            <div x-show="reportError" style="display:flex;align-items:start;gap:var(--space-3);background:rgba(239,68,68,0.1);border:1px solid #ef4444;border-radius:var(--radius-lg);padding:var(--space-3);margin-bottom:var(--space-4)" role="alert">
+              <i class="fa-solid fa-triangle-exclamation text-red" style="margin-top:2px"></i>
+              <div style="flex:1;min-width:0">
+                <p style="font-weight:600;font-size:13px;color:#fca5a5">Report action failed</p>
+                <p style="font-size:12px;color:#fecaca" x-text="reportError"></p>
+              </div>
+              <button class="btn-icon" @click="reportError=''" style="color:#fca5a5"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="report-layout">
+              <!-- Filters -->
+              <div class="card filters-panel" style="margin-bottom:0">
+                <div class="flex items-center gap-2" style="margin-bottom:var(--space-4)"><i class="fa-solid fa-filter" style="color:var(--color-accent)"></i><h3 style="font-size:16px;font-weight:600">Filters</h3></div>
+                <div class="form-group">
+                  <label>Report Type</label>
+                  <select x-model="reportFilters.type">
+                    <option value="all">All Reports</option>
+                    <option value="comparison">Comparison Reports</option>
+                    <option value="backtest">Backtest Reports</option>
+                    <option value="market">Market Check</option>
+                    <option value="finance">Finance Report</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Symbol</label>
+                  <select x-model="reportFilters.symbol">
+                    <option value="all">All Symbols</option>
+                    <template x-for="s in availableSymbols" :key="s"><option :value="s" x-text="s"></option></template>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Strategy</label>
+                  <select x-model="reportFilters.strategy">
+                    <option value="all">All Strategies</option>
+                    <template x-for="s in availableStrategies" :key="s"><option :value="s" x-text="s"></option></template>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Start Date</label>
+                  <input type="date" x-model="reportFilters.startDate">
+                </div>
+                <div class="form-group">
+                  <label>End Date</label>
+                  <input type="date" x-model="reportFilters.endDate">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+                  <button class="btn btn-ghost" @click="resetFilters()"><i class="fa-solid fa-rotate"></i> Reset</button>
+                  <button class="btn btn-primary" @click="applyFilters()"><i class="fa-solid fa-filter"></i> Apply Filters</button>
+                </div>
+              </div>
+
+              <!-- Reports Table -->
+              <div class="card" style="flex:1;min-width:0;margin-bottom:0">
+                <div class="flex items-center justify-between" style="margin-bottom:var(--space-4)">
+                  <div class="flex items-center gap-2"><i class="fa-solid fa-table" style="color:var(--color-accent)"></i><h3 style="font-size:16px;font-weight:600">Available Reports</h3></div>
+                  <div class="text-xs text-muted">Generated: <span x-text="new Date().toLocaleString()"></span></div>
+                </div>
+                <div class="table-wrap" style="height:550px">
+                  <table>
+                    <thead class="sticky-top"><tr><th>Actions</th><th>Symbol</th><th>Report Type</th><th>Strategy</th><th>Timeframe</th><th>Date Range</th><th>Created</th></tr></thead>
+                    <tbody>
+                      <template x-for="r in filteredReports" :key="r.id">
+                        <tr>
+                          <template x-if="r._is_generating">
+                            <td colspan="7">
+                              <div class="flex items-center gap-2" style="padding:4px 0;width:100%">
+                                <span class="spinner" style="color:var(--color-accent);flex-shrink:0"></span>
+                                <span style="color:var(--color-accent);font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                  Generating <span x-text="r.reportType"></span> report for <span x-text="r.symbol"></span>
+                                  <template x-if="r.strategy &amp;&amp; r.strategy !== '&mdash;'"> &mdash; Strategy: <span x-text="r.strategy"></span></template>
+                                  <template x-if="r.timeframe &amp;&amp; r.timeframe !== '&mdash;'"> &mdash; <span x-text="r.timeframe"></span></template>
+                                  <template x-if="r.dateRange &amp;&amp; r.dateRange !== '&mdash;' &amp;&amp; r.dateRange !== 'Latest snapshot'"> &mdash; <span x-text="r.dateRange"></span></template>
+                                </span>
+                                <span style="color:var(--color-warning);font-size:11px;font-family:var(--font-mono);flex-shrink:0;margin-left:auto">started <span x-text="fmtElapsed(generatingElapsed)"></span> ago</span>
+                              </div>
+                            </td>
+                          </template>
+                          <template x-if="!r._is_generating">
+                            <>
+                              <td><div class="flex gap-1"><button class="btn-icon" style="width:26px;height:26px;font-size:11px" @click="viewReport(r)" title="View"><i class="fa-solid fa-eye"></i></button><button class="btn-icon" style="width:26px;height:26px;font-size:11px" @click="deleteReport(r)"><i class="fa-solid fa-trash"></i></button></div></td>
+                              <td x-text="r.symbol" style="font-weight:600"></td>
+                              <td class="text-muted" x-text="r.reportType"></td>
+                              <td class="text-muted" x-text="r.strategy"></td>
+                              <td class="text-muted" x-text="r.timeframe"></td>
+                              <td class="text-muted truncate" x-text="r.dateRange"></td>
+                              <td class="text-muted" x-text="fmtDate(r.created)"></td>
+                            </>
+                          </template>
+                        </tr>
+                      </template>
+                      <tr x-show="filteredReports.length===0">
+                        <td colspan="7" class="text-center text-muted">No reports found.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer class="footer" style="display:flex;justify-content:space-between;align-items:center">
+        <span>&copy; 2026 Finance Dashboard. <span style="color:var(--color-text-tertiary)">v1.0.0</span></span>
+        <span x-show="lastUpdated" style="font-size:12px">Last update: <span x-text="lastUpdated"></span></span>
+        <span x-show="!lastUpdated" style="font-size:12px;color:var(--color-text-tertiary)">Awaiting data...</span>
+      </footer>
+    </div>
+  </template>
+
+  <!-- ═══════════════ NOT FOUND / SERVER DOWN ═══════════════ -->
+  <template x-if="currentView === 'not-found'">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:var(--space-6)">
+      <div style="font-size:80px;margin-bottom:var(--space-4)">🔍</div>
+      <h1 style="font-size:2rem;font-weight:700;margin-bottom:var(--space-3)">Page Not Found</h1>
+      <p style="color:var(--color-text-tertiary);margin-bottom:var(--space-6)">The page you're looking for doesn't exist.</p>
+      <a href="/" @click.prevent="navigate('/')" class="btn btn-primary">Go Home</a>
+    </div>
+  </template>
+
+  <template x-if="currentView === 'server-down'">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:var(--space-6)">
+      <div style="font-size:80px;margin-bottom:var(--space-4)">⚠️</div>
+      <h1 style="font-size:2rem;font-weight:700;margin-bottom:var(--space-3)">Server Error</h1>
+      <p style="color:var(--color-text-tertiary);margin-bottom:var(--space-6)">The server encountered an error. Please try again later.</p>
+      <a href="/" @click.prevent="navigate('/')" class="btn btn-primary">Try Again</a>
+    </div>
+  </template>
+
+  <!-- ═══════════════ ADD POSITION MODAL ═══════════════ -->
+  <div x-show="showPosModal" class="modal-overlay" @click="showPosModal = false">
+    <div class="modal" @click.stop>
+      <div class="modal-header">
+        <h3 x-text="editingPos ? 'Edit Position' : 'Add Position'"></h3>
+        <button class="btn-icon" @click="showPosModal = false"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <form @submit.prevent="savePosition">
+        <div class="form-group">
+          <label for="posSymbol">Symbol</label>
+          <input type="text" id="posSymbol" x-model="posForm.symbol" required autocomplete="off" style="text-transform:uppercase;letter-spacing:0.5px">
+        </div>
+        <div class="form-group">
+          <label for="posAmount">Amount ($)</label>
+          <input type="number" id="posAmount" x-model="posForm.amount" step="any" required>
+        </div>
+        <div class="form-group">
+          <label for="posBuyPrice">Avg Buy Price</label>
+          <input type="number" id="posBuyPrice" x-model="posForm.avg_buy_price" step="any" required>
+        </div>
+        <div class="form-group">
+          <label for="posNotes">Notes</label>
+          <textarea id="posNotes" x-model="posForm.notes" rows="2"></textarea>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="btn btn-ghost" @click="showPosModal = false">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════ SETTINGS MODAL ═══════════════ -->
+  <div x-show="showSettingsModal" class="modal-overlay" @click="showSettingsModal = false">
+    <div class="modal" @click.stop>
+      <div class="modal-header">
+        <h3>Portfolio Settings</h3>
+        <button class="btn-icon" @click="showSettingsModal = false"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <!-- Syncing overlay — centered on screen, not modal -->
+      <div x-show="syncStatus === 'running'" class="modal-overlay" style="position:fixed;z-index:60">
+        <div style="background:var(--color-surface-elevated);padding:var(--space-5);border-radius:var(--radius-lg);text-align:center;min-width:280px">
+          <p style="font-weight:600;margin-bottom:var(--space-2)">Syncing Market Data</p>
+          <div class="flex items-center justify-center gap-2" style="margin-bottom:var(--space-2)"><span class="spinner" style="color:var(--color-accent);width:20px;height:20px;border-width:3px"></span><span class="text-sm" x-text="syncProgress"></span></div>
+          <p style="font-size:13px;color:var(--color-text-tertiary)" x-text="fmtElapsed(syncElapsed)"></p>
+        </div>
+      </div>
+      <form @submit.prevent="saveSettings">
+        <h4 style="font-size:14px;font-weight:600;margin-bottom:var(--space-3)">Portfolio</h4>
+        <div class="form-group">
+          <label style="color:var(--color-success);font-weight:600">Total Portfolio Cash ($)</label>
+          <input type="text" x-model="settingsForm.cash" step="1" min="0" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label style="color:#eab308;font-weight:600">Total Portfolio BTC ($)</label>
+          <input type="text" x-model="settingsForm.btc_dollar" step="any" min="0" inputmode="decimal">
+        </div>
+        <div class="form-group">
+          <label style="color:#eab308;font-weight:600">BTC Avg Buy Price ($)</label>
+          <input type="text" x-model="settingsForm.btc_avg_price" step="any" min="0" inputmode="decimal">
+        </div>
+
+        <h4 style="font-size:14px;font-weight:600;margin-bottom:var(--space-3);margin-top:var(--space-5)">Robinhood Integration</h4>
+        <div class="form-group" style="display:flex;align-items:center;gap:var(--space-2)">
+          <input type="checkbox" id="rhEnabled" x-model="settingsForm.robinhood_enabled" style="width:auto">
+          <label for="rhEnabled" style="margin:0">Enable Robinhood Integration</label>
+        </div>
+        <div x-show="settingsForm.robinhood_enabled">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="email" x-model="settingsForm.robinhood_username" placeholder="Enter Robinhood email">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" x-model="settingsForm.robinhood_password" placeholder="Enter Robinhood password">
+          </div>
+          <div class="form-group">
+            <label>MFA Code (Optional)</label>
+            <input type="text" x-model="settingsForm.robinhood_mfa" placeholder="Enter MFA code if enabled">
+          </div>
+          <div class="form-group">
+            <button type="button" class="btn btn-primary w-full" @click="syncFromSettings()" :disabled="syncStatus === 'running'">
+              <span x-show="syncStatus === 'running'"><span class="spinner" style="margin-right:6px"></span></span>
+              <span x-text="syncStatus === 'running' ? syncProgress : 'Sync Market Data'"></span>
+            </button>
+          </div>
+        </div>
+        <hr style="border:0;border-top:1px solid var(--color-border);margin:var(--space-4) 0">
+        <div class="flex justify-end gap-2">
+          <button type="button" class="btn btn-ghost" @click="showSettingsModal = false" :disabled="syncStatus === 'running'">Cancel</button>
+          <button type="submit" class="btn btn-primary" :disabled="syncStatus === 'running'">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PORTFOLIO VIEW SETTINGS MODAL ═══════════════ -->
+  <div x-show="showPortfolioViewSettings" class="modal-overlay" @click="showPortfolioViewSettings = false">
+    <div class="modal" @click.stop style="max-width:420px">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-cog" style="margin-right:8px;color:var(--color-text-tertiary)"></i> Portfolio View Settings</h3>
+        <button class="btn-icon" @click="showPortfolioViewSettings = false"><i class="fa-solid fa-times"></i></button>
+      </div>
+
+      <div style="margin-bottom:var(--space-5)">
+        <h4 style="font-size:13px;font-weight:600;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:var(--space-3)">Column Visibility</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
+          <label class="toggle-switch">
+            <input type="checkbox" x-model="portfolioViewSettings.columns.symbol" disabled>
+            <span class="toggle-track"></span>
+            <span>Symbol</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" x-model="portfolioViewSettings.columns.notes">
+            <span class="toggle-track"></span>
+            <span>Notes</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" x-model="portfolioViewSettings.columns.avgBuyPrice">
+            <span class="toggle-track"></span>
+            <span>Avg Buy Price</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" x-model="portfolioViewSettings.columns.percent">
+            <span class="toggle-track"></span>
+            <span>% of Portfolio</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" x-model="portfolioViewSettings.columns.todaysReturn">
+            <span class="toggle-track"></span>
+            <span>Today's Return ($)</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" x-model="portfolioViewSettings.columns.totalReturn">
+            <span class="toggle-track"></span>
+            <span>Total Return ($)</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" x-model="portfolioViewSettings.columns.totalReturnPct">
+            <span class="toggle-track"></span>
+            <span>Total Return %</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" x-model="portfolioViewSettings.columns.marketValue">
+            <span class="toggle-track"></span>
+            <span>Market Value</span>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin-bottom:var(--space-5)">
+        <h4 style="font-size:13px;font-weight:600;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:var(--space-3)">Default Sort</h4>
+        <div class="form-group">
+          <label>Sort Column</label>
+          <select x-model="portfolioViewSettings.defaultSortCol">
+            <option value="percent">% of Portfolio</option>
+            <option value="total_return">Total Return ($)</option>
+            <option value="todays_return">Today's Return ($)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Sort Direction</label>
+          <select x-model="portfolioViewSettings.defaultSortDir">
+            <option value="desc">Descending (high to low)</option>
+            <option value="asc">Ascending (low to high)</option>
+          </select>
+        </div>
+      </div>
+
+      <hr style="border:0;border-top:1px solid var(--color-border);margin:var(--space-4) 0">
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn btn-ghost" @click="showPortfolioViewSettings = false">Close</button>
+        <button type="button" class="btn btn-primary" @click="savePortfolioViewSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ADD ORDER MODAL ═══════════════ -->
+  <div x-show="showOrderModal" class="modal-overlay" @click="showOrderModal = false">
+    <div class="modal" @click.stop>
+      <div class="modal-header">
+        <h3 x-text="editingOrder ? 'Edit Order' : 'Add Order'"></h3>
+        <button class="btn-icon" @click="showOrderModal = false"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <form @submit.prevent="saveOrder">
+        <input type="hidden" x-model="orderForm.id">
+        <div class="form-group">
+          <label>Symbol</label>
+          <input type="text" x-model="orderForm.symbol" required autocomplete="off" style="text-transform:uppercase;letter-spacing:0.5px">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select x-model="orderForm.type" required>
+            <option value="buy">Buy</option>
+            <option value="sell">Sell</option>
+            <option value="dividend">Dividend</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" x-model="orderForm.quantity" step="any" required>
+        </div>
+        <div class="form-group">
+          <label>Buy Price</label>
+          <input type="number" x-model="orderForm.buy_price" step="any">
+        </div>
+        <div class="form-group">
+          <label>Sell Price</label>
+          <input type="number" x-model="orderForm.sell_price" step="any">
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" x-model="orderForm.date" required>
+        </div>
+        <div class="form-group">
+          <label>P/L</label>
+          <input type="number" x-model="orderForm.profit_loss" step="any">
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="btn btn-ghost" @click="showOrderModal = false">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ADD DIVIDEND MODAL ═══════════════ -->
+  <div x-show="showDivModal" class="modal-overlay" @click="showDivModal = false">
+    <div class="modal" @click.stop>
+      <div class="modal-header">
+        <h3 x-text="editingDividend ? 'Edit Dividend' : 'Add Dividend'"></h3>
+        <button class="btn-icon" @click="showDivModal = false"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <form @submit.prevent="saveDividend">
+        <div class="form-group">
+          <label>Symbol</label>
+          <input type="text" x-model="divForm.symbol" required autocomplete="off" style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label>Amount</label>
+          <input type="number" x-model="divForm.amount" step="any" required>
+        </div>
+        <div class="form-group">
+          <label>Record Date</label>
+          <input type="date" x-model="divForm.record_date" required>
+        </div>
+        <div class="form-group">
+          <label>Payable Date</label>
+          <input type="date" x-model="divForm.payable_date" required>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="btn btn-ghost" @click="showDivModal = false">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════ GENERATE REPORT MODAL ═══════════════ -->
+  <div x-show="showGenReportModal" class="modal-overlay" @click="showGenReportModal = false">
+    <div class="modal" @click.stop>
+      <div class="modal-header">
+        <h3>Generate Report</h3>
+        <button class="btn-icon" @click="showGenReportModal = false"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <form @submit.prevent="generateReport">
+        <div class="form-group">
+          <label>Report Type</label>
+          <select x-model="genForm.reportType" required>
+            <template x-for="t in availableReportTypes" :key="t.value">
+              <option :value="t.value" x-text="t.label"></option>
+            </template>
+          </select>
+          <template x-for="t in hiddenReportTypes" :key="t.value">
+            <p style="font-size:11px;color:var(--color-text-tertiary);margin-top:4px"><i class="fa-solid fa-circle-info"></i> <span x-text="t.hint"></span></p>
+          </template>
+        </div>
+        <div class="form-group" x-show="showGenField('symbol')" style="position:relative">
+          <label>Symbol</label>
+          <div style="position:relative">
+            <input type="text" x-model="symbolQuery" @input="onSymbolInput" @keydown="onSymbolKeydown" @blur="onSymbolBlur"
+              autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:0.5px">
+            <div x-show="symbolDropdownOpen && symbolSuggestions.length" class="symbol-dropdown">
+              <template x-for="(item,i) in symbolSuggestions" :key="item.symbol">
+                <div class="symbol-option" :class="i===symbolDropdownIndex?'highlight':''" @mousedown.prevent="selectSymbol(item)">
+                  <span class="sym" x-text="item.symbol"></span>
+                  <span class="name" x-text="item.name"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+          <p x-show="symbolSearching" style="font-size:11px;color:var(--color-text-tertiary);margin-top:4px"><i class="fa-solid fa-rotate fa-spin"></i> Searching approved symbols...</p>
+          <p x-show="symbolSearchHint" style="font-size:11px;color:var(--color-warning);margin-top:4px"><i class="fa-solid fa-circle-exclamation"></i> <span x-text="symbolSearchHint"></span></p>
+          <p x-show="symbolSearchError" style="font-size:11px;color:var(--color-error);margin-top:4px"><i class="fa-solid fa-triangle-exclamation"></i> <span x-text="symbolSearchError"></span></p>
+        </div>
+        <div class="form-group" x-show="showGenField('strategy')">
+          <label>Strategy</label>
+          <select x-model="genForm.strategy" required>
+            <template x-for="s in validStrategies" :key="s.value">
+              <option :value="s.value" x-text="s.label"></option>
+            </template>
+          </select>
+        </div>
+        <div class="form-group" x-show="showGenField('timeframe')">
+          <label>Timeframe</label>
+          <select x-model="genForm.timeframe">
+            <option value="Daily">Daily</option>
+            <option value="Weekly">Weekly</option>
+            <option value="Monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="form-group" x-show="showGenField('startDate')">
+          <label>Start Date</label>
+          <input type="date" x-model="genForm.startDate">
+        </div>
+        <div class="form-group" x-show="showGenField('endDate')">
+          <label>End Date</label>
+          <input type="date" x-model="genForm.endDate">
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="btn btn-ghost" @click="showGenReportModal = false">Cancel</button>
+          <button type="submit" class="btn btn-primary" :disabled="reportGenerating">
+            <span x-show="reportGenerating"><span class="spinner" style="margin-right:6px"></span></span>
+            <span x-text="reportGenerating ? 'Generating...' : 'Generate'"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// Alpine.js Store: Toast
+// ════════════════════════════════════════════════════════════════
+document.addEventListener('alpine:init', () => {
+  Alpine.store('toast', {
+    list: [],
+    show(message, type = 'info', duration = 5000) {
+      const id = Date.now() + Math.random()
+      this.list.push({ id, message, type })
+      if (this.list.length > 5) this.list.shift()
+      if (duration > 0) setTimeout(() => this.remove(id), duration)
+      return id
+    },
+    remove(id) {
+      this.list = this.list.filter(t => t.id !== id)
+    },
+    removeAll() { this.list = [] }
+  })
+})
+
+// ════════════════════════════════════════════════════════════════
+// Helper functions
+// ════════════════════════════════════════════════════════════════
+function fmtCurrency(v) {
+  if (v == null || isNaN(v)) return '$0.00'
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
+}
+function fmtShares(v) {
+  if (v == null || isNaN(v)) return '0'
+  const s = v.toFixed(3)
+  if (s.endsWith('.000')) return Math.round(v).toString()
+  return v.toFixed(2)
+}
+function fmtPct(v) {
+  if (v == null || isNaN(v)) return '0.00%'
+  return v.toFixed(2) + '%'
+}
+function fmtDate(d) {
+  if (!d) return ''
+  const dt = new Date(String(d).replace(' ', 'T'))
+  return isNaN(dt.getTime()) ? '' : dt.toLocaleDateString()
+}
+function fmtElapsed(secs) {
+  const m = Math.floor(secs / 60), s = secs % 60
+  return m > 0 ? m + 'm ' + s + 's' : s + 's'
+}
+function timeAgo(ts) {
+  if (!ts) return ''
+  const diff = Math.floor((Date.now() - ts) / 1000)
+  if (diff < 60) return diff + 's ago'
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago'
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago'
+  return Math.floor(diff / 86400) + 'd ago'
+}
+function toISODate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
+}
+
+// ════════════════════════════════════════════════════════════════
+// API helpers
+// ════════════════════════════════════════════════════════════════
+function getToken() { return localStorage.getItem('accessToken') }
+function apiHeaders() {
+  const h = { 'Content-Type': 'application/json' }
+  const t = getToken()
+  if (t) h['Authorization'] = 'Bearer ' + t
+  return h
+}
+async function apiGet(url, timeoutMs = 30000) {
+  const r = await fetch(url, { headers: apiHeaders(), credentials: 'include', signal: AbortSignal.timeout(timeoutMs) })
+  if (!r.ok) {
+    if (r.status === 401) localStorage.removeItem('accessToken')
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || 'HTTP ' + r.status)
+  }
+  return r.json()
+}
+async function apiPost(url, data, timeoutMs = 30000) {
+  const r = await fetch(url, { method: 'POST', headers: apiHeaders(), credentials: 'include', body: data ? JSON.stringify(data) : undefined, signal: AbortSignal.timeout(timeoutMs) })
+  if (!r.ok) {
+    if (r.status === 401) localStorage.removeItem('accessToken')
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || 'HTTP ' + r.status)
+  }
+  return r.json()
+}
+async function apiPut(url, data, timeoutMs = 30000) {
+  const r = await fetch(url, { method: 'PUT', headers: apiHeaders(), credentials: 'include', body: data ? JSON.stringify(data) : undefined, signal: AbortSignal.timeout(timeoutMs) })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || 'HTTP ' + r.status)
+  }
+  return r.json()
+}
+async function apiDelete(url, timeoutMs = 30000) {
+  const r = await fetch(url, { method: 'DELETE', headers: apiHeaders(), credentials: 'include', signal: AbortSignal.timeout(timeoutMs) })
+  if (!r.ok) throw new Error('HTTP ' + r.status)
+  return r.json()
+}
+
+// ════════════════════════════════════════════════════════════════
+// Report type capabilities
+// ════════════════════════════════════════════════════════════════
+const REPORT_TYPE_CAPS = {
+  market: { label: 'Market Check', available: true, fields: ['timeframe','startDate','endDate'] },
+  finance: { label: 'Finance', available: true, fields: ['symbol','startDate','endDate'] },
+  backtest: { label: 'Backtest', available: false, fields: ['symbol','strategy','startDate','endDate'] },
+  comparison: { label: 'Comparison', available: false, fields: ['symbol','strategy','startDate','endDate'] }
+}
+const REPORT_TYPES = ['market','finance','backtest','comparison']
+const VALID_STRATEGIES = [
+  { value: 'BuyAndHoldStrategy', label: 'Buy & Hold' },
+  { value: 'SimpleMovingAverageCrossover', label: 'SMA Crossover' },
+  { value: 'ExponentialMovingAverageCrossover', label: 'EMA Crossover' },
+  { value: 'MACDRSIStrategy', label: 'MACD-RSI-EMA' },
+  { value: 'BollingerRSIStrategy', label: 'Bollinger RSI' },
+  { value: 'CombinedStrategy', label: 'Combined' }
+]
+
+// ============================================================
+// Load widget states from localStorage
+// ============================================================
+function loadWidgetStates() {
+  try {
+    const saved = localStorage.getItem('finance_widget_states')
+    if (saved) return JSON.parse(saved)
+  } catch (e) {}
+  return {
+    portfolio: { minimized: true },
+    dividends: { minimized: true },
+    profitLoss: { minimized: true },
+    reports: { minimized: true }
+  }
+}
+function saveWidgetStates(states) {
+  try { localStorage.setItem('finance_widget_states', JSON.stringify(states)) } catch (e) {}
+}
+
+// ════════════════════════════════════════════════════════════════
+// Main App Component (Alpine x-data)
+// ════════════════════════════════════════════════════════════════
+function app() {
+  return {
+    // ── Routing ──
+    currentView: 'landing',
+    async fetchAllData() {
+      if (this.currentView !== 'dashboard') return
+      await this.fetchPortfolio()
+      /* orders/dividends/profitLoss are loaded inside fetchPortfolio via Promise.allSettled */
+    },
+    init() {
+      // Determine initial route
+      const path = window.location.pathname
+      this.routeTo(path)
+
+      // Auto-login check
+      this.checkAuth()
+
+      // Set up health check polling
+      this.checkHealth()
+      this._healthInterval = setInterval(() => this.checkHealth(), 30000)
+
+      // Watch for dashboard view changes to load data
+      this._viewWatch = setInterval(() => {
+        if (this.currentView === 'dashboard' && !this._dataLoaded) {
+          this._dataLoaded = true
+          this.fetchAllData()
+        }
+      }, 300)
+
+      // Set up periodic data refresh on dashboard
+      this._syncInterval = setInterval(() => {
+        if (this.currentView === 'dashboard') {
+          this.fetchAllData()
+        }
+      }, 600000) // 10 min
+
+      // Listen for portfolio settings event from header
+      window.addEventListener('open-portfolio-settings', () => this.openSettingsModal())
+
+      // Listen for popstate
+      window.addEventListener('popstate', (e) => {
+        this.routeTo(window.location.pathname)
+      })
+
+      // Load portfolio view settings from localStorage
+      const savedView = localStorage.getItem('portfolioViewSettings')
+      if (savedView) {
+        try {
+          const parsed = JSON.parse(savedView)
+          this.portfolioViewSettings = parsed
+          this.sortCol = parsed.defaultSortCol || 'amount'
+          this.sortDir = parsed.defaultSortDir || 'desc'
+        } catch (e) {}
+      }
+    },
+    destroy() {
+      if (this._healthInterval) clearInterval(this._healthInterval)
+      if (this._syncInterval) clearInterval(this._syncInterval)
+      this.stopSyncPolling()
+    },
+    routeTo(path) {
+      // Map path to view
+      const routes = {
+        '/': 'dashboard',
+        '/dashboard': 'dashboard',
+        '/dashboard.html': 'dashboard',
+        '/login': 'landing',
+        '/landing.html': 'landing',
+        '/create-account': 'create-account',
+        '/create-account.html': 'create-account',
+        '/server-down': 'server-down',
+        '/server-down.html': 'server-down'
+      }
+      if (routes[path] !== undefined) {
+        this.currentView = routes[path]
+      } else {
+        this.currentView = 'not-found'
+      }
+    },
+    navigate(path) {
+      window.history.pushState({}, '', path)
+      this.routeTo(path)
+    },
+
+    // ── Auth ──
+    authForm: { email: '', password: '', confirmPassword: '' },
+    caForm: { name: '', email: '', password: '', confirmPassword: '', terms: false },
+    authError: '',
+    authLoading: false,
+    showLoginModal: false,
+    isRegistering: false,
+    isAuthenticated: false,
+
+    async checkAuth() {
+      const stored = localStorage.getItem('accessToken')
+      if (!stored) {
+        // Try auto-login
+        await this.autoLogin()
+        return
+      }
+      try {
+        const user = await apiGet('/api/auth/me')
+        if (user && user.id) {
+          this.isAuthenticated = true
+          if (this.currentView === 'landing') this.navigate('/dashboard')
+          // Auth confirmed — trigger data load; _viewWatch may have fired before auth was ready
+          if (this.currentView === 'dashboard') {
+            this.fetchAllData()
+          }
+        } else {
+          this.isAuthenticated = false
+        }
+      } catch (err) {
+        localStorage.removeItem('accessToken')
+        await this.autoLogin()
+      }
+    },
+
+    async autoLogin() {
+      this.authLoading = true
+      try {
+        const resp = await apiPost('/api/auth/auto')
+        if (resp && resp.access_token && resp.user && resp.user.id) {
+          localStorage.setItem('accessToken', resp.access_token)
+          this.isAuthenticated = true
+          if (this.currentView === 'landing') this.navigate('/dashboard')
+          // Auth just became available — trigger data load if on dashboard
+          if (this.currentView === 'dashboard') {
+            this._dataLoaded = false
+            this.fetchAllData()
+          }
+        }
+      } catch (err) {
+        // Auto-login failed, stay on landing
+      } finally {
+        this.authLoading = false
+      }
+    },
+
+    async handleAuthSubmit() {
+      this.authLoading = true
+      this.authError = ''
+      try {
+        if (this.isRegistering) {
+          if (this.authForm.password !== this.authForm.confirmPassword) {
+            this.authError = 'Passwords do not match'
+            return
+          }
+          const resp = await apiPost('/api/auth/register', { email: this.authForm.email, password: this.authForm.password })
+          // Auto-login after registration
+          await this.handleLogin()
+        } else {
+          await this.handleLogin()
+        }
+      } catch (err) {
+        this.authError = err.message || 'Authentication failed'
+      } finally {
+        this.authLoading = false
+      }
+    },
+
+    async handleLogin() {
+      try {
+        const resp = await apiPost('/api/auth/login', { email: this.authForm.email, password: this.authForm.password })
+        if (resp.access_token && resp.user && resp.user.id) {
+          localStorage.setItem('accessToken', resp.access_token)
+          this.isAuthenticated = true
+          this.showLoginModal = false
+          this.navigate('/dashboard')
+          Alpine.store('toast').show('Login successful!', 'success')
+        } else {
+          this.authError = 'Invalid response from server'
+        }
+      } catch (err) {
+        this.authError = err.message || 'Login failed'
+      }
+    },
+
+    async handleCreateAccount() {
+      // client-side validations
+      if (this.caForm.password !== this.caForm.confirmPassword) {
+        Alpine.store('toast').show('Passwords do not match', 'error')
+        return
+      }
+      if (this.caForm.password.length < 8) {
+        Alpine.store('toast').show('Password must be at least 8 characters long', 'error')
+        return
+      }
+      if (!this.caForm.terms) {
+        Alpine.store('toast').show('You must agree to the Terms of Service and Privacy Policy', 'error')
+        return
+      }
+      this.authLoading = true
+      this.authError = ''
+      try {
+        const resp = await apiPost('/api/auth/register', {
+          email: this.caForm.email,
+          password: this.caForm.password,
+          name: this.caForm.name
+        })
+        // Auto-login after registering
+        const loginResp = await apiPost('/api/auth/login', { email: this.caForm.email, password: this.caForm.password })
+        if (loginResp.access_token) {
+          localStorage.setItem('accessToken', loginResp.access_token)
+          this.isAuthenticated = true
+          Alpine.store('toast').show('Account created successfully!', 'success')
+          this.navigate('/dashboard')
+        }
+      } catch (err) {
+        this.authError = err.message || 'Account creation failed'
+        Alpine.store('toast').show(this.authError, 'error')
+      } finally {
+        this.authLoading = false
+      }
+    },
+
+    // ── Connection Health ──
+    isConnected: false,
+    async checkHealth() {
+      try {
+        const r = await fetch('/health', { signal: AbortSignal.timeout(5000) })
+        this.isConnected = r.ok
+      } catch (e) {
+        this.isConnected = false
+      }
+    },
+
+    // ── Widget State ──
+    showUserMenu: false,
+    widgetStates: loadWidgetStates(),
+
+    toggleWidget(name) {
+      const w = this.widgetStates[name]
+      if (w) {
+        const wasMinimized = w.minimized
+        w.minimized = !w.minimized
+        saveWidgetStates(this.widgetStates)
+        // Re-fetch data when expanding a widget if authenticated
+        if (wasMinimized && this.isAuthenticated) {
+          if (name === 'dividends') this.loadDividends()
+        }
+      }
+    },
+
+    // ── Portfolio ──
+    portfolioLoading: false,
+    portfolioError: '',
+    positions: [],
+    portfolioCash: 0,
+    portfolioBTCDollar: 0,
+    btcAvgBuyPrice: 0,
+    lastUpdated: '',
+    sortCol: 'percent',
+    sortDir: 'desc',
+    // Portfolio view settings (persisted)
+    portfolioViewSettings: { columns: {}, defaultSortCol: 'percent', defaultSortDir: 'desc' },
+    showPortfolioViewSettings: false,
+    availableSymbols: [],
+    availableStrategies: [],
+
+    get sortedPositions() {
+      const totalValue = this.positions.reduce((s, p) => s + (p.market_value || 0), 0) + this.portfolioCash + this.portfolioBTCDollar
+
+      // Build CASH position
+      const cashPos = this.portfolioCash > 0 ? {
+        symbol: 'CASH', id: 'cash', amount: this.portfolioCash,
+        market_value: this.portfolioCash, percent_of_portfolio: totalValue > 0 ? (this.portfolioCash / totalValue) * 100 : 0,
+        todays_return: 0, total_return: 0, total_return_percent: 0,
+        beta: 0, delta: 0, notes: '$' + this.portfolioCash.toFixed(2), is_cash: true
+      } : null
+
+      // Build BTC position
+      const btcQty = this.btcAvgBuyPrice > 0 ? this.portfolioBTCDollar / this.btcAvgBuyPrice : 0
+      const btcPos = this.portfolioBTCDollar > 0 ? {
+        symbol: 'BTC', id: 'btc', amount: this.portfolioBTCDollar,
+        avg_buy_price: this.btcAvgBuyPrice, market_value: this.portfolioBTCDollar,
+        percent_of_portfolio: totalValue > 0 ? (this.portfolioBTCDollar / totalValue) * 100 : 0,
+        todays_return: 0, total_return: 0, total_return_percent: 0,
+        beta: 0, delta: 0, notes: btcQty > 0 ? '\u0243' + btcQty.toFixed(8) : '', is_btc: true, is_crypto: true
+      } : null
+
+      // Process other positions
+      const other = this.positions
+        .filter(p => p.symbol !== 'BTC')
+        .map(p => ({
+          ...p,
+          percent_of_portfolio: totalValue > 0 ? ((p.market_value || 0) / totalValue) * 100 : 0,
+          notes: p.symbol === 'BTC' && this.btcAvgBuyPrice > 0 && this.portfolioBTCDollar > 0
+            ? '\u0243' + (this.portfolioBTCDollar / this.btcAvgBuyPrice).toFixed(8)
+            : (p.notes || '')
+        }))
+
+      // Sort other positions
+      const sorted = [...other].sort((a, b) => {
+        let av = a[this.sortCol === 'amount' ? 'quantity' : this.sortCol === 'buy_price' ? 'avg_buy_price' : this.sortCol === 'todays_return' && !(a.todays_return) ? 'total_return' : this.sortCol] || 0
+        let bv = b[this.sortCol === 'amount' ? 'quantity' : this.sortCol === 'buy_price' ? 'avg_buy_price' : this.sortCol === 'todays_return' && !(b.todays_return) ? 'total_return' : this.sortCol] || 0
+        return this.sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1)
+      })
+
+      const result = []
+      if (cashPos) result.push(cashPos)
+      if (btcPos) result.push(btcPos)
+      result.push(...sorted)
+      return result
+    },
+
+    sortBy(col) {
+      if (this.sortCol === col) {
+        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'
+      } else {
+        this.sortCol = col
+        this.sortDir = 'desc'
+      }
+    },
+
+    async fetchPortfolio() {
+      if (!this.isAuthenticated) return
+      this.portfolioLoading = true
+      this.portfolioError = ''
+      try {
+        const summary = await apiGet('/api/portfolio/summary')
+        this.positions = (summary.positions || []).map(p => ({ 
+          ...p,
+          amount: p.amount ?? 0,
+          avg_buy_price: p.avg_buy_price ?? 0,
+          current_price: p.current_price ?? 0,
+          todays_return: p.todays_return ?? 0,
+          total_return: p.total_return ?? 0,
+          total_return_percent: p.total_return_percent ?? 0,
+          percent_of_portfolio: p.percent_of_portfolio ?? 0,
+          market_value: p.market_value ?? 0
+        }))
+        this.lastUpdated = new Date().toLocaleString()
+        // Derive available symbols from positions
+        this.availableSymbols = [...new Set(this.positions.map(p => p.symbol).filter(Boolean))]
+        try {
+          const settings = await apiGet('/api/portfolio/settings')
+          this.portfolioCash = settings.total_portfolio_cash || 0
+          this.portfolioBTCDollar = settings.total_portfolio_btc || 0
+          this.btcAvgBuyPrice = settings.btc_avg_buy_price || 0
+        } catch (e) {
+          this.portfolioCash = 0
+          this.portfolioBTCDollar = 0
+          this.btcAvgBuyPrice = 0
+        }
+        // Load secondary dashboard data in parallel
+        await Promise.allSettled([
+          this.loadDividends()
+        ])
+      } catch (err) {
+        this.portfolioError = err.message || 'Failed to load portfolio'
+      } finally {
+        this.portfolioLoading = false
+      }
+    },
+
+    // ── Portfolio: Add/Edit Position Modal ──
+    showPosModal: false,
+    editingPos: null,
+    posForm: { id: null, symbol: '', amount: 0, avg_buy_price: 0, notes: '' },
+
+    openAddPositionModal(pos) {
+      if (pos) {
+        this.editingPos = pos
+        this.posForm = { ...pos }
+      } else {
+        this.editingPos = null
+        this.posForm = { id: null, symbol: '', amount: 0, avg_buy_price: 0, notes: '' }
+      }
+      this.showPosModal = true
+    },
+    editPosition(pos) { this.openAddPositionModal(pos) },
+    async savePosition() {
+      try {
+        if (this.editingPos) {
+          // Update via API or local
+          const idx = this.positions.findIndex(p => p.id === this.editingPos.id)
+          if (idx >= 0) this.positions[idx] = { ...this.posForm, id: this.editingPos.id }
+        } else {
+          this.positions.unshift({ ...this.posForm, id: Date.now(), source: 'manual', is_crypto: false })
+        }
+        this.showPosModal = false
+        Alpine.store('toast').show('Position ' + (this.editingPos ? 'updated' : 'added') + ' successfully', 'success')
+      } catch (err) {
+        Alpine.store('toast').show('Failed to save position', 'error')
+      }
+    },
+    deletePosition(pos) {
+      this.positions = this.positions.filter(p => p.id !== pos.id)
+      Alpine.store('toast').show('Position deleted', 'success')
+    },
+
+    // ── Portfolio: Settings Modal ──
+    showSettingsModal: false,
+    // ── Sync (async background) ──
+    syncStatus: null,           // "running"/"done"/"error"/null
+    syncProgress: '',
+    syncId: null,
+    syncError: '',
+    syncStartTime: null,        // timestamp ms
+    syncElapsed: 0,             // seconds elapsed counter
+    syncElapsedTimer: null,     // setInterval handle for elapsed ticker
+    syncPollInterval: null,     // setInterval handle for polling
+    lastSyncTime: null,         // timestamp ms of last successful sync
+    settingsForm: { cash: '0', btc_dollar: '0', btc_avg_price: '0', robinhood_enabled: false, robinhood_username: '', robinhood_password: '', robinhood_mfa: '' },
+
+    // ── Portfolio: View Settings ──
+    openPortfolioViewSettings() {
+      const saved = localStorage.getItem('portfolioViewSettings')
+      if (saved) {
+        try { this.portfolioViewSettings = JSON.parse(saved) } catch (e) {}
+      }
+      // Ensure all columns exist
+      const defaults = {
+        symbol: true, notes: true, avgBuyPrice: true, percent: true,
+        todaysReturn: true, totalReturn: true, totalReturnPct: true, marketValue: true
+      }
+      if (!this.portfolioViewSettings.columns) this.portfolioViewSettings.columns = {}
+      for (const [k, v] of Object.entries(defaults)) {
+        if (this.portfolioViewSettings.columns[k] === undefined) {
+          this.portfolioViewSettings.columns[k] = v
+        }
+      }
+      this.showPortfolioViewSettings = true
+    },
+    savePortfolioViewSettings() {
+      localStorage.setItem('portfolioViewSettings', JSON.stringify(this.portfolioViewSettings))
+      this.sortCol = this.portfolioViewSettings.defaultSortCol
+      this.sortDir = this.portfolioViewSettings.defaultSortDir
+      this.showPortfolioViewSettings = false
+      Alpine.store('toast').show('View settings saved', 'success')
+    },
+
+    async openSettingsModal() {
+      try {
+        const s = await apiGet('/api/portfolio/settings')
+        this.settingsForm = {
+          cash: (s.total_portfolio_cash || 0).toString(),
+          btc_dollar: (s.total_portfolio_btc || 0).toString(),
+          btc_avg_price: (s.btc_avg_buy_price || 0).toString(),
+          robinhood_enabled: s.robinhood_enabled || false,
+          robinhood_username: s.robinhood_username || '',
+          robinhood_password: s.robinhood_password || '',
+          robinhood_mfa: s.robinhood_mfa || ''
+        }
+      } catch (e) {
+        this.settingsForm = {
+          cash: (this.portfolioCash || 0).toString(),
+          btc_dollar: (this.portfolioBTCDollar || 0).toString(),
+          btc_avg_price: (this.btcAvgBuyPrice || 0).toString(),
+          robinhood_enabled: false,
+          robinhood_username: '', robinhood_password: '', robinhood_mfa: ''
+        }
+      }
+      this.showSettingsModal = true
+    },
+
+    async saveSettings() {
+      // Validate
+      const cash = parseFloat(this.settingsForm.cash)
+      const btc = parseFloat(this.settingsForm.btc_dollar)
+      const btcPrice = parseFloat(this.settingsForm.btc_avg_price)
+      if (isNaN(cash) || isNaN(btc) || isNaN(btcPrice)) {
+        Alpine.store('toast').show('Invalid number values', 'error')
+        return
+      }
+      try {
+        const result = await apiPut('/api/portfolio/settings', {
+          total_portfolio_cash: cash,
+          total_portfolio_btc: btc,
+          btc_avg_buy_price: btcPrice,
+          robinhood_enabled: this.settingsForm.robinhood_enabled,
+          robinhood_username: this.settingsForm.robinhood_username.trim() || null,
+          robinhood_password: this.settingsForm.robinhood_password.trim() || null,
+          robinhood_mfa: this.settingsForm.robinhood_mfa.trim() || null
+        })
+        this.portfolioCash = cash
+        this.portfolioBTCDollar = btc
+        this.btcAvgBuyPrice = btcPrice
+        this.showSettingsModal = false
+        Alpine.store('toast').show('Settings saved successfully', 'success')
+      } catch (err) {
+        Alpine.store('toast').show(err.message || 'Failed to save settings', 'error')
+      }
+    },
+
+    stopSyncPolling() {
+      if (this.syncPollInterval) { clearInterval(this.syncPollInterval); this.syncPollInterval = null }
+      if (this.syncElapsedTimer) { clearInterval(this.syncElapsedTimer); this.syncElapsedTimer = null }
+    },
+    async syncFromSettings() {
+      const startTime = Date.now()
+      this.syncStatus = 'running'
+      this.syncProgress = 'Starting sync...'
+      this.syncId = null
+      this.syncError = ''
+      this.syncStartTime = startTime
+      this.syncElapsed = 0
+      try {
+        // Step 1: Start background sync
+        const resp = await apiPost('/api/workflows/sync-start', undefined, 10000)
+        const syncId = resp.sync_id
+        this.syncId = syncId
+
+        // Step 2: Start elapsed timer
+        this.syncElapsedTimer = setInterval(() => {
+          this.syncElapsed = Math.floor((Date.now() - this.syncStartTime) / 1000)
+        }, 1000)
+
+        // Step 3: Poll every 3s for status
+        const timeoutMs = 300000  // 5 min
+        this.syncPollInterval = setInterval(async () => {
+          if (Date.now() - startTime > timeoutMs) {
+            this.stopSyncPolling()
+            this.syncStatus = 'error'
+            this.syncError = 'Sync timed out after 5 minutes'
+            Alpine.store('toast').show('Sync timed out — try again', 'error')
+            return
+          }
+          try {
+            const statusResp = await apiGet('/api/workflows/sync-status/' + syncId)
+            this.syncProgress = statusResp.progress || 'Syncing...'
+            if (statusResp.status === 'done') {
+              this.stopSyncPolling()
+              this.syncStatus = 'done'
+              this.lastSyncTime = Date.now()
+              await this.fetchPortfolio()
+              const posCount = this.positions.length
+              Alpine.store('toast').show('Sync complete — ' + posCount + ' positions loaded', 'success')
+            } else if (statusResp.status === 'error') {
+              this.stopSyncPolling()
+              this.syncStatus = 'error'
+              this.syncError = statusResp.error || 'Sync failed'
+              this.syncProgress = statusResp.progress || 'Sync error'
+              Alpine.store('toast').show(this.syncError, 'error')
+            }
+          } catch (pollErr) {
+            // Swallow poll errors — let the next tick retry
+            console.warn('Sync poll error:', pollErr)
+          }
+        }, 3000)
+      } catch (err) {
+        this.stopSyncPolling()
+        this.syncStatus = 'error'
+        this.syncError = err.message || 'Failed to start sync'
+        this.syncProgress = 'Sync failed'
+        Alpine.store('toast').show(this.syncError, 'error')
+      }
+    },
+
+    // ── Dividends + DCA ──
+    dividends: [],
+    dividendsLoading: false,
+    divTab: 'history',
+    // DCA state
+    dcaLoading: false,
+    dcaShares: 0,
+    dcaAvgPrice: 0,
+    dcaMktVal: 0,
+    dcaMonthlyDiv: 0,
+    dcaDaily: 2000,
+    dcaTargetPrice: 35,
+    dcaDays: 365,
+    hideLowDivSymbols: true,
+
+    get dcaMonthlyShares() {
+      return this.dcaAvgPrice > 0 ? this.dcaMonthlyDiv / this.dcaAvgPrice : 0
+    },
+    get dcaYearShares() {
+      return this.dcaMonthlyShares * 12
+    },
+    get dcaYearPct() {
+      return this.dcaShares > 0 ? (this.dcaYearShares / this.dcaShares) * 100 : 0
+    },
+    get dcaTotalInvested() {
+      return this.dcaDaily * this.dcaDays
+    },
+    get dcaSimShares() {
+      return this.dcaTargetPrice > 0 ? this.dcaTotalInvested / this.dcaTargetPrice : 0
+    },
+    get dcaSimFinalVal() {
+      return this.dcaSimShares * this.dcaTargetPrice
+    },
+    get dcaSimProfit() {
+      return this.dcaSimFinalVal - this.dcaTotalInvested
+    },
+    get divTotalAll() {
+      return this.dividends.reduce((s, d) => s + (d.amount || 0), 0)
+    },
+    get divTotalYear() {
+      const y = new Date().getFullYear().toString()
+      return this.dividends
+        .filter(d => (d.date || '').startsWith(y))
+        .reduce((s, d) => s + (d.amount || 0), 0)
+    },
+    get divCount() {
+      return this.dividends.length
+    },
+    get divBySymbol() {
+      const map = {}
+      for (const d of this.dividends) {
+        const sym = d.symbol
+        if (!map[sym]) map[sym] = { symbol: sym, total: 0, count: 0 }
+        map[sym].total += d.amount || 0
+        map[sym].count++
+      }
+      return Object.values(map).sort((a, b) => b.total - a.total)
+    },
+    get divBySymbolFiltered() {
+      const all = this.divBySymbol
+      if (this.hideLowDivSymbols) {
+        return all.filter(s => s.total >= 1000)
+      }
+      return all
+    },
+
+    async loadDividends() {
+      this.dividendsLoading = true
+      this.dcaLoading = true
+      try {
+        const [data, portfolio] = await Promise.allSettled([
+          apiGet('/api/dividends/'),
+          apiGet('/api/portfolio/summary')
+        ])
+        if (data.status === 'fulfilled') {
+          this.dividends = Array.isArray(data.value) ? data.value : []
+        }
+        if (portfolio.status === 'fulfilled') {
+          const btci = (portfolio.value.positions || []).find(p => p.symbol === 'BTCI')
+          if (btci) {
+            this.dcaShares = btci.amount || 0
+            this.dcaAvgPrice = btci.avg_buy_price || 0
+            this.dcaMktVal = btci.market_value || 0
+          }
+          // Calculate median monthly dividend from last 6 months (resists spikes)
+          const now = new Date()
+          const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+          const recentDivs = this.dividends.filter(d => {
+            const dt = new Date(d.date || d.payable_date)
+            return dt >= sixMonthsAgo
+          })
+          // Group by month and take median
+          const monthTotals = {}
+          for (const d of recentDivs) {
+            const m = (d.date || d.payable_date || '').slice(0, 7)
+            if (m) monthTotals[m] = (monthTotals[m] || 0) + (d.amount || 0)
+          }
+          const vals = Object.values(monthTotals).sort((a, b) => a - b)
+          const n = vals.length
+          this.dcaMonthlyDiv = n > 0
+            ? n % 2 === 0 ? (vals[n/2 - 1] + vals[n/2]) / 2 : vals[Math.floor(n/2)]
+            : 0
+        }
+      } catch (err) {
+        Alpine.store('toast').show('Failed to load dividends', 'error')
+      } finally {
+        this.dividendsLoading = false
+        this.dcaLoading = false
+      }
+    },
+
+    // ── Reports ──
+    reports: [],
+    reportsLoading: false,
+    reportGenerating: false,
+    generatingElapsed: 0,
+    reportError: '',
+    reportFilters: { type: 'all', symbol: 'all', strategy: 'all', startDate: '', endDate: '' },
+    genForm: { reportType: 'market', symbol: '', strategy: 'BuyAndHoldStrategy', timeframe: 'Daily', startDate: '', endDate: '' },
+    symbolQuery: '',
+    symbolSuggestions: [],
+    symbolDropdownOpen: false,
+    symbolDropdownIndex: -1,
+    symbolSearching: false,
+    symbolSearchHint: '',
+    symbolSearchError: '',
+    _genTimer: null,
+    _symbolTimer: null,
+    availableStrategies: ['SMA','EMA','RSI','MACD','Buy & Hold'],
+
+    get availableReportTypes() {
+      return REPORT_TYPES.filter(t => REPORT_TYPE_CAPS[t].available).map(t => ({ value: t, label: REPORT_TYPE_CAPS[t].label }))
+    },
+    get hiddenReportTypes() {
+      return REPORT_TYPES.filter(t => !REPORT_TYPE_CAPS[t].available).map(t => ({
+        value: t, label: REPORT_TYPE_CAPS[t].label,
+        hint: REPORT_TYPE_CAPS[t].label + ' reports aren\'t wired to the backend yet.'
+      }))
+    },
+    get validStrategies() { return VALID_STRATEGIES },
+    showGenField(field) {
+      const f = REPORT_TYPE_CAPS[this.genForm.reportType]
+      return f && f.fields.includes(field)
+    },
+
+    get filteredReports() {
+      const generating = this.reports.filter(r => r._is_generating)
+      const rest = this.reports.filter(r => {
+        if (r._is_generating) return false
+        const rt = (r.reportTypeKey || (r.reportType || '').toLowerCase())
+        if (this.reportFilters.type !== 'all' && rt !== this.reportFilters.type) return false
+        if (this.reportFilters.symbol !== 'all' && r.symbol !== this.reportFilters.symbol) return false
+        if (this.reportFilters.strategy !== 'all' && String(r.strategy) !== this.reportFilters.strategy) return false
+        return true
+      })
+      return [...generating, ...rest]
+    },
+
+    async loadReports() {
+      this.reportsLoading = true
+      try {
+        const data = await apiGet('/api/report/list')
+        const list = Array.isArray(data) ? data : []
+        this.reports = list.map(m => {
+          const rawType = String(m.type || m.report_type || m.reportType || 'report').toLowerCase()
+          let key = 'market', label = 'Market Check'
+          if (rawType.includes('finance') || rawType.includes('financial')) { key = 'finance'; label = 'Finance' }
+          else if (rawType.includes('market')) { key = 'market'; label = 'Market Check' }
+          else if (rawType.includes('backtest')) { key = 'backtest'; label = 'Backtest' }
+          else if (rawType.includes('comparison')) { key = 'comparison'; label = 'Comparison' }
+          return {
+            id: m.id || m.path || m.dir,
+            symbol: m.symbol || 'MARKET',
+            reportType: label,
+            reportTypeKey: key,
+            strategy: m.strategy || '—',
+            timeframe: m.timeframe || '—',
+            dateRange: m.start_date && m.end_date ? m.start_date + ' to ' + m.end_date : (m.dateRange || '—'),
+            created: m.created ? new Date(String(m.created).replace(' ', 'T')) : new Date(),
+            dir: m.dir || null,
+            path: m.path || (m.dir ? '/static/results/' + m.dir + '/index.html' : null)
+          }
+        })
+        this.availableSymbols = [...new Set(this.reports.map(r => r.symbol).filter(s => s && s !== 'MARKET'))].sort()
+        this.availableStrategies = [...new Set(this.reports.map(r => r.strategy).filter(s => s && s !== '—'))].sort()
+      } catch (err) {
+        this.reports = []
+        Alpine.store('toast').show('Failed to load reports', 'error')
+      } finally {
+        this.reportsLoading = false
+      }
+    },
+
+    resetFilters() {
+      this.reportFilters = { type: 'all', symbol: 'all', strategy: 'all', startDate: '', endDate: '' }
+    },
+    applyFilters() { Alpine.store('toast').show('Filters applied', 'success') },
+
+    openGenerateReportModal() {
+      const now = new Date(), start = new Date()
+      start.setFullYear(start.getFullYear() - 1)
+      this.genForm = {
+        reportType: 'market',
+        symbol: this.reportFilters.symbol !== 'all' ? this.reportFilters.symbol : '',
+        strategy: 'BuyAndHoldStrategy',
+        timeframe: 'Daily',
+        startDate: toISODate(start),
+        endDate: toISODate(now)
+      }
+      this.symbolQuery = this.genForm.symbol || ''
+      this.symbolSuggestions = []
+      this.symbolDropdownOpen = false
+      this.symbolSearchError = ''
+      this.symbolSearchHint = ''
+      this.showGenReportModal = true
+    },
+    showGenReportModal: false,
+
+    async generateReport() {
+      if (this.reportGenerating) return
+      this.reportError = ''
+      const snapshot = { ...this.genForm }
+      this.showGenReportModal = false
+
+      this.reportGenerating = true
+      this.generatingElapsed = 0
+      const skeletonId = '__gen_' + Date.now()
+      this.reports.unshift({
+        id: skeletonId,
+        _is_generating: true,
+        symbol: snapshot.symbol || '...',
+        reportType: snapshot.reportType === 'market' ? 'Market Check' : 'Finance',
+        reportTypeKey: snapshot.reportType,
+        strategy: snapshot.strategy || '—',
+        timeframe: snapshot.timeframe || '—',
+        dateRange: snapshot.startDate && snapshot.endDate ? snapshot.startDate + ' to ' + snapshot.endDate : (snapshot.reportType === 'market' ? 'Latest snapshot' : '—'),
+        created: new Date()
+      })
+      this._genTimer = setInterval(() => { this.generatingElapsed++ }, 1000)
+
+      try {
+        const params = new URLSearchParams()
+        params.append('output_dir', 'public/results')
+        params.append('force_refresh', 'false')
+        params.append('timeframe', snapshot.timeframe || 'Daily')
+        if (snapshot.symbol) params.append('symbol', snapshot.symbol)
+        if (snapshot.strategy) params.append('strategy', snapshot.strategy)
+        if (snapshot.startDate) params.append('start_date', snapshot.startDate)
+        if (snapshot.endDate) params.append('end_date', snapshot.endDate)
+
+        let endpoint
+        if (snapshot.reportType === 'finance') {
+          if (!snapshot.symbol) { throw new Error('Symbol is required for finance reports.') }
+          endpoint = '/api/report/generate-finance?' + params.toString()
+        } else if (snapshot.reportType === 'market') {
+          endpoint = '/api/report/generate-market?' + params.toString()
+        } else {
+          throw new Error('Report type "' + snapshot.reportType + '" generation is not available yet')
+        }
+
+        const resp = await apiPost(endpoint)
+        this.reports = this.reports.filter(r => !r._is_generating)
+        await this.loadReports()
+
+        const served = resp && resp.report_path ? this.deriveServedPath(resp.report_path) : null
+        if (served) Alpine.store('toast').show((snapshot.reportType === 'market' ? 'Market report' : 'Report') + ' generated', 'success')
+        else Alpine.store('toast').show('Report generated successfully', 'success')
+      } catch (err) {
+        this.reports = this.reports.filter(r => !r._is_generating)
+        this.reportError = err.message || 'Failed to generate report'
+        Alpine.store('toast').show(this.reportError, 'error')
+      } finally {
+        this.reports = this.reports.filter(r => !r._is_generating)
+        this.reportGenerating = false
+        this.generatingElapsed = 0
+        if (this._genTimer) { clearInterval(this._genTimer); this._genTimer = null }
+      }
+    },
+
+    deriveServedPath(reportPath) {
+      if (!reportPath) return null
+      let p = String(reportPath).trim().replace(/\\/g, '/')
+      if (p.startsWith('public/')) p = '/static/' + p.slice('public/'.length)
+      else if (!p.startsWith('/')) p = '/' + p
+      return p.endsWith('index.html') ? p : null
+    },
+
+    viewReport(r) {
+      Alpine.store('toast').show('Opening ' + r.reportType + ' for ' + r.symbol, 'info')
+      const dir = r.dir
+      const raw = r.path || (dir ? '/static/results/' + dir + '/index.html' : null)
+      if (!raw) { Alpine.store('toast').show('Report HTML not available', 'error'); return }
+      const url = raw.startsWith('/') ? raw : '/' + raw
+      window.open(url, '_blank', 'noopener')
+    },
+
+    async deleteReport(r) {
+      if (confirm('Delete ' + r.reportType + ' report for ' + r.symbol + '?')) {
+        try {
+          if (r.dir) await apiPost('/api/report/delete/' + encodeURIComponent(r.dir))
+          await this.loadReports()
+          Alpine.store('toast').show('Report deleted successfully', 'success')
+        } catch (err) {
+          Alpine.store('toast').show(err.message || 'Failed to delete report', 'error')
+        }
+      }
+    },
+
+    async cleanResults() {
+      if (confirm('Clean all results? This cannot be undone.')) {
+        try {
+          await apiPost('/api/report/clean')
+          await this.loadReports()
+          Alpine.store('toast').show('Results cleaned successfully', 'success')
+        } catch (err) {
+          Alpine.store('toast').show(err.message || 'Failed to clean results', 'error')
+        }
+      }
+    },
+
+    // ── Symbol Search (Polygon) ──
+    onSymbolInput() {
+      if (this._symbolTimer) clearTimeout(this._symbolTimer)
+      this.symbolSuggestions = []
+      this.symbolDropdownOpen = false
+      this.symbolSearchHint = ''
+      this.symbolSearchError = ''
+      this._symbolTimer = setTimeout(() => this.searchSymbols(this.symbolQuery.trim()), 300)
+    },
+
+    async searchSymbols(q) {
+      if (q.length < 1) { this.symbolDropdownOpen = false; return }
+      this.symbolSearching = true
+      try {
+        const results = await apiGet('/api/report/search-symbols?query=' + encodeURIComponent(q))
+        this.symbolSuggestions = Array.isArray(results) ? results : []
+        this.symbolDropdownIndex = -1
+        if (this.symbolSuggestions.length) {
+          this.symbolDropdownOpen = true
+        } else {
+          this.symbolDropdownOpen = false
+          this.symbolSearchHint = 'No approved symbols match "' + q + '".'
+        }
+      } catch (err) {
+        this.symbolDropdownOpen = false
+        this.symbolSearchError = 'Symbol search failed. You can type a symbol manually.'
+      } finally {
+        this.symbolSearching = false
+      }
+    },
+
+    selectSymbol(item) {
+      this.symbolQuery = item.symbol
+      this.genForm.symbol = item.symbol
+      this.symbolDropdownOpen = false
+      this.symbolSuggestions = []
+    },
+    onSymbolKeydown(e) {
+      const n = this.symbolSuggestions.length
+      if (!this.symbolDropdownOpen || n === 0) { if (e.key === 'Escape') this.symbolDropdownOpen = false; return }
+      if (e.key === 'ArrowDown') { e.preventDefault(); this.symbolDropdownIndex = (this.symbolDropdownIndex + 1) % n }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); this.symbolDropdownIndex = (this.symbolDropdownIndex - 1 + n) % n }
+      else if (e.key === 'Enter' && this.symbolDropdownIndex >= 0) { e.preventDefault(); this.selectSymbol(this.symbolSuggestions[this.symbolDropdownIndex]) }
+      else if (e.key === 'Escape') this.symbolDropdownOpen = false
+    },
+    onSymbolBlur() { setTimeout(() => { this.symbolDropdownOpen = false }, 150) }
+  }
+}
+</script>
+</body>
+</html>
