@@ -881,6 +881,7 @@ class PocketBaseClient:
                 "robinhood_username": data.get("robinhood_username") if data.get("robinhood_username") is not None else None,
                 "robinhood_password": data.get("robinhood_password") if data.get("robinhood_password") is not None else None,
                 "robinhood_mfa": data.get("robinhood_mfa") if data.get("robinhood_mfa") is not None else None,
+                "last_robinhood_pull": data.get("last_robinhood_pull", None),
                 "updated_at": datetime.now().isoformat()
             }
 

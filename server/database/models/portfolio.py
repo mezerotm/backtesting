@@ -132,6 +132,8 @@ class PortfolioSettings(BaseModel):
         None, description="Robinhood password")
     robinhood_mfa: Optional[str] = Field(
         None, description="Robinhood MFA token")
+    last_robinhood_pull: Optional[str] = Field(
+        None, description="Timestamp of last successful Robinhood sync")
     auto_sync: bool = Field(
         default=True,
         description="Whether to auto-sync portfolio data")

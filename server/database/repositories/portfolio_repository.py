@@ -148,6 +148,7 @@ class PortfolioRepository:
                     "robinhood_username": result.get("robinhood_username", ""),
                     "robinhood_password": result.get("robinhood_password", ""),
                     "robinhood_mfa": result.get("robinhood_mfa", ""),
+                    "last_robinhood_pull": result.get("last_robinhood_pull", None),
                     "auto_sync": result.get("auto_sync", True),
                     "sync_interval": result.get("sync_interval", 600),
                     "created_at": datetime.fromisoformat(result.get("created", datetime.now().isoformat())),
@@ -175,6 +176,8 @@ class PortfolioRepository:
                 "robinhood_username": "",
                 "robinhood_password": "",
                 "robinhood_mfa": "",
+                "last_robinhood_pull": None,
+                "robinhood_last_error": None,
                 "auto_sync": True,
                 "sync_interval": 600,
                 "created_at": datetime.now().isoformat()
@@ -194,6 +197,7 @@ class PortfolioRepository:
                     "robinhood_username": result.get("robinhood_username", ""),
                     "robinhood_password": result.get("robinhood_password", ""),
                     "robinhood_mfa": result.get("robinhood_mfa", ""),
+                    "last_robinhood_pull": result.get("last_robinhood_pull", None),
                     "auto_sync": result.get("auto_sync", True),
                     "sync_interval": result.get("sync_interval", 600),
                     "created_at": datetime.fromisoformat(result.get("created", datetime.now().isoformat())),
@@ -262,6 +266,7 @@ class PortfolioRepository:
                     robinhood_username=result.get("robinhood_username", ""),
                     robinhood_password=result.get("robinhood_password", ""),
                     robinhood_mfa=result.get("robinhood_mfa", ""),
+                    last_robinhood_pull=result.get("last_robinhood_pull", None),
                     auto_sync=result.get("auto_sync", True),
                     sync_interval=result.get("sync_interval", 600),
                     created_at=datetime.fromisoformat(
