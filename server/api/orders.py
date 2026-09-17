@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Request, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from server.models import get_model_manager, Order, validate_order_data, transform_pocketbase_record, transform_to_pocketbase_data
-from server.api.auth import get_current_user_id
+from server.api.auth import get_current_user_id, security
 from config.backend.logger import get_server_logger
 from typing import Dict, List
 
@@ -10,27 +11,18 @@ router = APIRouter(prefix="/api/orders", tags=["orders"])
 
 
 @router.get("/")
-async def get_orders(request: Request) -> Dict:
+async def get_orders(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict:
     """Get all orders for the current user."""
     try:
-        logger.info("=== ORDERS DEBUG: get_orders called ===")
-        logger.info(f"=== ORDERS DEBUG: Cookies: {request.cookies} ===")
-
-        user_id = await get_current_user_id(request)
-        logger.info(f"=== ORDERS DEBUG: user_id: {user_id} ===")
-
+        user_id = await get_current_user_id(credentials)
         if not user_id:
-            logger.warning(
-                "Orders API called without authentication - expected for fresh starts")
+            logger.warning("Orders API called without authentication")
             return {"orders": []}
 
-        # Get raw orders from PocketBase
-        logger.info(
-            f"=== ORDERS DEBUG: Getting orders for user_id: {user_id} ===")
         raw_orders = get_model_manager().get_orders(user_id)
         logger.info(
-            f"=== ORDERS DEBUG: Raw orders from DB: {
-                len(raw_orders)} orders ===")
+            f"=== ORDERS DEBUG: Raw orders from DB: {len(raw_orders)} orders ===")
+
         logger.info(f"=== ORDERS DEBUG: Raw orders data: {raw_orders} ===")
 
         # Transform to Pydantic models for validation
@@ -41,17 +33,34 @@ async def get_orders(request: Request) -> Dict:
                 orders.append(order)
             except Exception as e:
                 logger.warning(
-                    f"Invalid order data: {e}, skipping order {
-                        raw_order.get(
-                            'id', 'unknown')}")
+                    f"Invalid order data: {e}, skipping order {raw_order.get('id', 'unknown')}")
+
                 continue
 
         logger.info(
-            f"=== ORDERS DEBUG: Transformed orders: {
-                len(orders)} orders ===")
+            f"=== ORDERS DEBUG: Transformed orders: {len(orders)} orders ===")
 
         # Convert back to dictionaries for API response
         order_dicts = [transform_to_pocketbase_data(order) for order in orders]
+
+        # Remap fields for frontend (template expects buy_price/sell_price/profit_loss)
+        for od in order_dicts:
+            # Map pl → profit_loss
+            if 'pl' in od:
+                od['profit_loss'] = od.pop('pl')
+            # Map price → buy_price or sell_price based on type
+            if 'price' in od:
+                if od.get('type') == 'buy':
+                    od['buy_price'] = od.pop('price')
+                    od['sell_price'] = None
+                elif od.get('type') == 'sell':
+                    od['sell_price'] = od.pop('price')
+                    od['buy_price'] = None
+                else:
+                    od['buy_price'] = od['sell_price'] = od.pop('price')
+            # Ensure profit_loss exists even if None
+            if 'profit_loss' not in od:
+                od['profit_loss'] = None
 
         return {"orders": order_dicts}
     except HTTPException:

@@ -72,8 +72,8 @@ class SimpleMovingAverageCrossover(Strategy):
         if not self.position:
             # Buy when fast MA crosses above slow MA
             if crossover(self.sma_short, self.sma_long):
-                print(f"BUY SIGNAL detected at index {
-                      len(self.data) - 1}, price: {self.data.Close[-1]}")
+                print(
+                    f"BUY SIGNAL detected at index {len(self.data) - 1}, price: {self.data.Close[-1]}")
                 self.buy()
 
                 # Track entry for reference
@@ -82,8 +82,8 @@ class SimpleMovingAverageCrossover(Strategy):
         else:
             # Sell when fast MA crosses below slow MA
             if crossover(self.sma_long, self.sma_short):
-                print(f"SELL SIGNAL detected at index {
-                      len(self.data) - 1}, price: {self.data.Close[-1]}")
+                print(
+                    f"SELL SIGNAL detected at index {len(self.data) - 1}, price: {self.data.Close[-1]}")
 
                 # Calculate P/L before closing
                 exit_price = self.data.Close[-1]
@@ -214,8 +214,8 @@ class ExponentialMovingAverageCrossover(Strategy):
         if not self.position:
             # Buy when fast EMA crosses above slow EMA
             if crossover(self.fast, self.slow):
-                print(f"EMA BUY SIGNAL at index {
-                      len(self.data) - 1}, price: {self.data.Close[-1]}")
+                print(
+                    f"EMA BUY SIGNAL at index {len(self.data) - 1}, price: {self.data.Close[-1]}")
                 self.buy()
 
                 # Track entry for reference
@@ -226,8 +226,8 @@ class ExponentialMovingAverageCrossover(Strategy):
         else:
             # Sell when fast EMA crosses below slow EMA
             if crossover(self.slow, self.fast):
-                print(f"EMA SELL SIGNAL at index {
-                      len(self.data) - 1}, price: {self.data.Close[-1]}")
+                print(
+                    f"EMA SELL SIGNAL at index {len(self.data) - 1}, price: {self.data.Close[-1]}")
 
                 # Calculate P/L before closing
                 exit_price = self.data.Close[-1]
@@ -270,10 +270,10 @@ class ExponentialMovingAverageCrossover(Strategy):
             # Print trade statistics
             print("\n=== Trade Statistics ===")
             print(f"Total Trades: {len(trades_df)}")
-            print(f"Winning Trades: {
-                  len(trades_df[trades_df['profit_pct'] > 0])}")
-            print(f"Losing Trades: {
-                  len(trades_df[trades_df['profit_pct'] <= 0])}")
+            print(
+                f"Winning Trades: {len(trades_df[trades_df['profit_pct'] > 0])}")
+            print(
+                f"Losing Trades: {len(trades_df[trades_df['profit_pct'] <= 0])}")
 
             if len(trades_df) > 0:
                 win_rate = len(
@@ -282,12 +282,12 @@ class ExponentialMovingAverageCrossover(Strategy):
                 print(f"Average Profit: {trades_df['profit_pct'].mean():.2f}%")
 
                 if len(trades_df[trades_df['profit_pct'] > 0]) > 0:
-                    print(f"Average Winner: {
-                          trades_df[trades_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
+                    print(
+                        f"Average Winner: {trades_df[trades_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
 
                 if len(trades_df[trades_df['profit_pct'] <= 0]) > 0:
-                    print(f"Average Loser: {
-                          trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
+                    print(
+                        f"Average Loser: {trades_df[trades_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
 
                     # Calculate profit factor if there are losing trades
                     profit_sum = trades_df[trades_df['profit_pct']
@@ -299,8 +299,7 @@ class ExponentialMovingAverageCrossover(Strategy):
                         print(f"Profit Factor: {profit_sum / loss_sum:.2f}")
 
                 print(
-                    f"Average Trade Duration: {
-                        trades_df['trade_duration'].mean():.2f} days")
+                    f"Average Trade Duration: {trades_df['trade_duration'].mean():.2f} days")
 
                 # Compare to buy & hold
                 if self.buy_hold_return is not None:
@@ -308,5 +307,4 @@ class ExponentialMovingAverageCrossover(Strategy):
                     strategy_return = trades_df['profit_pct'].sum()
                     print(f"Strategy Return: {strategy_return:.2f}%")
                     print(
-                        f"Outperformance: {
-                            strategy_return - self.buy_hold_return:.2f}%")
+                        f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%")

@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Market Check - September 09, 2026</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    <link rel="icon" href="/icons/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/icons/favicon.ico" type="image/x-icon">
+    
+    <!-- Dark mode initialization script -->
+    <script>
+        // Force dark mode by default
+        document.querySelector('html').classList.add('dark');
+    </script>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Base styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;  /* slate-900 */
+            color: #f8fafc;  /* slate-50 */
+        }
+    </style>
+    
+    
+<style>
+    /* Value colors */
+    .positive {
+        color: #4ade80 !important; /* green-400 */
+    }
+    
+    .negative {
+        color: #f87171 !important; /* red-400 */
+    }
+    
+    .neutral {
+        color: #60a5fa !important; /* blue-400 */
+    }
+    
+    .grid-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 16px;
+    }
+    
+    .value-card {
+        background-color: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .value-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .value-title {
+        font-size: 0.9rem;
+        color: #94a3b8;
+        margin-bottom: 8px;
+    }
+    
+    .value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    
+    .value-change {
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .value-change i {
+        margin-right: 5px;
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #334155;
+    }
+    
+    .section-header i {
+        margin-right: 12px;
+        color: #3b82f6;
+        font-size: 1.25rem;
+    }
+    
+    .section-header h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #f8fafc;
+        margin: 0;
+    }
+    
+    .meta-info {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        margin-top: 8px;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .data-table th {
+        background-color: #0f172a;
+        color: #94a3b8;
+        font-weight: 600;
+        text-align: left;
+        padding: 12px 16px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .data-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #334155;
+    }
+    
+    .data-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .data-table tr:hover td {
+        background-color: #1e293b;
+    }
+    
+    .card {
+        background-color: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .section {
+        margin-bottom: 32px;
+    }
+    
+    /* Responsive chart frames: height derives from width (aspect-ratio)
+           so charts never stretch into a fixed tall block and fit small screens smoothly. */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            aspect-ratio: 16 / 9;
+            min-height: 260px;
+            margin:  20px auto;
+            background: transparent;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .chart-container iframe {
+            width:  100%;
+            height:  100%;
+            border: none;
+            background: transparent;
+            display: block;
+            overflow: hidden;
+        }
+
+        /* The style-box heatmap is square (3x3), so size it to a compact
+           near-square frame instead of the wide 16:9 banner. */
+        .chart-container-heatmap {
+            position: relative;
+            width: 100%;
+            max-width: 420px;
+            aspect-ratio: 1;
+            min-height: 300px;
+            margin:  20px auto;
+            background: transparent;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .chart-container-heatmap iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            display: block;
+            overflow: hidden;
+        }
+
+        /* Market-index (TradingView/Plotly) charts: cap the height and let
+           wide charts scroll horizontally on small screens instead of a tall column. */
+        .market-chart-scroll {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top:  0.5rem;
+            padding-bottom: 4px;
+        }
+
+        .market-chart-scroll iframe {
+            display: block;
+            width: 100%;
+            min-width: 560px;
+            height: min(420px, 64vh);
+            border: none;
+            margin:  0;
+            padding: 0;
+        }
+    
+    .chart-title, .chart-legend {
+        display: none !important;
+    }
+    
+    .chart-description {
+        font-size: 0.92rem;
+        color: #64748b;
+        line-height: 1.5;
+        margin-top: 0.5rem;
+        margin-bottom: 0.1rem;
+        padding-left: 0;
+        border-left: none;
+        background: none;
+        border-radius: 0;
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        letter-spacing: 0.01em;
+    }
+</style>
+
+</head>
+<body class="flex flex-col min-h-screen bg-slate-900">
+    <!-- Header with bottom border and lighter background -->
+    <header class="px-6 py-4 border-b site-header border-slate-700 bg-slate-800">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center">
+                <div class="flex gap-4 items-center">
+                    <a href="/" class="flex gap-3 items-center text-2xl font-bold text-white">
+                        <img src="/icons/favicon-32x32.png" alt="Finance Dashboard Logo" class="w-10 h-10">
+                        Finance Dashboard
+                    </a>
+                </div>
+                <div class="flex gap-4 items-center">
+                    
+<a href="/" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border shadow-sm disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600 bg-slate-800 text-white hover:bg-slate-700">
+    <i class="fa-solid fa-arrow-left"></i>
+    Back to Dashboard
+</a>
+
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="flex-grow py-6">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            
+<!-- Header -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 shadow-md">
+    <h1 class="text-2xl font-bold mb-1 text-white">Daily Market Check</h1>
+    <p class="text-lg text-slate-300">September 09, 2026 | Generated at 07:51 PM</p>
+</div>
+
+<!-- Market Checklist Section -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm section">
+    <div class="section-header">
+        <i class="fa-solid fa-clipboard-check text-blue-400"></i>
+        <h2>Today's Market Overview</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Market Status -->
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-semibold mb-3 text-slate-200">Market Status</h3>
+            <ul class="space-y-2">
+                <li class="flex items-center text-slate-300">
+                    <i class="fas fa-clock mr-2 text-blue-400"></i>
+                    Market Hours: Status Unavailable
+                </li>
+                <li class="flex items-center text-slate-300">
+                    <i class="fas fa-calendar-alt mr-2 text-blue-400"></i>
+                    Trading Day: September 09, 2026
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Key Events -->
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700" style="max-height: 320px; overflow-y: auto;">
+            <h3 class="text-lg font-semibold mb-3 text-slate-200">Today's Events</h3>
+            <ul class="space-y-2">
+                
+                    
+                    <li class="flex flex-col text-slate-300 mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-blue-400">MGN</span>
+                            <span class="font-semibold">MGN</span>
+                            <span class="text-xs text-red-400">
+                                -92.66%
+                            </span>
+                        </div>
+                        
+                        <div class="ml-6 text-sm">
+                            <a href="https://www.globenewswire.com/news-release/2026/09/08/3358152/1087/en/investor-alert-pomerantz-law-firm-reminds-investors-with-losses-on-their-investment-in-megan-holdings-limited-of-class-action-lawsuit-and-upcoming-deadlines-mgn.html" target="_blank" class="text-blue-300 hover:underline">INVESTOR ALERT: Pomerantz Law Firm Reminds Investors with Losses on their Investment in Megan Holdings Limited of Class Action Lawsuit and Upcoming Deadlines – MGN</a>
+                            
+                                <span class="text-xs text-slate-500 ml-2">(2026-09-08)</span>
+                            
+                        </div>
+                        
+                    </li>
+                    
+                    <li class="flex flex-col text-slate-300 mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-blue-400">SUNE</span>
+                            <span class="font-semibold">SUNE</span>
+                            <span class="text-xs text-green-400">
+                                91.07%
+                            </span>
+                        </div>
+                        
+                        <div class="ml-6 text-sm">
+                            <a href="https://www.globenewswire.com/news-release/2026/06/17/3313144/0/en/Halper-Sadeh-LLC-is-Investigating-Whether-LPRO-NUVL-OGN-SUNE-are-Obtaining-Fair-Deals-for-their-Shareholders.html" target="_blank" class="text-blue-300 hover:underline">Halper Sadeh LLC is Investigating Whether LPRO, NUVL, OGN, SUNE are Obtaining Fair Deals for their Shareholders</a>
+                            
+                                <span class="text-xs text-slate-500 ml-2">(2026-06-17)</span>
+                            
+                        </div>
+                        
+                    </li>
+                    
+                    <li class="flex flex-col text-slate-300 mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-blue-400">FTFT</span>
+                            <span class="font-semibold">FTFT</span>
+                            <span class="text-xs text-green-400">
+                                80.92%
+                            </span>
+                        </div>
+                        
+                        <div class="ml-6 text-sm">
+                            <a href="https://www.globenewswire.com/news-release/2026/08/26/3351711/0/en/future-fintech-group-announces-reverse-stock-split.html" target="_blank" class="text-blue-300 hover:underline">Future Fintech Group Announces Reverse Stock Split</a>
+                            
+                                <span class="text-xs text-slate-500 ml-2">(2026-08-26)</span>
+                            
+                        </div>
+                        
+                    </li>
+                    
+                    <li class="flex flex-col text-slate-300 mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-blue-400">NMCOrw</span>
+                            <span class="font-semibold">NMCOrw</span>
+                            <span class="text-xs text-green-400">
+                                66.89%
+                            </span>
+                        </div>
+                        
+                    </li>
+                    
+                    <li class="flex flex-col text-slate-300 mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-blue-400">DAICW</span>
+                            <span class="font-semibold">DAICW</span>
+                            <span class="text-xs text-green-400">
+                                65.0%
+                            </span>
+                        </div>
+                        
+                    </li>
+                    
+                
+            </ul>
+        </div>
+        
+        <!-- Market Sentiment -->
+        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-semibold mb-3 text-slate-200">Market Sentiment</h3>
+            <ul class="space-y-2">
+                
+                
+                <li class="flex items-center justify-between text-slate-300">
+                    <span>Dollar Index:</span>
+                    <span class="font-semibold flex items-center gap-1">
+                        27.98
+                        
+                            <i class="fas fa-minus text-blue-400"></i>
+                        
+                        <span class="text-xs text-slate-400 ml-1">N/A</span>
+                    </span>
+                </li>
+                
+                
+                <li class="flex items-center justify-between text-slate-300">
+                    <span>Oil (WTI):</span>
+                    <span class="font-semibold flex items-center gap-1">
+                        149.45
+                        
+                            <i class="fas fa-minus text-blue-400"></i>
+                        
+                        <span class="text-xs text-slate-400 ml-1">N/A</span>
+                    </span>
+                </li>
+                
+                
+                <li class="flex items-center justify-between text-slate-300">
+                    <span>S&P 500:</span>
+                    <span class="font-semibold flex items-center gap-1">
+                        763.01
+                        
+                            <i class="fas fa-minus text-blue-400"></i>
+                        
+                        <span class="text-xs text-slate-400 ml-1">N/A</span>
+                    </span>
+                </li>
+                
+                
+                <li class="flex items-center justify-between text-slate-300">
+                    <span>10Y Treasury:</span>
+                    <span class="font-semibold flex items-center gap-1">
+                        4.78
+                        
+                            <i class="fas fa-arrow-up text-green-400"></i>
+                        
+                        <span class="text-xs text-slate-400 ml-1">+0.21%</span>
+                    </span>
+                </li>
+                
+                
+                <li class="flex items-center justify-between text-slate-300">
+                    <span>VIX:</span>
+                    <span class="font-semibold flex items-center gap-1">
+                        17.52
+                        
+                            <i class="fas fa-minus text-blue-400"></i>
+                        
+                        <span class="text-xs text-slate-400 ml-1">N/A</span>
+                    </span>
+                </li>
+                
+            </ul>
+            <div class="text-xs text-slate-500 mt-2">
+                Last updated: 07:51 PM
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Economic Indicators Section -->
+
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm section">
+    <div class="section-header">
+        <i class="fa-solid fa-chart-bar text-blue-400"></i>
+        <h2>Economic Indicators</h2>
+    </div>
+    
+    <div class="grid-cards">
+        
+            
+            <div class="value-card">
+                <div class="value-title">GDP</div>
+                <div class="text-2xl font-bold mb-2">1.5%</div>
+                
+                <!-- Historical Values -->
+                <div class="space-y-2 mb-3">
+                    
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>04/01/26:</span>
+                            <span class="font-medium">1.5%</span>
+                            <span class="text-red-400">
+                                -0.6%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>01/01/26:</span>
+                            <span class="font-medium">2.1%</span>
+                            <span class="text-green-400">
+                                +1.6%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>10/01/25:</span>
+                            <span class="font-medium">0.5%</span>
+                            <span class="text-red-400">
+                                -3.9%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>07/01/25:</span>
+                            <span class="font-medium">4.4%</span>
+                            <span class="text-green-400">
+                                +0.6%
+                            </span>
+                        </div>
+                        
+                    
+                </div>
+                
+                <!-- Change Rate with Trend Indicator -->
+                <div class="flex items-center gap-2">
+                    
+                        <i class="fas fa-angles-down text-red-400"></i>
+                        <span class="text-red-400">-0.6% (Accelerating)</span>
+                    
+                </div>
+                
+                <!-- Last Updated Date -->
+                <div class="text-xs text-slate-500 mt-2">
+                    As of 04/01/26
+                </div>
+                
+                <!-- Indicator Description -->
+                <div class="text-xs text-slate-400 mt-2">
+                    
+                        Gross Domestic Product measures the total value of goods and services produced
+                    
+                </div>
+            </div>
+            
+        
+            
+            <div class="value-card">
+                <div class="value-title">CPI</div>
+                <div class="text-2xl font-bold mb-2">332.8</div>
+                
+                <!-- Historical Values -->
+                <div class="space-y-2 mb-3">
+                    
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>07/01/26:</span>
+                            <span class="font-medium">332.8</span>
+                            <span class="text-blue-400">
+                                0.1%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>06/01/26:</span>
+                            <span class="font-medium">332.6</span>
+                            <span class="text-red-400">
+                                -0.4%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>05/01/26:</span>
+                            <span class="font-medium">334.0</span>
+                            <span class="text-blue-400">
+                                0.5%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>04/01/26:</span>
+                            <span class="font-medium">332.4</span>
+                            <span class="text-blue-400">
+                                0.6%
+                            </span>
+                        </div>
+                        
+                    
+                </div>
+                
+                <!-- Change Rate with Trend Indicator -->
+                <div class="flex items-center gap-2">
+                    
+                        <i class="fas fa-arrow-up text-green-400"></i>
+                        <span class="text-green-400">0.1%</span>
+                    
+                </div>
+                
+                <!-- Last Updated Date -->
+                <div class="text-xs text-slate-500 mt-2">
+                    As of 07/01/26
+                </div>
+                
+                <!-- Indicator Description -->
+                <div class="text-xs text-slate-400 mt-2">
+                    
+                        Consumer Price Index (CPI) measures the average change in prices over time
+                    
+                </div>
+            </div>
+            
+        
+            
+            <div class="value-card">
+                <div class="value-title">Inflation YoY</div>
+                <div class="text-2xl font-bold mb-2">3.5%</div>
+                
+                <!-- Historical Values -->
+                <div class="space-y-2 mb-3">
+                    
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>07/01/26:</span>
+                            <span class="font-medium">3.5%</span>
+                            <span class="text-red-400">
+                                -0.2%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>06/01/26:</span>
+                            <span class="font-medium">3.7%</span>
+                            <span class="text-red-400">
+                                -0.5%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>05/01/26:</span>
+                            <span class="font-medium">4.3%</span>
+                            <span class="text-green-400">
+                                +0.3%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>04/01/26:</span>
+                            <span class="font-medium">3.9%</span>
+                            <span class="text-red-400">
+                                -31874.6%
+                            </span>
+                        </div>
+                        
+                    
+                </div>
+                
+                <!-- Change Rate with Trend Indicator -->
+                <div class="flex items-center gap-2">
+                    
+                        <i class="fas fa-arrow-down text-red-400"></i>
+                        <span class="text-red-400">-0.2%</span>
+                    
+                </div>
+                
+                <!-- Last Updated Date -->
+                <div class="text-xs text-slate-500 mt-2">
+                    As of 07/01/26
+                </div>
+                
+                <!-- Indicator Description -->
+                <div class="text-xs text-slate-400 mt-2">
+                    
+                        Year-over-Year change in consumer prices compared to the same month last year
+                    
+                </div>
+            </div>
+            
+        
+            
+            <div class="value-card">
+                <div class="value-title">Unemployment</div>
+                <div class="text-2xl font-bold mb-2">4.1%</div>
+                
+                <!-- Historical Values -->
+                <div class="space-y-2 mb-3">
+                    
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>08/01/26:</span>
+                            <span class="font-medium">4.1%</span>
+                            <span class="text-blue-400">
+                                0.0%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>07/01/26:</span>
+                            <span class="font-medium">4.1%</span>
+                            <span class="text-red-400">
+                                -2.4%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>06/01/26:</span>
+                            <span class="font-medium">4.2%</span>
+                            <span class="text-red-400">
+                                -2.3%
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 flex justify-between">
+                            <span>05/01/26:</span>
+                            <span class="font-medium">4.3%</span>
+                            <span class="text-blue-400">
+                                0.0%
+                            </span>
+                        </div>
+                        
+                    
+                </div>
+                
+                <!-- Change Rate with Trend Indicator -->
+                <div class="flex items-center gap-2">
+                    
+                        <i class="fas fa-arrow-down text-red-400"></i>
+                        <span class="text-red-400">0.0%</span>
+                    
+                </div>
+                
+                <!-- Last Updated Date -->
+                <div class="text-xs text-slate-500 mt-2">
+                    As of 08/01/26
+                </div>
+                
+                <!-- Indicator Description -->
+                <div class="text-xs text-slate-400 mt-2">
+                    
+                        Percentage of the labor force that is actively seeking employment
+                    
+                </div>
+            </div>
+            
+        
+            
+        
+    </div>
+    
+    <div class="meta-info">Last updated: 2026-09-09</div>
+</div>
+
+<!-- Economic Charts Section -->
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm section">
+    <div class="section-header">
+        <i class="fa-solid fa-chart-line text-blue-400"></i>
+        <h2>Economic Trends</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+        
+        <div class="bg-slate-900 p-4 rounded-lg">
+            <div class="chart-container-heatmap">
+                <iframe src="charts/style_box_heatmap.html" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Rows: Large, Mid, Small cap; Columns: Value, Core, Growth</li>
+                    <li>Cell color: green (positive), red (negative), intensity by magnitude</li>
+                    <li>Value: 1-day % change for each ETF</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- GDP Chart -->
+        
+        <div class="bg-slate-900 p-4 rounded-lg">
+            <div class="chart-container">
+                <iframe src="charts/gdp_chart.html" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Bar color: green (positive growth), red (negative growth)</li>
+                    <li>Blue shadow: healthy range (2-3%)</li>
+                    <li>Green shadow: optimal range (3.5-4.5%)</li>
+                </ul>
+            </div>
+        </div>
+        
+        
+        <!-- Inflation Chart -->
+        
+        <div class="bg-slate-900 p-4 rounded-lg">
+            <div class="chart-container">
+                <iframe src="charts/inflation_chart.html" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Bar color: green (target 2.0-2.5%), yellow (below 2.0%), red (above 2.5%)</li>
+                    <li>Green shadow: Fed target range (2.0-2.5%)</li>
+                </ul>
+            </div>
+        </div>
+        
+        
+        <!-- Unemployment Chart -->
+        
+        <div class="bg-slate-900 p-4 rounded-lg">
+            <div class="chart-container">
+                <iframe src="charts/unemployment_chart.html" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Bar color: green (≤4.0%), yellow (4.0-4.4%), red (>4.4%)</li>
+                    <li>Green shadow: optimal range (3.5-4.0%)</li>
+                </ul>
+            </div>
+        </div>
+        
+        
+        <!-- Bond Chart -->
+        
+        <div class="bg-slate-900 p-4 rounded-lg">
+            <div class="chart-container">
+                <iframe src="charts/bond_chart.html" frameborder="0"></iframe>
+            </div>
+            <div class="chart-description">
+                <ul style="margin: 0; padding-left: 1.2em; list-style-type: disc;">
+                    <li>Lines: blue (10Y yield), red (2Y yield)</li>
+                    <li>Red shadow: yield curve inversion (2Y > 10Y), a recession signal</li>
+                </ul>
+                <div style="margin-top: 0.5em; color: #94a3b8; font-size: 0.95em;">
+                    <strong>What is yield curve inversion?</strong> Normally, long-term bonds (10Y) yield more than short-term bonds (2Y). When the 2Y yield rises above the 10Y yield (an inversion), it signals that investors expect weaker growth or recession ahead. Historically, such inversions have often preceded recessions in the U.S. economy.
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+
+<!-- Market Indices Section -->
+
+<div class="bg-slate-800 rounded-xl p-6 mb-6 border border-slate-700 shadow-sm section">
+    <div class="section-header">
+        <i class="fa-solid fa-chart-line text-blue-400"></i>
+        <h2>Market Indices</h2>
+    </div>
+    
+    <div class="mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">Large Cap</div>
+        <div class="grid grid-cols-1 gap-4">
+            
+            
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    S&P 500
+                    <span class="ml-1" title="SPDR S&P 500 ETF">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">763.01</div>
+                <div class="flex items-center neutral mb-1">
+                    
+                        <i class="fas fa-minus mr-1"></i>
+                    
+                    <span class="font-medium">N/A</span>
+                </div>
+                
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="charts/sandp_500_chart.html" frameborder="0"></iframe>
+                                </div>
+                
+            </div>
+            
+            
+            
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    Dow Jones
+                    <span class="ml-1" title="SPDR Dow Jones Industrial Avg">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">524.77</div>
+                <div class="flex items-center neutral mb-1">
+                    
+                        <i class="fas fa-minus mr-1"></i>
+                    
+                    <span class="font-medium">N/A</span>
+                </div>
+                
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="charts/dow_jones_chart.html" frameborder="0"></iframe>
+                                </div>
+                
+            </div>
+            
+            
+            
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    Nasdaq-100
+                    <span class="ml-1" title="Invesco QQQ ETF">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">716.20</div>
+                <div class="flex items-center neutral mb-1">
+                    
+                        <i class="fas fa-minus mr-1"></i>
+                    
+                    <span class="font-medium">N/A</span>
+                </div>
+                
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="charts/nasdaq-100_chart.html" frameborder="0"></iframe>
+                                </div>
+                
+            </div>
+            
+            
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">Mid Cap</div>
+        <div class="grid grid-cols-1 gap-4">
+            
+            
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    S&P 400 MidCap
+                    <span class="ml-1" title="SPDR S&P MidCap 400 ETF">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">680.23</div>
+                <div class="flex items-center neutral mb-1">
+                    
+                        <i class="fas fa-minus mr-1"></i>
+                    
+                    <span class="font-medium">N/A</span>
+                </div>
+                
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="charts/sandp_400_midcap_chart.html" frameborder="0"></iframe>
+                                </div>
+                
+            </div>
+            
+            
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">Small Cap</div>
+        <div class="grid grid-cols-1 gap-4">
+            
+            
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    Russell 2000
+                    <span class="ml-1" title="iShares Russell 2000 ETF">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">290.69</div>
+                <div class="flex items-center neutral mb-1">
+                    
+                        <i class="fas fa-minus mr-1"></i>
+                    
+                    <span class="font-medium">N/A</span>
+                </div>
+                
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="charts/russell_2000_chart.html" frameborder="0"></iframe>
+                                </div>
+                
+            </div>
+            
+            
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">Growth</div>
+        <div class="grid grid-cols-1 gap-4">
+            
+            
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    S&P 500 Growth
+                    <span class="ml-1" title="iShares S&P 500 Growth ETF">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">139.38</div>
+                <div class="flex items-center neutral mb-1">
+                    
+                        <i class="fas fa-minus mr-1"></i>
+                    
+                    <span class="font-medium">N/A</span>
+                </div>
+                
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="charts/sandp_500_growth_chart.html" frameborder="0"></iframe>
+                                </div>
+                
+            </div>
+            
+            
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">Value</div>
+        <div class="grid grid-cols-1 gap-4">
+            
+            
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    S&P 500 Value
+                    <span class="ml-1" title="iShares S&P 500 Value ETF">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">234.32</div>
+                <div class="flex items-center neutral mb-1">
+                    
+                        <i class="fas fa-minus mr-1"></i>
+                    
+                    <span class="font-medium">N/A</span>
+                </div>
+                
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="charts/sandp_500_value_chart.html" frameborder="0"></iframe>
+                                </div>
+                
+            </div>
+            
+            
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">FX</div>
+        <div class="grid grid-cols-1 gap-4">
+            
+            
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    Dollar Index
+                    <span class="ml-1" title="US Dollar Index ETF (UUP)">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">27.98</div>
+                <div class="flex items-center neutral mb-1">
+                    
+                        <i class="fas fa-minus mr-1"></i>
+                    
+                    <span class="font-medium">N/A</span>
+                </div>
+                
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="charts/dollar_index_chart.html" frameborder="0"></iframe>
+                                </div>
+                
+            </div>
+            
+            
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">Commodities</div>
+        <div class="grid grid-cols-1 gap-4">
+            
+            
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    Oil (WTI)
+                    <span class="ml-1" title="US Oil Fund ETF (USO)">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">149.45</div>
+                <div class="flex items-center neutral mb-1">
+                    
+                        <i class="fas fa-minus mr-1"></i>
+                    
+                    <span class="font-medium">N/A</span>
+                </div>
+                
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="charts/oil_(wti)_chart.html" frameborder="0"></iframe>
+                                </div>
+                
+            </div>
+            
+            
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">Volatility</div>
+        <div class="grid grid-cols-1 gap-4">
+            
+            
+            <div class="bg-slate-900 p-2 rounded-lg border border-slate-700 mb-4">
+                <div class="text-sm text-slate-400 mb-1 flex items-center gap-1">
+                    VIX
+                    <span class="ml-1" title="Short-term VIX futures ETF">
+                        <i class="fa-regular fa-circle-question text-xs text-blue-400"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold mb-1 text-white">17.52</div>
+                <div class="flex items-center neutral mb-1">
+                    
+                        <i class="fas fa-minus mr-1"></i>
+                    
+                    <span class="font-medium">N/A</span>
+                </div>
+                
+                <div class="market-chart-scroll mt-2">
+                                    <iframe src="charts/vix_chart.html" frameborder="0"></iframe>
+                                </div>
+                
+            </div>
+            
+            
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <div class="text-lg font-semibold text-blue-300 mb-2">Rates</div>
+        <div class="grid grid-cols-1 gap-4">
+            
+        </div>
+    </div>
+    
+</div>
+
+
+        </div>
+    </main>
+    
+    <!-- Footer with top border and lighter background -->
+    <footer class="px-6 py-4 border-t site-footer border-slate-700 bg-slate-800">
+        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col gap-4 justify-between items-center md:flex-row">
+                <div class="text-sm text-slate-400">
+                    &copy;  Finance Dashboard. All rights reserved.
+                    <span class="text-xs text-slate-500 ml-2">v1.0.0</span>
+                </div>
+
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Preline UI JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.js"></script>
+    
+    
+<!-- No Clean Results logic here; it belongs in the report widget. -->
+
+</body>
+</html> 

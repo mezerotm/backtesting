@@ -20,10 +20,10 @@ Usage:
 """
 
 import argparse
-import os
-from datetime import datetime
-from workflows.financial.financial_data import FinancialDataFetcher
-from workflows.financial.financial_report_generator import generate_financial_report
+import logging
+from server.services.report_workflow_service import generate_financial_report as _service_generate
+
+logger = logging.getLogger(__name__)
 
 def parse_args():
     """Parse command line arguments."""
@@ -39,40 +39,13 @@ def parse_args():
     return parser.parse_args()
 
 def create_financial_report(symbol: str, args) -> str:
-    """Generate the financial analysis report for a symbol."""
-    # Create output directory structure
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    output_base_dir = os.path.join(script_dir, args.output_dir)
-    
-    # Create daily directory with today's date
-    today = datetime.now().strftime("%Y%m%d")
-    report_dir_name = f"financial_{symbol}_{today}"
-    report_dir = os.path.join(output_base_dir, report_dir_name)
-    
-    # Check if report already exists and force_refresh is False
-    if os.path.exists(report_dir) and not args.force_refresh:
-        print(f"Report for {symbol} on {today} already exists and force_refresh is False. Using existing report.")
-        return os.path.join(report_dir, "index.html")
-    
-    # Create directories
-    os.makedirs(report_dir, exist_ok=True)
-    
-    # Create data fetcher
-    data_fetcher = FinancialDataFetcher(force_refresh=args.force_refresh)
-    
-    # Fetch financial data
-    print(f"Fetching financial data for {symbol}...")
-    data = data_fetcher.fetch_financial_statements(symbol, 4)  # Get 4 years of data
-    metrics = data_fetcher.fetch_key_metrics(symbol)
-    
-    # Generate report
-    print(f"Generating financial report for {symbol}...")
-    report_path = generate_financial_report(symbol, data, metrics)
-    
-    if not report_path:
-        raise Exception(f"Failed to generate report for {symbol}")
-    
-    return report_path
+    """Generate the financial analysis report for a symbol — delegates to the report workflow service."""
+    logger.info("Financial report generation requested via CLI for %s", symbol)
+    return _service_generate(
+        symbol=symbol,
+        output_dir=args.output_dir,
+        force_refresh=args.force_refresh,
+    )
 
 def main():
     """Main function to run the financial analysis report."""

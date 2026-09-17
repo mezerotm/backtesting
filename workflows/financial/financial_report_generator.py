@@ -174,8 +174,7 @@ def generate_actual_calculations(
         'FCF Margin': f'({format_large_number(operating_cash_flow)} - {format_large_number(capex)}) / {format_large_number(revenue)}',
         'Operating Cash Ratio': f'{format_large_number(operating_cash_flow)} / {format_large_number(current_liabilities)}',
         'Quick Ratio': f'({format_large_number(current_assets)} - {format_large_number(inventory)}) / {format_large_number(current_liabilities)}',
-        'Current Ratio': f'{format_large_number(current_assets)} / {format_large_number(current_liabilities)}'
-    }
+        'Current Ratio': f'{format_large_number(current_assets)} / {format_large_number(current_liabilities)}'}
 
 
 def calculate_period_metrics(data: pd.Series, period: str) -> Dict:
@@ -416,8 +415,7 @@ def generate_financial_report(
         print(f"[DEBUG] Creating report directory: {report_dir}")
         os.makedirs(report_dir, exist_ok=True)
         print(
-            f"[DEBUG] Report directory created: {
-                os.path.exists(report_dir)}")
+            f"[DEBUG] Report directory created: {os.path.exists(report_dir)}")
 
         # Get company info including all relevant fields
         company_info = {

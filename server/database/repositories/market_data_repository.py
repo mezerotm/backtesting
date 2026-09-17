@@ -100,11 +100,16 @@ class MarketDataRepository:
             self.logger.error(f"Error upserting market data: {e}")
             return None
 
-    async def get_market_data_for_symbols(
+    def get_market_data_for_symbols(
             self, symbols: List[str]) -> List[MarketData]:
         """Get market data for multiple symbols."""
         try:
-            results = await self.pb_client.get_market_data_for_symbols(symbols)
+            if not symbols:
+                return []
+            # Build filter: symbol in ('SYM1','SYM2',...)
+            quoted = "','".join(s.upper() for s in symbols)
+            results = self.pb_client.get_records(
+                "market_data", f"symbol IN ('{quoted}')")
             return [MarketData(**data) for data in results] if results else []
         except Exception as e:
             self.logger.error(f"Error getting market data for symbols: {e}")

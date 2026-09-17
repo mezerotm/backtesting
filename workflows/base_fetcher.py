@@ -26,9 +26,7 @@ class BaseFetcher:
         print(f"[DEBUG] Initializing cache directory: {self.cache_dir}")
         os.makedirs(self.cache_dir, exist_ok=True)
         print(
-            f"[DEBUG] Cache directory created: {
-                os.path.exists(
-                    self.cache_dir)}")
+            f"[DEBUG] Cache directory created: {os.path.exists(self.cache_dir)}")
         self.force_refresh = force_refresh
 
     def _get_cache_path(self, key: str) -> str:

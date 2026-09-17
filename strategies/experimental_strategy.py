@@ -176,8 +176,8 @@ class CombinedStrategy(Strategy):
         if not self.position:
             # Buy when score is above threshold
             if score >= self.buy_threshold:
-                print(f"BUY SIGNAL at index {
-                      len(self.data) - 1}, price: {self.data.Close[-1]}, score: {score:.2f}")
+                print(
+                    f"BUY SIGNAL at index {len(self.data) - 1}, price: {self.data.Close[-1]}, score: {score:.2f}")
                 self.buy()
 
                 # Track entry for reference
@@ -199,8 +199,8 @@ class CombinedStrategy(Strategy):
         else:
             # Sell when score is below threshold
             if score <= self.sell_threshold:
-                print(f"SELL SIGNAL at index {
-                      len(self.data) - 1}, price: {self.data.Close[-1]}, score: {score:.2f}")
+                print(
+                    f"SELL SIGNAL at index {len(self.data) - 1}, price: {self.data.Close[-1]}, score: {score:.2f}")
 
                 # Calculate P/L before closing
                 exit_price = self.data.Close[-1]
@@ -269,26 +269,25 @@ class CombinedStrategy(Strategy):
                 # Print trade statistics
                 print("\n=== Trade Statistics ===")
                 print(f"Total Orders: {len(orders_df)}")
-                print(f"Winning Orders: {
-                      len(orders_df[orders_df['profit_pct'] > 0])}")
-                print(f"Losing Orders: {
-                      len(orders_df[orders_df['profit_pct'] <= 0])}")
+                print(
+                    f"Winning Orders: {len(orders_df[orders_df['profit_pct'] > 0])}")
+                print(
+                    f"Losing Orders: {len(orders_df[orders_df['profit_pct'] <= 0])}")
 
                 if len(orders_df) > 0:
                     win_rate = len(
                         orders_df[orders_df['profit_pct'] > 0]) / len(orders_df) * 100
                     print(f"Win Rate: {win_rate:.2f}%")
                     print(
-                        f"Average Profit: {
-                            orders_df['profit_pct'].mean():.2f}%")
+                        f"Average Profit: {orders_df['profit_pct'].mean():.2f}%")
 
                     if len(orders_df[orders_df['profit_pct'] > 0]) > 0:
-                        print(f"Average Winner: {
-                              orders_df[orders_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
+                        print(
+                            f"Average Winner: {orders_df[orders_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
 
                     if len(orders_df[orders_df['profit_pct'] <= 0]) > 0:
-                        print(f"Average Loser: {
-                              orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
+                        print(
+                            f"Average Loser: {orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
 
                         # Calculate profit factor if there are losing orders
                         profit_sum = orders_df[orders_df['profit_pct']
@@ -298,25 +297,19 @@ class CombinedStrategy(Strategy):
 
                         if loss_sum > 0:
                             print(
-                                f"Profit Factor: {
-                                    profit_sum /
-                                    loss_sum:.2f}")
+                                f"Profit Factor: {profit_sum /loss_sum:.2f}")
 
                     print(
-                        f"Average Order Duration: {
-                            orders_df['order_duration'].mean():.2f} days")
+                        f"Average Order Duration: {orders_df['order_duration'].mean():.2f} days")
 
                     # Compare to buy & hold
                     if self.buy_hold_return is not None:
                         print(
-                            f"\nBuy & Hold Return: {
-                                self.buy_hold_return:.2f}%")
+                            f"\nBuy & Hold Return: {self.buy_hold_return:.2f}%")
                         strategy_return = orders_df['profit_pct'].sum()
                         print(f"Strategy Return: {strategy_return:.2f}%")
                         print(
-                            f"Outperformance: {
-                                strategy_return - self.buy_hold_return:.2f}%")
+                            f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%")
 
                     print(
-                        f"Max Drawdown Duration: {
-                            self.max_dd_duration} days")
+                        f"Max Drawdown Duration: {self.max_dd_duration} days")

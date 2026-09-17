@@ -32,18 +32,26 @@ class Position(BaseModel):
 
     def to_frontend_dict(self) -> Dict[str, Any]:
         """Convert model to frontend-friendly dictionary."""
+        qty = float(self.quantity)
+        bp = float(self.buy_price)
+        cp = float(self.current_price) if self.current_price else 0
+        mv = qty * cp if cp > 0 else (float(self.market_value) if self.market_value else qty * bp)
+        tr = float(self.total_return) if self.total_return else (mv - qty * bp) if cp > 0 else 0
+        trp = float(self.total_return_percent) if self.total_return_percent else (tr / (qty * bp) * 100) if qty * bp > 0 else 0
+
         return {
             "id": self.id,
             "symbol": self.symbol,
-            "amount": float(self.quantity),
-            "avg_buy_price": float(self.buy_price),
-            "market_value": float(self.market_value) if self.market_value else None,
-            "percent_of_portfolio": 0,  # Will be calculated by frontend
-            "todays_return": 0,  # Will be calculated by frontend
-            "total_return": float(self.total_return) if self.total_return else 0,
-            "total_return_percent": float(self.total_return_percent) if self.total_return_percent else 0,
-            "beta": 0,  # Will be calculated by frontend
-            "delta": 0,  # Will be calculated by frontend
+            "amount": qty,
+            "avg_buy_price": bp,
+            "current_price": cp,
+            "market_value": round(mv, 2),
+            "percent_of_portfolio": 0,
+            "todays_return": 0,
+            "total_return": round(tr, 2),
+            "total_return_percent": round(trp, 2),
+            "beta": 0,
+            "delta": 0,
             "is_crypto": self.is_crypto,
             "notes": self.notes,
             "source": self.source,

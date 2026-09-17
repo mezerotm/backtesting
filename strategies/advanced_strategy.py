@@ -104,8 +104,8 @@ class MACDRSIStrategy(Strategy):
             price_above_ema = self.data.Close[-1] > self.ema[-1]
 
             if macd_crossover and rsi_good and price_above_ema:
-                print(f"BUY SIGNAL at index {
-                      len(self.data) - 1}, price: {self.data.Close[-1]}")
+                print(
+                    f"BUY SIGNAL at index {len(self.data) - 1}, price: {self.data.Close[-1]}")
                 self.buy()
 
                 # Track entry for reference
@@ -123,8 +123,8 @@ class MACDRSIStrategy(Strategy):
             price_below_ema = self.data.Close[-1] < self.ema[-1]
 
             if macd_crossunder or rsi_overbought or price_below_ema:
-                print(f"SELL SIGNAL at index {
-                      len(self.data) - 1}, price: {self.data.Close[-1]}")
+                print(
+                    f"SELL SIGNAL at index {len(self.data) - 1}, price: {self.data.Close[-1]}")
 
                 # Calculate P/L before closing
                 exit_price = self.data.Close[-1]
@@ -176,10 +176,10 @@ class MACDRSIStrategy(Strategy):
             # Print trade statistics
             print("\n=== Trade Statistics ===")
             print(f"Total Orders: {len(orders_df)}")
-            print(f"Winning Orders: {
-                  len(orders_df[orders_df['profit_pct'] > 0])}")
-            print(f"Losing Orders: {
-                  len(orders_df[orders_df['profit_pct'] <= 0])}")
+            print(
+                f"Winning Orders: {len(orders_df[orders_df['profit_pct'] > 0])}")
+            print(
+                f"Losing Orders: {len(orders_df[orders_df['profit_pct'] <= 0])}")
 
             if len(orders_df) > 0:
                 win_rate = len(
@@ -188,12 +188,12 @@ class MACDRSIStrategy(Strategy):
                 print(f"Average Profit: {orders_df['profit_pct'].mean():.2f}%")
 
                 if len(orders_df[orders_df['profit_pct'] > 0]) > 0:
-                    print(f"Average Winner: {
-                          orders_df[orders_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
+                    print(
+                        f"Average Winner: {orders_df[orders_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
 
                 if len(orders_df[orders_df['profit_pct'] <= 0]) > 0:
-                    print(f"Average Loser: {
-                          orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
+                    print(
+                        f"Average Loser: {orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
 
                     # Calculate profit factor if there are losing orders
                     profit_sum = orders_df[orders_df['profit_pct']
@@ -205,8 +205,7 @@ class MACDRSIStrategy(Strategy):
                         print(f"Profit Factor: {profit_sum / loss_sum:.2f}")
 
                 print(
-                    f"Average Order Duration: {
-                        orders_df['trade_duration'].mean():.2f} days")
+                    f"Average Order Duration: {orders_df['trade_duration'].mean():.2f} days")
 
                 # Compare to buy & hold
                 if self.buy_hold_return is not None:
@@ -214,8 +213,7 @@ class MACDRSIStrategy(Strategy):
                     strategy_return = orders_df['profit_pct'].sum()
                     print(f"Strategy Return: {strategy_return:.2f}%")
                     print(
-                        f"Outperformance: {
-                            strategy_return - self.buy_hold_return:.2f}%")
+                        f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%")
 
 
 class BollingerRSIStrategy(Strategy):
@@ -311,8 +309,8 @@ class BollingerRSIStrategy(Strategy):
             rsi_oversold = self.rsi[-1] <= self.rsi_oversold
 
             if price_at_lower_band and rsi_oversold:
-                print(f"BUY SIGNAL at index {
-                      len(self.data) - 1}, price: {self.data.Close[-1]}")
+                print(
+                    f"BUY SIGNAL at index {len(self.data) - 1}, price: {self.data.Close[-1]}")
                 self.buy()
 
                 # Track entry for reference
@@ -329,8 +327,8 @@ class BollingerRSIStrategy(Strategy):
             rsi_overbought = self.rsi[-1] >= self.rsi_overbought
 
             if price_at_middle_band or price_at_upper_band or rsi_overbought:
-                print(f"SELL SIGNAL at index {
-                      len(self.data) - 1}, price: {self.data.Close[-1]}")
+                print(
+                    f"SELL SIGNAL at index {len(self.data) - 1}, price: {self.data.Close[-1]}")
 
                 # Calculate P/L before closing
                 exit_price = self.data.Close[-1]
@@ -382,10 +380,10 @@ class BollingerRSIStrategy(Strategy):
             # Print trade statistics
             print("\n=== Trade Statistics ===")
             print(f"Total Orders: {len(orders_df)}")
-            print(f"Winning Orders: {
-                  len(orders_df[orders_df['profit_pct'] > 0])}")
-            print(f"Losing Orders: {
-                  len(orders_df[orders_df['profit_pct'] <= 0])}")
+            print(
+                f"Winning Orders: {len(orders_df[orders_df['profit_pct'] > 0])}")
+            print(
+                f"Losing Orders: {len(orders_df[orders_df['profit_pct'] <= 0])}")
 
             if len(orders_df) > 0:
                 win_rate = len(
@@ -394,12 +392,12 @@ class BollingerRSIStrategy(Strategy):
                 print(f"Average Profit: {orders_df['profit_pct'].mean():.2f}%")
 
                 if len(orders_df[orders_df['profit_pct'] > 0]) > 0:
-                    print(f"Average Winner: {
-                          orders_df[orders_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
+                    print(
+                        f"Average Winner: {orders_df[orders_df['profit_pct'] > 0]['profit_pct'].mean():.2f}%")
 
                 if len(orders_df[orders_df['profit_pct'] <= 0]) > 0:
-                    print(f"Average Loser: {
-                          orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
+                    print(
+                        f"Average Loser: {orders_df[orders_df['profit_pct'] <= 0]['profit_pct'].mean():.2f}%")
 
                     # Calculate profit factor if there are losing orders
                     profit_sum = orders_df[orders_df['profit_pct']
@@ -411,8 +409,7 @@ class BollingerRSIStrategy(Strategy):
                         print(f"Profit Factor: {profit_sum / loss_sum:.2f}")
 
                 print(
-                    f"Average Order Duration: {
-                        orders_df['trade_duration'].mean():.2f} days")
+                    f"Average Order Duration: {orders_df['trade_duration'].mean():.2f} days")
 
                 # Compare to buy & hold
                 if self.buy_hold_return is not None:
@@ -420,5 +417,4 @@ class BollingerRSIStrategy(Strategy):
                     strategy_return = orders_df['profit_pct'].sum()
                     print(f"Strategy Return: {strategy_return:.2f}%")
                     print(
-                        f"Outperformance: {
-                            strategy_return - self.buy_hold_return:.2f}%")
+                        f"Outperformance: {strategy_return - self.buy_hold_return:.2f}%")

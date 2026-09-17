@@ -2,12 +2,13 @@
 Portfolio service for managing portfolio data and operations.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from decimal import Decimal
 from datetime import datetime
 from server.services.base_service import BaseService
 from .market_data_service import MarketDataService
 from server.database.repositories.portfolio_repository import PortfolioRepository
+from server.database.repositories.market_data_repository import MarketDataRepository
 from server.database.models.portfolio import PositionCreate, PositionUpdate
 from server.database.models.portfolio import Position
 from server.database.models.portfolio import PortfolioSettings
@@ -20,6 +21,7 @@ class PortfolioService(BaseService):
         super().__init__()
         self.market_data_service = MarketDataService()
         self.portfolio_repository = PortfolioRepository()
+        self.market_data_repository = MarketDataRepository()
 
     async def get_portfolio_summary(self, user_id: str) -> Dict[str, Any]:
         """Get portfolio summary including positions."""
@@ -55,6 +57,19 @@ class PortfolioService(BaseService):
                     updated_at=datetime.fromisoformat(pos["updated_at"]) if pos["updated_at"] else None
                 )
                 frontend_positions.append(position_obj.to_frontend_dict())
+
+            # Calculate todays_return from market data change * quantity
+            symbols = [p["symbol"] for p in frontend_positions if p["symbol"] not in ("CASH", "BTC")]
+            if symbols:
+                try:
+                    market_data_list = self.market_data_repository.get_market_data_for_symbols(symbols)
+                    md_by_symbol = {md.symbol: md for md in market_data_list}
+                    for pos in frontend_positions:
+                        md = md_by_symbol.get(pos["symbol"])
+                        if md and md.change is not None:
+                            pos["todays_return"] = float(md.change) * pos["amount"]
+                except Exception as md_err:
+                    self.logger.warning(f"Failed to fetch market data for todays_return: {md_err}")
 
             return {
                 "success": True,
@@ -179,11 +194,9 @@ class PortfolioService(BaseService):
                             str(settings_data[field]))
                     except (TypeError, ValueError) as e:
                         self.logger.error(
-                            f"Error converting {field} to Decimal: {
-                                str(e)}")
+                            f"Error converting {field} to Decimal: {str(e)}")
                         return self.handle_error(
-                            ValueError(
-                                f"Invalid value for {field}. Must be a valid number."),
+                            ValueError(f"Invalid value for {field}. Must be a valid number."),
                             "update_portfolio_settings")
 
             # Create PortfolioSettings instance
@@ -218,8 +231,7 @@ class PortfolioService(BaseService):
                         600))
             except Exception as e:
                 self.logger.error(
-                    f"Error creating PortfolioSettings: {
-                        str(e)}")
+                    f"Error creating PortfolioSettings: {str(e)}")
                 return self.handle_error(
                     ValueError(f"Invalid settings data: {str(e)}"),
                     "update_portfolio_settings"

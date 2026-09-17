@@ -59,8 +59,7 @@ async def receive_frontend_logs(
             f"POST /frontend exception - User: {user_id}, Error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to process logs: {
-                str(e)}")
+            detail=f"Failed to process logs:  str(e)")
 
 
 @router.get("/stats")
@@ -89,8 +88,7 @@ async def get_log_stats(user_id: str = Depends(
             f"GET /stats exception - User: {user_id}, Error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get log stats: {
-                str(e)}")
+            detail=f"Failed to get log stats:  str(e)")
 
 
 @router.get("/recent")
@@ -119,5 +117,4 @@ async def get_recent_logs(
             f"GET /recent exception - User: {user_id}, Error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get recent logs: {
-                str(e)}")
+            detail=f"Failed to get recent logs:  str(e)")

@@ -60,8 +60,7 @@ class MarketDataFetcher(BaseFetcher):
                 previous = hist['Close'][-2]
                 change = ((current - previous) / previous) * \
                     100 if previous != 0 else 0
-                return f"{current:.2f}", f"{
-                    change:+.2f}%", 'up' if change > 0 else 'down' if change < 0 else 'neutral'
+                return f"{current:.2f}", f"{change:+.2f}%", 'up' if change > 0 else 'down' if change < 0 else 'neutral'
         except Exception as e:
             logger.error(f"Yahoo Finance error for {ticker}: {e}")
         return 'N/A', 'N/A', 'neutral'
@@ -85,8 +84,8 @@ class MarketDataFetcher(BaseFetcher):
                 to=date,
                 adjusted=True
             )
-            logger.debug(f"get_polygon_agg: aggs for {
-                         ticker} on {date}: {aggs}")
+            logger.debug(
+                f"get_polygon_agg: aggs for {ticker} on {date}: {aggs}")
             return aggs[0] if aggs else None
         except Exception as e:
             error_str = str(e)
@@ -94,8 +93,8 @@ class MarketDataFetcher(BaseFetcher):
             # Handle after-hours authorization errors gracefully
             if "NOT_AUTHORIZED" in error_str and (
                     is_after_hours or is_weekend):
-                logger.info(f"After-hours data not available for {ticker} on {
-                            date} - this is expected outside market hours")
+                logger.info(
+                    f"After-hours data not available for {ticker} on {date} - this is expected outside market hours")
 
                 # Try to get the most recent available data
                 if not date:
@@ -129,8 +128,8 @@ class MarketDataFetcher(BaseFetcher):
 
                 return None
             else:
-                logger.error(f"get_polygon_agg: Exception for {
-                             ticker} on {date}: {e}")
+                logger.error(
+                    f"get_polygon_agg: Exception for {ticker} on {date}: {e}")
                 return None
 
     def fetch_market_indices(self) -> Dict:
@@ -139,9 +138,7 @@ class MarketDataFetcher(BaseFetcher):
         et_time = datetime.now(pytz.timezone('US/Eastern'))
         is_market_hours = 9 <= et_time.hour < 16
         cache_key = (
-            f"market_indices_{
-                now.strftime('%Y-%m-%d_%H_%M')}" if is_market_hours else f"market_indices_{
-                now.strftime('%Y-%m-%d_%H')}")
+            f"market_indices_{now.strftime('%Y-%m-%d_%H_%M')}" if is_market_hours else f"market_indices_{now.strftime('%Y-%m-%d_%H')}")
         if not self.force_refresh:
             max_age = 5 / 60 if is_market_hours else 1
             cached_data = self._load_from_cache(
@@ -205,13 +202,13 @@ class MarketDataFetcher(BaseFetcher):
                         logger.info(
                             f"Index: {name} | Attempted previous dates: {attempted_prev_dates}")
                     # Logging for debugging
-                    logger.info(f"Index: {name} | Current date: {
-                                current_date}, Previous date: {prev_date}")
+                    logger.info(
+                        f"Index: {name} | Current date: {current_date}, Previous date: {prev_date}")
                     if current_agg and prev_agg and current_date != prev_date:
                         current = current_agg.close
                         previous = prev_agg.close
-                        logger.info(f"Index: {name} | Current value: {
-                                    current}, Previous value: {previous}")
+                        logger.info(
+                            f"Index: {name} | Current value: {current}, Previous value: {previous}")
                         change_val = (
                             (current - previous) / previous) * 100 if previous != 0 else 0
                         value = f"{current:.2f}"
@@ -222,8 +219,8 @@ class MarketDataFetcher(BaseFetcher):
                         value = f"{current:.2f}"
                         change = 'N/A'
                         direction = 'neutral'
-                        logger.warning(f"Index: {
-                                       name} | Only one valid trading day found or duplicate dates. Change set to N/A.")
+                        logger.warning(
+                            f"Index: {name} | Only one valid trading day found or duplicate dates. Change set to N/A.")
                     else:
                         value = 'N/A'
                         change = 'N/A'
@@ -512,9 +509,7 @@ class MarketDataFetcher(BaseFetcher):
                                 logger.info(
                                     f"Inflation Raw Values - Current: {current}, Year Ago: {year_ago}")
                                 logger.info(
-                                    f"Inflation Dates - Current: {
-                                        data['observations'][0]['date']}, Year Ago: {
-                                        data['observations'][12]['date']}")
+                                    f"Inflation Dates - Current: {data['observations'][0]['date']}, Year Ago: {data['observations'][12]['date']}")
 
                                 # Validate values before calculation
                                 if current <= 0 or year_ago <= 0:
@@ -532,8 +527,8 @@ class MarketDataFetcher(BaseFetcher):
 
                                 # Validate previous values
                                 if previous <= 0 or prev_year_ago <= 0:
-                                    logger.error(f"Invalid previous inflation values: previous={
-                                                 previous}, prev_year_ago={prev_year_ago}")
+                                    logger.error(
+                                        f"Invalid previous inflation values: previous={previous}, prev_year_ago={prev_year_ago}")
                                     prev_yoy = 0
                                 else:
                                     prev_yoy = (
@@ -578,12 +573,10 @@ class MarketDataFetcher(BaseFetcher):
                                     'trend': trend,
                                     'last_updated': current_date.strftime('%m/%d/%y'),
                                     'previous_date': prev_date.strftime('%m/%d/%y'),
-                                    'history': historical_values
-                                }
+                                    'history': historical_values}
 
                                 logger.info(
-                                    f"Inflation Results: {
-                                        results[name]}")
+                                    f"Inflation Results: {results[name]}")
 
                             else:
                                 current = observations[0]
@@ -853,8 +846,7 @@ class MarketDataFetcher(BaseFetcher):
         events = []
         try:
             # 1. Get top 5 most active tickers using requests
-            url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/most_active?apiKey={
-                POLYGON_API_KEY}"
+            url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/most_active?apiKey={POLYGON_API_KEY}"
             resp = requests.get(url)
             resp.raise_for_status()
             movers = resp.json().get('tickers', [])[:5]
@@ -917,9 +909,10 @@ class MarketDataFetcher(BaseFetcher):
 
                 # Format for chart
                 data = {
-                    'labels': [f"Q{(i % 4) + 1} {d.year}" for i, d in enumerate(dates)],
-                    'values': values
-                }
+                    'labels': [
+                        f"Q{(i % 4) + 1} {d.year}" for i,
+                        d in enumerate(dates)],
+                    'values': values}
                 print(f"[DEBUG] Raw GDP data: {data}")
                 return data
 
@@ -1016,8 +1009,8 @@ class MarketDataFetcher(BaseFetcher):
             # Set FRED frequency
             freq_map = {'monthly': 'm', 'yearly': 'a'}
             freq_param = freq_map.get(frequency, 'm')
-            print(f"[DEBUG] Fetching bond data: periods={
-                  periods}, frequency={frequency}, freq_param={freq_param}")
+            print(
+                f"[DEBUG] Fetching bond data: periods={periods}, frequency={frequency}, freq_param={freq_param}")
             # Get 10Y Treasury yield
             params_10y = {
                 'series_id': 'DGS10',
@@ -1061,9 +1054,7 @@ class MarketDataFetcher(BaseFetcher):
                     float(
                         obs['value']) for obs in data_2y['observations'] if obs['value'] != '.']
                 print(
-                    f"[DEBUG] 10Y count: {
-                        len(values_10y)}, 2Y count: {
-                        len(values_2y)}")
+                    f"[DEBUG] 10Y count: {len(values_10y)}, 2Y count: {len(values_2y)}")
                 print(f"[DEBUG] 10Y dates: {dates}")
                 print(f"[DEBUG] 10Y values: {values_10y}")
                 print(f"[DEBUG] 2Y values: {values_2y}")
@@ -1080,8 +1071,7 @@ class MarketDataFetcher(BaseFetcher):
         """Fetch top market movers and their latest news from Polygon."""
         movers = []
         try:
-            url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/most_active?apiKey={
-                POLYGON_API_KEY}"
+            url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/most_active?apiKey={POLYGON_API_KEY}"
             resp = requests.get(url)
             resp.raise_for_status()
             data = resp.json()
@@ -1090,8 +1080,7 @@ class MarketDataFetcher(BaseFetcher):
                 ticker = item.get('ticker')
                 name = item.get('name', ticker)
                 # Fetch latest news for this ticker
-                news_url = f"https://api.polygon.io/v2/reference/news?ticker={
-                    ticker}&limit=1&apiKey={POLYGON_API_KEY}"
+                news_url = f"https://api.polygon.io/v2/reference/news?ticker={ticker}&limit=1&apiKey={POLYGON_API_KEY}"
                 news_resp = requests.get(news_url)
                 news_data = news_resp.json()
                 if news_data.get('results'):
@@ -1120,8 +1109,7 @@ class MarketDataFetcher(BaseFetcher):
         try:
             # Get top gainers and losers
             for direction in ['gainers', 'losers']:
-                url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/{
-                    direction}?apiKey={POLYGON_API_KEY}"
+                url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/{direction}?apiKey={POLYGON_API_KEY}"
                 resp = requests.get(url)
                 resp.raise_for_status()
                 data = resp.json()
@@ -1143,8 +1131,7 @@ class MarketDataFetcher(BaseFetcher):
                 :limit]
             # Fetch news for each
             for mover in movers:
-                news_url = f"https://api.polygon.io/v2/reference/news?ticker={
-                    mover['ticker']}&limit=1&apiKey={POLYGON_API_KEY}"
+                news_url = f"https://api.polygon.io/v2/reference/news?ticker={mover['ticker']}&limit=1&apiKey={POLYGON_API_KEY}"
                 news_resp = requests.get(news_url)
                 news_data = news_resp.json()
                 if news_data.get('results'):
@@ -1180,33 +1167,15 @@ class MarketDataFetcher(BaseFetcher):
                 adjusted=True
             )
             logger.debug(
-                f"Polygon aggs type: {
-                    type(aggs)}; length: {
-                    len(aggs) if hasattr(
-                        aggs,
-                        '__len__') else 'N/A'}")
+                f"Polygon aggs type: {type(aggs)}; length: {len(aggs) if hasattr(aggs,'__len__') else 'N/A'}")
             if aggs and len(aggs) > 0:
                 logger.debug(f"First agg: {aggs[0]}")
                 logger.debug(
-                    f"First agg.timestamp type: {
-                        type(
-                            getattr(
-                                aggs[0],
-                                'timestamp',
-                                None))}")
+                    f"First agg.timestamp type: {type(getattr(aggs[0],'timestamp',None))}")
                 for i, agg in enumerate(aggs[:3]):
                     logger.debug(f"Agg {i}: {agg}")
                     logger.debug(
-                        f"Agg {i} timestamp: {
-                            getattr(
-                                agg,
-                                'timestamp',
-                                None)} type: {
-                            type(
-                                getattr(
-                                    agg,
-                                    'timestamp',
-                                    None))}")
+                        f"Agg {i} timestamp: {getattr(agg,'timestamp',None)} type: {type(getattr(agg,'timestamp',None))}")
                 # Only keep the most recent 'periods' data points
                 aggs = aggs[-periods:]
                 labels = []
@@ -1227,16 +1196,16 @@ class MarketDataFetcher(BaseFetcher):
                     'low': [agg.low for agg in aggs],
                     'close': [agg.close for agg in aggs],
                 }
-                logger.info(f"Fetched {len(values)} data points for {
-                            ticker} from Polygon.")
+                logger.info(
+                    f"Fetched {len(values)} data points for {ticker} from Polygon.")
                 return {'labels': labels, 'values': values, 'ohlc': ohlc}
             else:
                 logger.warning(
                     f"No historical data returned for {ticker} from Polygon.")
                 return {'labels': [], 'values': []}
         except Exception as e:
-            logger.error(f"Error fetching index history for {
-                         ticker} from Polygon: {e}")
+            logger.error(
+                f"Error fetching index history for {ticker} from Polygon: {e}")
             return {'labels': [], 'values': []}
 
     def fetch_style_box_etf_data(self) -> Dict:

@@ -1,7 +1,18 @@
 """
-FastAPI Server Entry Point
+DEPRECATED — FastAPI Server Entry Point
 
-This script starts the FastAPI backend server that provides:
+This file is deprecated. The production server runs via Docker:
+
+    make server-start    — Start the finance-dashboard Docker container
+                          (auto-restarts on crash via restart: unless-stopped)
+    make server-stop     — Stop the container
+    make server-restart  — Restart the container
+    make dev-server      — Development server with hot reload (host, port 8000)
+
+The Docker container serves on 127.0.0.1:9127 (avoids conflict with Portainer :8000).
+Systemd user service name: finance-api.service
+
+Background: starts the FastAPI backend server providing:
 - API endpoints for portfolio, orders, dividends, profit/loss data
 - Authentication endpoints
 - Report generation endpoints
@@ -28,6 +39,7 @@ The 'public' directory is the ONLY safe directory to serve because it contains:
 When adding new static files, always place them in 'public/' and reference them as '/static/filename'
 ==============================================================================
 """
+import warnings
 import subprocess
 import sys
 import webbrowser
@@ -48,7 +60,29 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
+# ==============================================================================
+# DEPRECATED — This launcher is kept for compatibility only.
+#
+# Use instead:
+#   make server-start     — production via Docker (auto-restart on crash)
+#   make dev-server       — development with hot reload
+#   make server-stop/restart/status/logs  — manage the Docker container
+#
+# The Docker container name is: finance-dashboard
+# Systemd user service is: finance-api.service
+# Local API: http://127.0.0.1:9127
+# ==============================================================================
+warnings.warn(
+    "server/main.py is deprecated. Use 'make server' (systemd) or "
+    "'make dev-server' (hot reload) instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 if __name__ == '__main__':
+    print(
+        '[DEPRECATED] server/main.py — use systemd service instead: make server',
+        flush=True)
     print('Starting FastAPI server...')
     print('Frontend assets are built by Vite - run "make build-frontend" to build')
     proc = subprocess.Popen([sys.executable,

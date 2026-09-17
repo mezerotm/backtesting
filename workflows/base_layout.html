@@ -37,7 +37,28 @@
             background-color: #0f172a;  /* slate-900 */
             color: #f8fafc;  /* slate-50 */
         }
-    </style>
+        
+        /* Responsive tables — wrap wide tables in a scroll container */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .table-responsive table {
+            width: 100%;
+            min-width: 0;
+        }
+        
+        @media (max-width: 480px) {
+            .table-responsive table {
+                font-size: 0.75rem;
+            }
+            .table-responsive th,
+            .table-responsive td {
+                padding: 6px 8px;
+                white-space: nowrap;
+            }
+        }
     
     {% block additional_styles %}
     <!-- Additional styles will be added by child templates -->

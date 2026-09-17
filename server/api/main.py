@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -33,11 +33,7 @@ app = FastAPI(
 
 # Add CORS middleware
 app.add_middleware(CORSMiddleware,
-                   allow_origins=["http://localhost:3000",
-                                  "http://localhost:3001",
-                                  "http://localhost:3002",
-                                  "http://localhost:5173",
-                                  "https://finance.mezerotm.com"],
+                   allow_origins=["https://finance.mezerotm.com"],
                    allow_credentials=True,
                    allow_methods=["*"],
                    allow_headers=["*"],
@@ -55,8 +51,9 @@ async def log_requests(request: Request, call_next):
     # Log request with headers for debugging
     origin = request.headers.get("origin", "no-origin")
     user_agent = request.headers.get("user-agent", "no-ua")
-    logger.info(f"Request: {request.method} {request.url.path} - Client: "
-                f"{request.client.host if request.client else 'unknown'} - Origin: {origin} - UA: {user_agent[:50]}")
+    logger.info(
+        f"Request: {request.method} {request.url.path} - Client: "
+        f"{request.client.host if request.client else 'unknown'} - Origin: {origin} - UA: {user_agent[:50]}")
 
     # Process request
     response = await call_next(request)
@@ -67,11 +64,13 @@ async def log_requests(request: Request, call_next):
     # Log response
     status_code = response.status_code
     if status_code >= 400:
-        logger.error(f"Response: {request.method} "
-                     f"{request.url.path} - Status: {status_code} - Duration: {duration:.3f}s")
+        logger.error(
+            f"Response: {request.method} "
+            f"{request.url.path} - Status: {status_code} - Duration: {duration:.3f}s")
     else:
-        logger.info(f"Response: {request.method} "
-                    f"{request.url.path} - Status: {status_code} - Duration: {duration:.3f}s")
+        logger.info(
+            f"Response: {request.method} "
+            f"{request.url.path} - Status: {status_code} - Duration: {duration:.3f}s")
 
     return response
 
@@ -97,36 +96,27 @@ if not DEV_MODE:
     app.mount("/css", StaticFiles(directory="public/css"), name="css")
     # Alias /assets/icons -> public/icons so generated reports that reference
     # /assets/icons/... (a path baked into already-written report HTML) resolve.
-    # MUST be mounted before /assets (longer prefix wins by registration order).
-    app.mount("/assets/icons", StaticFiles(directory="public/icons"), name="assets-icons")
+    # MUST be mounted before /assets (longer prefix wins by registration
+    # order).
+    app.mount(
+        "/assets/icons",
+        StaticFiles(
+            directory="public/icons"),
+        name="assets-icons")
     app.mount("/assets", StaticFiles(directory="public/assets"), name="assets")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Root endpoint - serves different content based on environment."""
-    if DEV_MODE:
-        logger.info("GET / - Development mode - Redirecting to Vite dev server")
-        return """
-        <html>
-            <head><title>Finance Dashboard - Development</title></head>
-            <body>
-                <h1>Finance Dashboard - Development Mode</h1>
-                <p>Frontend is running on Vite dev server at <a href="http://localhost:5173">http://localhost:5173</a></p>
-                <p>API documentation available at <a href="/docs">/docs</a></p>
-            </body>
-        </html>
-        """
-    else:
-        logger.info("GET / - Production mode - Serving frontend")
-        try:
-            with open("public/index.html", "r") as f:
-                return HTMLResponse(content=f.read())
-        except FileNotFoundError:
-            logger.error("GET / - Production mode - index.html not found")
-            return HTMLResponse(
-                content="<h1>Frontend not built</h1>",
-                status_code=404)
+    """Root endpoint - serves the Alpine.js single-page app."""
+    try:
+        with open("public/index.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        logger.error("GET / - Production mode - index.html not found")
+        return HTMLResponse(
+            content="<h1>Frontend not built</h1>",
+            status_code=404)
 
 
 @app.get("/health")
@@ -135,14 +125,37 @@ async def health_check():
     logger.info("GET /health - Health check")
     return {"status": "healthy", "environment": ENV}
 
+# SPA fallback: serve index.html for any non-API, non-static route
+# Must be registered AFTER the root / handler to not shadow it
+
+
+@app.api_route("/{path:path}", methods=["GET"])
+async def spa_fallback(path: str):
+    if not path:
+        raise HTTPException(status_code=404)
+    if path.startswith(
+        ("api/",
+         "static/",
+         "js/",
+         "css/",
+         "icons/",
+         "assets/")):
+        raise HTTPException(status_code=404)
+    try:
+        with open("public/index.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Frontend not built</h1>",
+            status_code=404)
+
 # Startup event
 
 
 @app.on_event("startup")
 async def startup_event():
     """Log application startup."""
-    logger.info(
-        f"Application starting up - Environment: {ENV}, Dev Mode: {DEV_MODE}")
+    logger.info(f"Application starting up - Environment: {ENV}")
 
 # Shutdown event
 

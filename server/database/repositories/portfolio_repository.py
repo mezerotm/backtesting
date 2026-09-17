@@ -272,13 +272,11 @@ class PortfolioRepository:
                             datetime.now().isoformat())) if result.get("updated") else None
                 )
                 self.logger.debug(
-                    f"Successfully created PortfolioSettings model: {
-                        settings.model_dump()}")
+                    f"Successfully created PortfolioSettings model: {settings.model_dump()}")
                 return settings
             except Exception as e:
                 self.logger.error(
-                    f"Error creating PortfolioSettings model: {
-                        str(e)}")
+                    f"Error creating PortfolioSettings model: {str(e)}")
                 raise
 
         except Exception as e:

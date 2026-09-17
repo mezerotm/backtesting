@@ -163,7 +163,8 @@ class FinancialDataFetcher(BaseFetcher):
             # Get company details using the correct API method
             details = self.client.get_ticker_details(symbol)
             # Debug: print float value from details
-            print(f"[DEBUG] Fetched float (share_class_shares_outstanding) for {symbol}: {getattr(details, 'share_class_shares_outstanding', None)}")
+            print(
+                f"[DEBUG] Fetched float (share_class_shares_outstanding) for {symbol}: {getattr(details, 'share_class_shares_outstanding', None)}")
             # Get latest financials for PEG calculation
             financials = self.fetch_financial_statements(
                 symbol, 2)  # We need 2 years for growth calc
@@ -189,7 +190,8 @@ class FinancialDataFetcher(BaseFetcher):
                 sector = 'N/A'
             float_val = getattr(
                 details, 'share_class_shares_outstanding', None)
-            print(f"[DEBUG] float_val used in fundamentals for {symbol}: {float_val}")
+            print(
+                f"[DEBUG] float_val used in fundamentals for {symbol}: {float_val}")
             peg_ratio = None
             if market_cap and not annual_financials.empty:
                 peg_ratio = self.calculate_peg_ratio(

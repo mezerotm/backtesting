@@ -38,9 +38,7 @@ class BuyAndHoldStrategy(Strategy):
             self.entry_time = self.data.index[-1]
             self.entry_bar = len(self.data) - 1
             print(
-                f"BUY SIGNAL at index {
-                    self.entry_bar}, price: {
-                    self.entry_price}")
+                f"BUY SIGNAL at index {self.entry_bar}, price: {self.entry_price}")
 
             # Create a new trade object for visualization
             new_trade = {

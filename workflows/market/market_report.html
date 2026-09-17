@@ -197,6 +197,36 @@
             padding: 0;
         }
     
+    /* Mobile: Pixel 9 (412px) and smaller — compact chart heights */
+    @media (max-width: 480px) {
+        .chart-container {
+            max-width: 100%;
+            min-height: 180px;
+        }
+        .chart-container-heatmap {
+            max-width: 100%;
+            min-height: 200px;
+        }
+        .market-chart-scroll iframe {
+            height: min(250px, 50vh);
+            min-width: 0;
+        }
+        .value {
+            font-size: 1.4rem;
+        }
+        .section-header h2 {
+            font-size: 1.2rem;
+        }
+        .data-table th,
+        .data-table td {
+            padding: 8px 10px;
+            font-size: 0.75rem;
+        }
+        .grid-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+    
     .chart-title, .chart-legend {
         display: none !important;
     }

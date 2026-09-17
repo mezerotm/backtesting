@@ -134,8 +134,8 @@ class AIExplainer:
 
         except Exception as e:
             error_details = traceback.format_exc()
-            print(f"Error generating strategy overview for {
-                  strategy_name}: {e}")
+            print(
+                f"Error generating strategy overview for {strategy_name}: {e}")
             print(f"Detailed error: {error_details}")
             return f"Could not generate strategy overview: {str(e)}"
 
@@ -157,8 +157,7 @@ class AIExplainer:
             A string prompt for the OpenAI API
         """
         # Base prompt about the metric
-        prompt = f"Explain what it means that the '{
-            metric_name}' for the trading strategy '{strategy_name}' is {metric_value}."
+        prompt = f"Explain what it means that the '{metric_name}' for the trading strategy '{strategy_name}' is {metric_value}."
 
         # Add context about other metrics if available
         if metric_context:
@@ -207,6 +206,4 @@ def display_reports():
     for report in reports:
         # Display logic here
         print(
-            f"Symbol: {
-                report['symbol']}, Date Range: {
-                report['date_range']}")
+            f"Symbol: {report['symbol']}, Date Range: {report['date_range']}")

@@ -232,7 +232,8 @@ def auto_cleanup_logs():
     stats = get_log_stats()
 
     print(f"✅ Cleanup complete: {deleted} files deleted")
-    print(f"📊 Total logs: {stats['total_files']} files, {stats['total_size_mb']:.2f}MB")
+    print(
+        f"📊 Total logs: {stats['total_files']} files, {stats['total_size_mb']:.2f}MB")
 
     return deleted
 

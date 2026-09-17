@@ -1,0 +1,14 @@
+{
+    "symbol": "MARKET",
+    "timeframe": "snapshot",
+    "start_date": "2026-09-09",
+    "end_date": "2026-09-09",
+    "initial_capital": 0,
+    "commission": 0,
+    "type": "market",
+    "created": "2026-09-09 19:51:59",
+    "path": "/static/results/market_20260909_195144/index.html",
+    "status": "finished",
+    "title": "Market Analysis - 2026-09-09",
+    "report_type": "snapshot"
+}

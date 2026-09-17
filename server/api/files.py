@@ -73,7 +73,10 @@ def list_bases() -> list[dict]:
 
 
 @router.get("/list")
-async def list_files(path: str = Query("", description="Relative path within allowed bases")):
+async def list_files(
+    path: str = Query(
+        "",
+        description="Relative path within allowed bases")):
     """List files and directories at the given path.
 
     If path is empty, returns the top-level allowed base directories.
@@ -85,10 +88,19 @@ async def list_files(path: str = Query("", description="Relative path within all
         resolved = resolve_path(path)
 
         if not os.path.isdir(resolved):
-            raise HTTPException(status_code=400, detail=f"Not a directory: {path}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Not a directory: {path}")
 
         entries = []
-        for entry in sorted(os.listdir(resolved), key=lambda x: (not os.path.isdir(os.path.join(resolved, x)), x.lower())):
+        for entry in sorted(
+            os.listdir(resolved),
+            key=lambda x: (
+                not os.path.isdir(
+                    os.path.join(
+                resolved,
+                x)),
+                x.lower())):
             full = os.path.join(resolved, entry)
             try:
                 st = os.stat(full)
@@ -116,7 +128,8 @@ async def list_files(path: str = Query("", description="Relative path within all
 
 
 @router.get("/raw")
-async def raw_file(path: str = Query(..., description="Relative path within allowed bases")):
+async def raw_file(path: str = Query(...,
+                                     description="Relative path within allowed bases")):
     """Serve a raw file for preview or download."""
     try:
         resolved = resolve_path(path)

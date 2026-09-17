@@ -110,8 +110,10 @@ def generate_market_report(
             name = idx.get("name")
             ticker = index_tickers.get(name)
             if ticker:
-                hist_data = data_fetcher.fetch_index_history(ticker, periods=60)
-                chart_path = generate_market_index_chart(hist_data, report_dir, name)
+                hist_data = data_fetcher.fetch_index_history(
+                    ticker, periods=60)
+                chart_path = generate_market_index_chart(
+                    hist_data, report_dir, name)
                 market_index_charts[name] = chart_path
     data["market_index_charts"] = market_index_charts
 
@@ -120,7 +122,8 @@ def generate_market_report(
         inflation_data = data_fetcher.get_inflation_data()
         unemployment_data = data_fetcher.get_unemployment_data()
         bond_10y_data = data_fetcher.get_bond_data()
-        bond_2y_data = bond_10y_data.get("values_2y", []) if bond_10y_data else []
+        bond_2y_data = bond_10y_data.get(
+            "values_2y", []) if bond_10y_data else []
 
         # Combine bond data if 2Y is available
         if bond_10y_data and bond_2y_data:
@@ -135,37 +138,42 @@ def generate_market_report(
 
         # Generate charts
         if gdp_growth_data and gdp_growth_data.get("values"):
-            data["gdp_chart_path"] = generate_gdp_chart(gdp_growth_data, report_dir)
+            data["gdp_chart_path"] = generate_gdp_chart(
+                gdp_growth_data, report_dir)
         if inflation_data and inflation_data.get("values"):
-            data["inflation_chart_path"] = generate_inflation_chart(inflation_data, report_dir)
+            data["inflation_chart_path"] = generate_inflation_chart(
+                inflation_data, report_dir)
         if unemployment_data and unemployment_data.get("values"):
-            data["unemployment_chart_path"] = generate_unemployment_chart(unemployment_data, report_dir)
+            data["unemployment_chart_path"] = generate_unemployment_chart(
+                unemployment_data, report_dir)
         if bond_data and bond_data.get("values"):
-            data["bond_chart_path"] = generate_bond_chart(bond_data, report_dir)
+            data["bond_chart_path"] = generate_bond_chart(
+                bond_data, report_dir)
 
         # Separate 10Y / 2Y Treasury charts
-        if bond_10y_data and bond_10y_data.get("labels") and bond_10y_data.get("values"):
+        if bond_10y_data and bond_10y_data.get(
+                "labels") and bond_10y_data.get("values"):
             ten_year_data = {
                 "labels": bond_10y_data["labels"],
                 "values": bond_10y_data["values"],
             }
             data["ten_year_chart_path"] = generate_single_bond_chart(
-                ten_year_data, report_dir, "ten_year_chart.html", TEN_YEAR_KEY + " Yield"
-            )
-        if bond_10y_data and bond_10y_data.get("labels") and bond_10y_data.get("values_2y"):
+                ten_year_data, report_dir, "ten_year_chart.html", TEN_YEAR_KEY + " Yield")
+        if bond_10y_data and bond_10y_data.get(
+                "labels") and bond_10y_data.get("values_2y"):
             two_year_data = {
                 "labels": bond_10y_data["labels"],
                 "values": bond_10y_data["values_2y"],
             }
             data["two_year_chart_path"] = generate_single_bond_chart(
-                two_year_data, report_dir, "two_year_chart.html", TWO_YEAR_KEY + " Yield"
-            )
+                two_year_data, report_dir, "two_year_chart.html", TWO_YEAR_KEY + " Yield")
 
         # Style box heatmap
         style_box_data = data_fetcher.fetch_style_box_etf_data()
         style_box_heatmap_path = None
         if style_box_data and style_box_data.get("z"):
-            style_box_heatmap_path = generate_style_box_heatmap(style_box_data, report_dir)
+            style_box_heatmap_path = generate_style_box_heatmap(
+                style_box_data, report_dir)
         data["style_box_heatmap_path"] = style_box_heatmap_path
 
         # Store historical data

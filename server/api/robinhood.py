@@ -1,3 +1,4 @@
+import asyncio
 import requests
 try:
     import robin_stocks.robinhood as r
@@ -55,7 +56,8 @@ class RobinhoodStatus(BaseModel):
     connection_status: str = "unknown"
 
 
-async def get_robinhood_settings(credentials: HTTPAuthorizationCredentials) -> RobinhoodSettings:
+async def get_robinhood_settings(
+        credentials: HTTPAuthorizationCredentials) -> RobinhoodSettings:
     """Get Robinhood settings from PocketBase portfolio data."""
     try:
         logger.debug("Getting Robinhood settings from PocketBase...")
@@ -80,10 +82,7 @@ async def get_robinhood_settings(credentials: HTTPAuthorizationCredentials) -> R
         )
 
         logger.debug(
-            f"Retrieved Robinhood settings: enabled={
-                settings.enabled}, has_credentials={
-                bool(
-                    settings.username and settings.password)}")
+            f"Retrieved Robinhood settings: enabled={settings.enabled}, has_credentials={bool(settings.username and settings.password)}")
         return settings
     except Exception as e:
         logger.error(f"Error getting Robinhood settings: {e}")
@@ -102,25 +101,21 @@ def validate_robinhood_data(raw_data: Dict, data_type: str) -> bool:
 
     if data_type == "positions" and not isinstance(raw_data, dict):
         validation_logger.error(
-            f"Positions data should be dict, got {
-                type(raw_data)}")
+            f"Positions data should be dict, got {type(raw_data)}")
         return False
 
     if data_type in ["orders", "dividends"] and not isinstance(raw_data, list):
         validation_logger.error(
-            f"{data_type} data should be list, got {
-                type(raw_data)}")
+            f"{data_type} data should be list, got {type(raw_data)}")
         return False
 
     # Log data size for monitoring
     if data_type == "positions":
         validation_logger.info(
-            f"Positions data: {
-                len(raw_data)} symbols found")
+            f"Positions data: {len(raw_data)} symbols found")
     else:
         validation_logger.info(
-            f"{data_type} data: {
-                len(raw_data)} records found")
+            f"{data_type} data: {len(raw_data)} records found")
 
     validation_logger.debug(
         f"Validated {data_type} data structure successfully")
@@ -131,8 +126,7 @@ def sanitize_symbol(symbol: str) -> Optional[str]:
     """Sanitize and validate symbol string."""
     if not symbol or not isinstance(symbol, str):
         validation_logger.warning(
-            f"Invalid symbol type: {
-                type(symbol)}, value: {symbol}")
+            f"Invalid symbol type: {type(symbol)}, value: {symbol}")
         return None
 
     # Remove any whitespace and convert to uppercase
@@ -150,8 +144,8 @@ def sanitize_symbol(symbol: str) -> Optional[str]:
         return None
 
     if not cleaned.replace('.', '').isalnum():
-        validation_logger.warning(f"Invalid symbol characters: '{
-                                  cleaned}' (original: '{symbol}')")
+        validation_logger.warning(
+            f"Invalid symbol characters: '{cleaned}' (original: '{symbol}')")
         return None
 
     # Log successful sanitization if symbol changed
@@ -175,8 +169,8 @@ def resolve_symbol_from_instrument(instrument_url: str) -> Optional[str]:
         for record in cached_records:
             if record.get("instrument_url") == instrument_url:
                 symbol = record.get("symbol")
-                logger.debug(f"Found cached symbol {
-                             symbol} for instrument {instrument_url}")
+                logger.debug(
+                    f"Found cached symbol {symbol} for instrument {instrument_url}")
                 return symbol
 
         # If not cached, fetch from Robinhood and cache it
@@ -219,8 +213,8 @@ def resolve_symbol_from_instrument(instrument_url: str) -> Optional[str]:
                 return symbol
 
         except Exception as fetch_error:
-            logger.warning(f"Failed to fetch instrument data for {
-                           instrument_url}: {fetch_error}")
+            logger.warning(
+                f"Failed to fetch instrument data for {instrument_url}: {fetch_error}")
 
         logger.warning(
             f"Could not resolve symbol for instrument {instrument_url}")
@@ -261,8 +255,8 @@ def calculate_profit_loss_for_user(
 
                 if current_price and current_price > 0:
                     unrealized_pl = (current_price - buy_price) * quantity
-                    logger.debug(f"Calculating P/L for {symbol}: current_price={current_price}, buy_price={
-                                 buy_price}, quantity={quantity}, unrealized_pl={unrealized_pl}")
+                    logger.debug(
+                        f"Calculating P/L for {symbol}: current_price={current_price}, buy_price={buy_price}, quantity={quantity}, unrealized_pl={unrealized_pl}")
 
                     # Ensure amount is a valid number
                     if unrealized_pl is not None and not (
@@ -289,8 +283,8 @@ def calculate_profit_loss_for_user(
                 else:
                     # Create record with 0 amount when no current price
                     # available
-                    logger.debug(f"No current price available for {
-                                 symbol}, current_price={current_price}")
+                    logger.debug(
+                        f"No current price available for {symbol}, current_price={current_price}")
                     record = {
                         'symbol': symbol,
                         'type': 'Unrealized',
@@ -335,8 +329,7 @@ def calculate_profit_loss_for_user(
                 # Use small positive value instead of 0.0
                 record['amount'] = 0.01
                 logger.warning(
-                    f"Invalid amount found for {
-                        record.get('symbol')}, setting to 0.01")
+                    f"Invalid amount found for {record.get('symbol')}, setting to 0.01")
             else:
                 # Ensure it's a valid number
                 try:
@@ -348,14 +341,12 @@ def calculate_profit_loss_for_user(
                     # Use small positive value instead of 0.0
                     record['amount'] = 0.01
                     logger.warning(
-                        f"Could not convert amount to float for {
-                            record.get('symbol')}, setting to 0.01")
+                        f"Could not convert amount to float for {record.get('symbol')}, setting to 0.01")
 
             validated_records.append(record)
 
         logger.info(
-            f"Calculated {
-                len(validated_records)} profit/loss records for user {user_id} from source {source}")
+            f"Calculated {len(validated_records)} profit/loss records for user {user_id} from source {source}")
 
         return validated_records
 
@@ -388,10 +379,7 @@ def map_dividends(raw_dividends: List[Dict], user_id: str) -> List[Dict]:
                 mapped.append(mapped_dividend)
             except Exception as e:
                 logger.error(
-                    f"Error mapping dividend {
-                        d.get(
-                            'id',
-                            'unknown')}: {e}")
+                    f"Error mapping dividend {d.get('id','unknown')}: {e}")
                 continue
 
         logger.info(f"Successfully mapped {len(mapped)} dividends")
@@ -405,8 +393,7 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
     """Map raw stock positions to our data format."""
     try:
         validation_logger.info(
-            f"Starting stock position mapping for {
-                len(raw_positions)} raw positions...")
+            f"Starting stock position mapping for {len(raw_positions)} raw positions...")
         mapped = []
         skipped_count = 0
         error_count = 0
@@ -426,8 +413,7 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                     quantity = float(pos.get('quantity', 0))
                 except (ValueError, TypeError) as e:
                     validation_logger.warning(
-                        f"SKIPPED: Invalid quantity for {clean_symbol}: {
-                            pos.get('quantity')} - {e}")
+                        f"SKIPPED: Invalid quantity for {clean_symbol}: {pos.get('quantity')} - {e}")
                     skipped_count += 1
                     continue
 
@@ -435,8 +421,7 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                     buy_price = float(pos.get('average_buy_price', 0))
                 except (ValueError, TypeError) as e:
                     validation_logger.warning(
-                        f"SKIPPED: Invalid buy price for {clean_symbol}: {
-                            pos.get('average_buy_price')} - {e}")
+                        f"SKIPPED: Invalid buy price for {clean_symbol}: {pos.get('average_buy_price')} - {e}")
                     skipped_count += 1
                     continue
 
@@ -452,8 +437,8 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                     buy_price = 0.0
 
                 if buy_price < 0:
-                    validation_logger.warning(f"ADJUSTED: Negative buy price for {
-                                              clean_symbol}: {buy_price} -> 0.0")
+                    validation_logger.warning(
+                        f"ADJUSTED: Negative buy price for {clean_symbol}: {buy_price} -> 0.0")
                     buy_price = 0.0
 
                 # Log suspicious data
@@ -462,7 +447,8 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                         f"SUSPICIOUS: Very large quantity for {clean_symbol}: {quantity}")
 
                 # For crypto, higher prices are normal (BTC, ETH, etc.)
-                if buy_price > 10000 and not market_data_service.is_crypto_symbol(clean_symbol):  # More than $10k per share for stocks only
+                if buy_price > 10000 and not market_data_service.is_crypto_symbol(
+                        clean_symbol):  # More than $10k per share for stocks only
                     validation_logger.warning(
                         f"SUSPICIOUS: Very high buy price for {clean_symbol}: ${buy_price}")
 
@@ -484,7 +470,7 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                     market_value /
                     total_equity *
                     100) if total_equity > 0 else 0
-                
+
                 # Calculate returns if we have both buy price and current price
                 current_price = float(pos.get('price', buy_price))
                 total_return = 0.0
@@ -492,7 +478,8 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                 todays_return = 0.0  # TODO: Calculate from historical data
                 if buy_price > 0 and current_price > 0:
                     total_return = (current_price - buy_price) * quantity
-                    total_return_percent = ((current_price - buy_price) / buy_price) * 100
+                    total_return_percent = (
+                        (current_price - buy_price) / buy_price) * 100
 
                 # Get beta from fundamentals if available
                 beta = None
@@ -528,8 +515,8 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                     'user': user_id
                 }
                 mapped.append(mapped_position)
-                validation_logger.debug(f"MAPPED: Stock Position {
-                    clean_symbol} - Qty: {quantity}, Price: ${buy_price}")
+                validation_logger.debug(
+                    f"MAPPED: Stock Position {clean_symbol} - Qty: {quantity}, Price: ${buy_price}")
 
             except (ValueError, TypeError) as e:
                 validation_logger.error(
@@ -543,8 +530,7 @@ def map_positions(raw_positions: Dict, user_id: str) -> List[Dict]:
                 continue
 
         validation_logger.info(
-            f"Stock position mapping complete: {
-                len(mapped)} mapped, {skipped_count} skipped, {error_count} errors")
+            f"Stock position mapping complete: {len(mapped)} mapped, {skipped_count} skipped, {error_count} errors")
         return mapped
     except Exception as e:
         validation_logger.error(
@@ -558,19 +544,15 @@ def map_crypto_positions(
     """Map raw crypto positions to our data format."""
     try:
         validation_logger.info(
-            f"Starting crypto position mapping for {
-                len(raw_crypto_positions)} raw crypto positions...")
+            f"Starting crypto position mapping for {len(raw_crypto_positions)} raw crypto positions...")
 
         # Log the first crypto position structure for debugging
         if raw_crypto_positions:
             validation_logger.info(f"=== CRYPTO POSITION DATA STRUCTURE ===")
             validation_logger.info(
-                f"First crypto position keys: {
-                    list(
-                        raw_crypto_positions[0].keys())}")
+                f"First crypto position keys: {list(raw_crypto_positions[0].keys())}")
             validation_logger.info(
-                f"First crypto position data: {
-                    raw_crypto_positions[0]}")
+                f"First crypto position data: {raw_crypto_positions[0]}")
             validation_logger.info(
                 f"=== END CRYPTO POSITION DATA STRUCTURE ===")
 
@@ -580,8 +562,8 @@ def map_crypto_positions(
 
         for i, crypto_pos in enumerate(raw_crypto_positions):
             try:
-                validation_logger.info(f"=== Processing crypto position {
-                                       i + 1}/{len(raw_crypto_positions)} ===")
+                validation_logger.info(
+                    f"=== Processing crypto position {i + 1}/{len(raw_crypto_positions)} ===")
                 validation_logger.info(
                     f"Raw crypto position data: {crypto_pos}")
 
@@ -601,23 +583,22 @@ def map_crypto_positions(
                 validation_logger.info(f"Sanitized symbol: '{clean_symbol}'")
 
                 if not clean_symbol:
-                    validation_logger.warning(f"SKIPPED: Invalid crypto symbol '{
-                        crypto_symbol}' in position data")
+                    validation_logger.warning(
+                        f"SKIPPED: Invalid crypto symbol '{crypto_symbol}' in position data")
                     skipped_count += 1
                     continue
 
                 # Extract and validate position data
                 raw_quantity = crypto_pos.get('quantity', 0)
                 validation_logger.info(
-                    f"Raw quantity: {raw_quantity} (type: {
-                        type(raw_quantity)})")
+                    f"Raw quantity: {raw_quantity} (type: {type(raw_quantity)})")
 
                 try:
                     quantity = float(raw_quantity)
                     validation_logger.info(f"Parsed quantity: {quantity}")
                 except (ValueError, TypeError) as e:
-                    validation_logger.warning(f"SKIPPED: Invalid quantity for {
-                        clean_symbol}: {raw_quantity} - {e}")
+                    validation_logger.warning(
+                        f"SKIPPED: Invalid quantity for {clean_symbol}: {raw_quantity} - {e}")
                     skipped_count += 1
                     continue
 
@@ -685,8 +666,8 @@ def map_crypto_positions(
                                     cost_basis_item.get('direct_quantity', 0))
                                 total_cost_basis += direct_cost_basis
                                 total_quantity += direct_quantity
-                                validation_logger.info(f"Cost basis item: direct_cost_basis={
-                                                       direct_cost_basis}, direct_quantity={direct_quantity}")
+                                validation_logger.info(
+                                    f"Cost basis item: direct_cost_basis={direct_cost_basis}, direct_quantity={direct_quantity}")
                             except (ValueError, TypeError) as e:
                                 validation_logger.warning(
                                     f"Failed to parse cost basis item: {e}")
@@ -694,11 +675,11 @@ def map_crypto_positions(
                         if total_quantity > 0 and total_cost_basis > 0:
                             cost_basis = total_cost_basis
                             buy_price = total_cost_basis / total_quantity
-                            validation_logger.info(f"Calculated from cost_bases array: cost_basis={
-                                                   cost_basis}, buy_price={buy_price}")
+                            validation_logger.info(
+                                f"Calculated from cost_bases array: cost_basis={cost_basis}, buy_price={buy_price}")
                         else:
-                            validation_logger.warning(f"Invalid totals from cost_bases array: total_cost_basis={
-                                                      total_cost_basis}, total_quantity={total_quantity}")
+                            validation_logger.warning(
+                                f"Invalid totals from cost_bases array: total_cost_basis={total_cost_basis}, total_quantity={total_quantity}")
                     else:
                         # Fallback to the old cost_basis field
                         cost_basis = float(crypto_pos.get('cost_basis', 0))
@@ -713,8 +694,8 @@ def map_crypto_positions(
                     # If we still don't have a valid buy price, try alternative
                     # fields
                     if buy_price <= 0:
-                        validation_logger.warning(f"Cannot calculate buy price from cost_bases (quantity: {
-                                                  quantity}, cost_basis: {cost_basis})")
+                        validation_logger.warning(
+                            f"Cannot calculate buy price from cost_bases (quantity: {quantity}, cost_basis: {cost_basis})")
 
                         # Try alternative fields
                         alternative_buy_price = None
@@ -799,8 +780,7 @@ def map_crypto_positions(
                                         f"Failed to get crypto quote: {e}")
                 except (ValueError, TypeError) as e:
                     validation_logger.warning(
-                        f"SKIPPED: Invalid cost basis for {clean_symbol}: {
-                            crypto_pos.get('cost_basis')} - {e}")
+                        f"SKIPPED: Invalid cost basis for {clean_symbol}: {crypto_pos.get('cost_basis')} - {e}")
                     skipped_count += 1
                     continue
 
@@ -816,8 +796,8 @@ def map_crypto_positions(
                     buy_price = 0.0
 
                 if buy_price < 0:
-                    validation_logger.warning(f"ADJUSTED: Negative buy price for {
-                                              clean_symbol}: {buy_price} -> 0.0")
+                    validation_logger.warning(
+                        f"ADJUSTED: Negative buy price for {clean_symbol}: {buy_price} -> 0.0")
                     buy_price = 0.0
 
                 # Log suspicious data
@@ -846,7 +826,7 @@ def map_crypto_positions(
                     market_value /
                     total_equity *
                     100) if total_equity > 0 else 0
-                
+
                 # Calculate returns if we have both buy price and current price
                 current_price = float(crypto_pos.get('price', buy_price))
                 total_return = 0.0
@@ -854,7 +834,8 @@ def map_crypto_positions(
                 todays_return = 0.0  # TODO: Calculate from historical data
                 if buy_price > 0 and current_price > 0:
                     total_return = (current_price - buy_price) * quantity
-                    total_return_percent = ((current_price - buy_price) / buy_price) * 100
+                    total_return_percent = (
+                        (current_price - buy_price) / buy_price) * 100
 
                 mapped_position = {
                     'symbol': clean_symbol,
@@ -876,27 +857,22 @@ def map_crypto_positions(
                 }
 
                 mapped.append(mapped_position)
-                validation_logger.debug(f"MAPPED: Crypto Position {
-                                        clean_symbol} - Qty: {quantity}, Price: ${buy_price}")
+                validation_logger.debug(
+                    f"MAPPED: Crypto Position {clean_symbol} - Qty: {quantity}, Price: ${buy_price}")
 
             except (ValueError, TypeError) as e:
                 validation_logger.error(
-                    f"ERROR: Data conversion error for crypto position {
-                        crypto_pos.get(
-                            'id', 'unknown')}: {e}")
+                    f"ERROR: Data conversion error for crypto position {crypto_pos.get('id', 'unknown')}: {e}")
                 error_count += 1
                 continue
             except Exception as e:
                 validation_logger.error(
-                    f"ERROR: Unexpected error mapping crypto position {
-                        crypto_pos.get(
-                            'id', 'unknown')}: {e}")
+                    f"ERROR: Unexpected error mapping crypto position {crypto_pos.get('id', 'unknown')}: {e}")
                 error_count += 1
                 continue
 
         validation_logger.info(
-            f"Crypto position mapping complete: {
-                len(mapped)} mapped, {skipped_count} skipped, {error_count} errors")
+            f"Crypto position mapping complete: {len(mapped)} mapped, {skipped_count} skipped, {error_count} errors")
         return mapped
     except Exception as e:
         validation_logger.error(
@@ -915,19 +891,13 @@ def map_orders(raw_orders: List[Dict], user_id: str) -> List[Dict]:
             try:
                 if order.get('type') not in ('market', 'limit'):
                     logger.debug(
-                        f"Skipping stock order {
-                            order.get(
-                                'id', 'unknown')}: type {
-                            order.get('type')} not market/limit")
+                        f"Skipping stock order {order.get('id', 'unknown')}: type {order.get('type')} not market/limit")
                     continue
 
                 instrument_url = order.get('instrument')
                 if not instrument_url:
                     logger.debug(
-                        f"Skipping stock order {
-                            order.get(
-                                'id',
-                                'unknown')}: missing instrument URL")
+                        f"Skipping stock order {order.get('id','unknown')}: missing instrument URL")
                     continue
 
                 # Resolve symbol from instrument URL
@@ -939,8 +909,8 @@ def map_orders(raw_orders: List[Dict], user_id: str) -> List[Dict]:
                 executions = order.get('executions', [])
 
                 if not executions:
-                    logger.debug(f"Skipping stock order {
-                        order_id}: no executions present")
+                    logger.debug(
+                        f"Skipping stock order {order_id}: no executions present")
                     continue
 
                 for execution in executions:
@@ -972,9 +942,7 @@ def map_orders(raw_orders: List[Dict], user_id: str) -> List[Dict]:
                         continue
             except Exception as e:
                 logger.error(
-                    f"Error processing stock order {
-                        order.get(
-                            'id', 'unknown')}: {e}")
+                    f"Error processing stock order {order.get('id', 'unknown')}: {e}")
                 continue
 
         logger.info(f"Successfully mapped {len(orders)} stock orders")
@@ -995,9 +963,7 @@ def map_crypto_orders(
         if raw_crypto_orders:
             logger.info(f"=== CRYPTO ORDER DATA STRUCTURE ===")
             logger.info(
-                f"First crypto order keys: {
-                    list(
-                        raw_crypto_orders[0].keys())}")
+                f"First crypto order keys: {list(raw_crypto_orders[0].keys())}")
             logger.info(f"First crypto order data: {raw_crypto_orders[0]}")
             logger.info(f"=== END CRYPTO ORDER DATA STRUCTURE ===")
 
@@ -1006,16 +972,13 @@ def map_crypto_orders(
 
         for i, order in enumerate(raw_crypto_orders):
             try:
-                logger.info(f"=== Processing crypto order {
-                            i + 1}/{len(raw_crypto_orders)} ===")
+                logger.info(
+                    f"=== Processing crypto order {i + 1}/{len(raw_crypto_orders)} ===")
                 logger.info(f"Raw crypto order data: {order}")
 
                 if order.get('type') not in ('market', 'limit'):
                     logger.debug(
-                        f"Skipping crypto order {
-                            order.get(
-                                'id', 'unknown')}: type {
-                            order.get('type')} not market/limit")
+                        f"Skipping crypto order {order.get('id', 'unknown')}: type {order.get('type')} not market/limit")
                     continue
 
                 # Extract crypto symbol
@@ -1024,10 +987,7 @@ def map_crypto_orders(
 
                 if not crypto_symbol:
                     logger.debug(
-                        f"Skipping crypto order {
-                            order.get(
-                                'id',
-                                'unknown')}: missing currency pair")
+                        f"Skipping crypto order {order.get('id','unknown')}: missing currency pair")
                     continue
 
                 # Clean up crypto symbol (e.g., "BTC-USD" -> "BTC")
@@ -1040,18 +1000,17 @@ def map_crypto_orders(
                 executions = order.get('executions', [])
 
                 logger.info(
-                    f"Order side: {side}, ID: {order_id}, Executions count: {
-                        len(executions)}")
+                    f"Order side: {side}, ID: {order_id}, Executions count: {len(executions)}")
 
                 if not executions:
-                    logger.debug(f"Skipping crypto order {
-                        order_id}: no executions present")
+                    logger.debug(
+                        f"Skipping crypto order {order_id}: no executions present")
                     continue
 
                 for j, execution in enumerate(executions):
                     try:
-                        logger.info(f"Processing execution {
-                                    j + 1}/{len(executions)}: {execution}")
+                        logger.info(
+                            f"Processing execution {j + 1}/{len(executions)}: {execution}")
 
                         mapped_order = {
                             'symbol': symbol,
@@ -1077,9 +1036,7 @@ def map_crypto_orders(
                         continue
             except Exception as e:
                 logger.error(
-                    f"Error processing crypto order {
-                        order.get(
-                            'id', 'unknown')}: {e}")
+                    f"Error processing crypto order {order.get('id', 'unknown')}: {e}")
                 continue
 
         logger.info(f"Successfully mapped {len(orders)} crypto orders")
@@ -1089,8 +1046,20 @@ def map_crypto_orders(
         return []
 
 
-async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials) -> Dict[str, Any]:
-    """Internal function to pull data from Robinhood - used by workflows"""
+async def _run_blocking(fn, timeout: int = 30):
+    """Run a synchronous blocking function in a thread pool with a timeout."""
+    return await asyncio.wait_for(asyncio.to_thread(fn), timeout=timeout)
+
+
+async def pull_robinhood_data_internal(
+        credentials: HTTPAuthorizationCredentials, total_timeout: int = 240) -> Dict[str, Any]:
+    """Internal function to pull data from Robinhood - used by workflows
+
+    Args:
+        credentials: Auth credentials for user authentication.
+        total_timeout: Max total seconds for the entire pull (default 240).
+                       Returns partial results on timeout instead of crashing.
+    """
     logger.info("Starting Robinhood data pull...")
 
     # Check if robin_stocks is available
@@ -1100,6 +1069,24 @@ async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials
             "success": False,
             "error": "robin_stocks library not available"}
 
+    try:
+        return await asyncio.wait_for(
+            _exec_robinhood_pull(credentials),
+            timeout=total_timeout
+        )
+    except asyncio.TimeoutError:
+        logger.error(
+            f"Robinhood data pull timed out after {total_timeout}s total")
+        return {
+            "success": True,
+            "partial": True,
+            "error": f"Sync timed out after {total_timeout}s \u2014 data may be incomplete. Try again for full sync."
+        }
+
+
+async def _exec_robinhood_pull(
+        credentials: HTTPAuthorizationCredentials) -> Dict[str, Any]:
+    """Execute the actual Robinhood data pull with per-section timeouts."""
     try:
         # Get user ID from authenticated session
         user_id = await get_current_user_id(credentials)
@@ -1131,28 +1118,36 @@ async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials
                 logger.info("Attempting Robinhood login with MFA...")
                 try:
                     # Try with mfa_code parameter first
-                    r.login(
-                        settings.username,
-                        settings.password,
-                        mfa_code=settings.mfa)
+                    await _run_blocking(
+                        lambda: r.login(
+                            settings.username,
+                            settings.password,
+                            mfa_code=settings.mfa),
+                        timeout=30)
                 except Exception as mfa_error:
                     logger.warning(
                         f"MFA login with mfa_code failed: {mfa_error}")
                     # Try with the third positional parameter
-                    r.login(settings.username, settings.password, settings.mfa)
+                    await _run_blocking(
+                        lambda: r.login(settings.username, settings.password, settings.mfa),
+                        timeout=30)
             else:
                 logger.info("Attempting Robinhood login without MFA...")
-                r.login(settings.username, settings.password)
+                await _run_blocking(
+                    lambda: r.login(settings.username, settings.password),
+                    timeout=30)
 
             logger.info("Successfully authenticated with Robinhood")
+        except asyncio.TimeoutError:
+            logger.error("Robinhood login timed out after 30 seconds")
+            return {"success": False, "error": "Robinhood login timed out"}
         except Exception as e:
             logger.error(f"Failed to authenticate with Robinhood: {e}")
             # Update portfolio settings with error
             try:
                 model_manager = get_model_manager()
                 portfolio_data = model_manager.get_portfolio_data(user_id)
-                portfolio_data['robinhood_last_error'] = f"Authentication failed: {
-                    e}"
+                portfolio_data['robinhood_last_error'] = f"Authentication failed: {e}"
                 model_manager.update_portfolio_data(user_id, portfolio_data)
             except Exception as update_error:
                 logger.error(f"Failed to update error status: {update_error}")
@@ -1168,34 +1163,37 @@ async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials
 
         try:
             logger.info("Pulling stock positions from Robinhood...")
-            raw_positions = r.account.build_holdings()
+            raw_positions = await _run_blocking(r.account.build_holdings, timeout=120)
             logger.info(
-                f"Pulled {
-                    len(raw_positions)} stock positions from Robinhood")
+                f"Pulled {len(raw_positions)} stock positions from Robinhood")
+        except asyncio.TimeoutError:
+            logger.error(
+                "Robinhood stock positions pull timed out after 120 seconds")
         except Exception as e:
             logger.error(f"Failed to pull stock positions from Robinhood: {e}")
             # Continue with other data pulls - don't fail completely
 
         try:
             logger.info("Pulling crypto positions from Robinhood...")
-            raw_crypto_positions = r.crypto.get_crypto_positions()
+            raw_crypto_positions = await _run_blocking(r.crypto.get_crypto_positions, timeout=120)
             logger.info(
-                f"Pulled {
-                    len(raw_crypto_positions)} crypto positions from Robinhood")
+                f"Pulled {len(raw_crypto_positions)} crypto positions from Robinhood")
 
             # Log the raw crypto positions data structure
             if raw_crypto_positions:
                 logger.info("=== RAW CRYPTO POSITIONS DATA ===")
                 logger.info(
-                    f"Number of crypto positions: {
-                        len(raw_crypto_positions)}")
+                    f"Number of crypto positions: {len(raw_crypto_positions)}")
                 logger.info(
-                    f"First crypto position sample: {
-                        raw_crypto_positions[0]}")
+                    f"First crypto position sample: {raw_crypto_positions[0]}")
                 logger.info("=== END RAW CRYPTO POSITIONS DATA ===")
             else:
                 logger.info("No crypto positions found")
 
+        except asyncio.TimeoutError:
+            logger.error(
+                "Robinhood crypto positions pull timed out after 120 seconds")
+            raw_crypto_positions = []
         except Exception as e:
             logger.error(
                 f"Failed to pull crypto positions from Robinhood: {e}")
@@ -1204,52 +1202,61 @@ async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials
 
         try:
             logger.info("Pulling stock orders from Robinhood...")
-            raw_orders = r.orders.get_all_stock_orders()
+            raw_orders = await _run_blocking(r.orders.get_all_stock_orders, timeout=120)
             logger.info(
-                f"Pulled {
-                    len(raw_orders)} stock orders from Robinhood")
+                f"Pulled {len(raw_orders)} stock orders from Robinhood")
+        except asyncio.TimeoutError:
+            logger.error(
+                "Robinhood stock orders pull timed out after 120 seconds")
         except Exception as e:
             logger.error(f"Failed to pull stock orders from Robinhood: {e}")
             # Continue with other data pulls
 
         try:
             logger.info("Pulling crypto orders from Robinhood...")
-            # Try different crypto order functions that might exist
             raw_crypto_orders = []
 
             # Try get_crypto_orders first
             try:
-                raw_crypto_orders = r.crypto.get_crypto_orders()
+                raw_crypto_orders = await _run_blocking(r.crypto.get_crypto_orders, timeout=60)
                 logger.info(
-                    f"Pulled {
-                        len(raw_crypto_orders)} crypto orders using get_crypto_orders")
+                    f"Pulled {len(raw_crypto_orders)} crypto orders using get_crypto_orders")
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "get_crypto_orders timed out, trying alternatives...")
+                raw_crypto_orders = []
             except AttributeError:
                 logger.warning(
                     "get_crypto_orders not available, trying alternative methods...")
 
                 # Try get_crypto_order_history
                 try:
-                    raw_crypto_orders = r.crypto.get_crypto_order_history()
+                    raw_crypto_orders = await _run_blocking(r.crypto.get_crypto_order_history, timeout=60)
                     logger.info(
-                        f"Pulled {
-                            len(raw_crypto_orders)} crypto orders using get_crypto_order_history")
+                        f"Pulled {len(raw_crypto_orders)} crypto orders using get_crypto_order_history")
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "get_crypto_order_history timed out, trying alternatives...")
+                    raw_crypto_orders = []
                 except AttributeError:
                     logger.warning(
                         "get_crypto_order_history not available, trying get_crypto_orders_by_id...")
 
                     # Try to get orders by getting account info first
                     try:
-                        account = r.load_account_profile()
+                        account = await _run_blocking(r.load_account_profile, timeout=30)
                         if account and 'crypto_account' in account:
                             crypto_account_id = account['crypto_account']
-                            raw_crypto_orders = r.crypto.get_crypto_orders_by_id(
-                                crypto_account_id)
+                            raw_crypto_orders = await _run_blocking(
+                                lambda: r.crypto.get_crypto_orders_by_id(crypto_account_id), timeout=60)
                             logger.info(
-                                f"Pulled {
-                                    len(raw_crypto_orders)} crypto orders using get_crypto_orders_by_id")
+                                f"Pulled {len(raw_crypto_orders)} crypto orders using get_crypto_orders_by_id")
                         else:
                             logger.warning(
                                 "No crypto account found in account profile")
+                    except asyncio.TimeoutError:
+                        logger.warning("load_account_profile timed out")
+                        raw_crypto_orders = []
                     except Exception as e:
                         logger.warning(
                             f"Failed to get crypto orders by account ID: {e}")
@@ -1258,15 +1265,16 @@ async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials
             if raw_crypto_orders:
                 logger.info("=== RAW CRYPTO ORDERS DATA ===")
                 logger.info(
-                    f"Number of crypto orders: {
-                        len(raw_crypto_orders)}")
+                    f"Number of crypto orders: {len(raw_crypto_orders)}")
                 logger.info(
-                    f"First crypto order sample: {
-                        raw_crypto_orders[0]}")
+                    f"First crypto order sample: {raw_crypto_orders[0]}")
                 logger.info("=== END RAW CRYPTO ORDERS DATA ===")
             else:
                 logger.info("No crypto orders found")
 
+        except asyncio.TimeoutError:
+            logger.error("Robinhood crypto orders pull timed out")
+            raw_crypto_orders = []
         except Exception as e:
             logger.error(f"Failed to pull crypto orders from Robinhood: {e}")
             raw_crypto_orders = []
@@ -1274,10 +1282,12 @@ async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials
 
         try:
             logger.info("Pulling dividends from Robinhood...")
-            raw_dividends = r.account.get_dividends()
+            raw_dividends = await _run_blocking(r.account.get_dividends, timeout=120)
             logger.info(
-                f"Pulled {
-                    len(raw_dividends)} dividends from Robinhood")
+                f"Pulled {len(raw_dividends)} dividends from Robinhood")
+        except asyncio.TimeoutError:
+            logger.error(
+                "Robinhood dividends pull timed out after 120 seconds")
         except Exception as e:
             logger.error(f"Failed to pull dividends from Robinhood: {e}")
             # Continue with other data pulls
@@ -1337,9 +1347,7 @@ async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials
             position_results = model_manager.upsert_positions(
                 all_mapped_positions, user_id)
             logger.info(
-                f"Upserted positions: {position_results} (stocks: {
-                    len(mapped_stock_positions)}, crypto: {
-                    len(mapped_crypto_positions)})")
+                f"Upserted positions: {position_results} (stocks: {len(mapped_stock_positions)}, crypto: {len(mapped_crypto_positions)})")
 
             logger.info("Mapping and saving stock orders...")
             mapped_stock_orders = map_orders(raw_orders, user_id)
@@ -1353,9 +1361,7 @@ async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials
             order_results = model_manager.upsert_orders(
                 all_mapped_orders, user_id)
             logger.info(
-                f"Upserted orders: {order_results} (stocks: {
-                    len(mapped_stock_orders)}, crypto: {
-                    len(mapped_crypto_orders)})")
+                f"Upserted orders: {order_results} (stocks: {len(mapped_stock_orders)}, crypto: {len(mapped_crypto_orders)})")
 
             logger.info("Mapping and saving dividends...")
             mapped_dividends = map_dividends(raw_dividends, user_id)
@@ -1482,25 +1488,17 @@ async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials
         # Log validation summary
         validation_logger.info("=== Robinhood Pull Validation Summary ===")
         validation_logger.info(
-            f"Stock Positions: {
-                len(mapped_stock_positions)} successfully mapped")
+            f"Stock Positions: {len(mapped_stock_positions)} successfully mapped")
         validation_logger.info(
-            f"Crypto Positions: {
-                len(mapped_crypto_positions)} successfully mapped")
+            f"Crypto Positions: {len(mapped_crypto_positions)} successfully mapped")
         validation_logger.info(
-            f"Stock Orders: {
-                len(mapped_stock_orders)} successfully mapped")
+            f"Stock Orders: {len(mapped_stock_orders)} successfully mapped")
         validation_logger.info(
-            f"Crypto Orders: {
-                len(mapped_crypto_orders)} successfully mapped")
+            f"Crypto Orders: {len(mapped_crypto_orders)} successfully mapped")
         validation_logger.info(
-            f"Dividends: {
-                len(mapped_dividends)} successfully mapped")
+            f"Dividends: {len(mapped_dividends)} successfully mapped")
         validation_logger.info(
-            f"Symbols updated: {
-                len(all_symbols) if 'all_symbols' in locals() else 0} (stocks: {
-                len(stock_symbols) if 'stock_symbols' in locals() else 0}, crypto: {
-                len(crypto_symbols) if 'crypto_symbols' in locals() else 0})")
+            f"Symbols updated: {len(all_symbols) if 'all_symbols' in locals() else 0} (stocks: {len(stock_symbols) if 'stock_symbols' in locals() else 0}, crypto: {len(crypto_symbols) if 'crypto_symbols' in locals() else 0})")
         validation_logger.info("=== End Validation Summary ===")
 
         logger.info("Robinhood data pull completed successfully")
@@ -1541,20 +1539,28 @@ async def pull_robinhood_data_internal(credentials: HTTPAuthorizationCredentials
 
 
 @router.post("/pull")
-async def pull_robinhood_data(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def pull_robinhood_data(
+        credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Public endpoint to pull data from Robinhood - for backward compatibility"""
-    result = await pull_robinhood_data_internal(credentials)
+    try:
+        result = await pull_robinhood_data_internal(credentials)
 
-    if not result.get('success'):
-        raise HTTPException(
-            status_code=500, detail=result.get(
-                'error', 'Unknown error'))
+        if not result.get('success'):
+            raise HTTPException(
+                status_code=500, detail=result.get(
+                    'error', 'Unknown error'))
 
-    return result
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in pull_robinhood_data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/status", response_model=RobinhoodStatus)
-async def get_robinhood_status(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_robinhood_status(
+        credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Get Robinhood integration status."""
     try:
         settings = await get_robinhood_settings(credentials)

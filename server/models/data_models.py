@@ -62,8 +62,8 @@ class BaseModelWithFrontend(BaseModel):
         """Create instance from frontend data with mapped field names."""
         logger.debug(
             f"[{cls.__name__}] Converting from frontend dict - Input: {data}")
-        logger.debug(f"[{cls.__name__}] Using field map: {
-                     cls.frontend_field_map}")
+        logger.debug(
+            f"[{cls.__name__}] Using field map: {cls.frontend_field_map}")
 
         # Create a copy of the data to avoid modifying the original
         converted_data = data.copy()
@@ -71,13 +71,15 @@ class BaseModelWithFrontend(BaseModel):
         # Map frontend field names to backend field names
         for frontend_field, backend_field in cls.frontend_field_map.items():
             if frontend_field in converted_data:
-                logger.debug(f"[{cls.__name__}] Mapping {
-                             frontend_field} -> {backend_field}")
+                logger.debug(
+                    f"[{cls.__name__}] Mapping {frontend_field} -> {backend_field}")
+
                 converted_data[backend_field] = converted_data.pop(
                     frontend_field)
 
-        logger.debug(f"[{cls.__name__}] Creating instance with data: {
-                     converted_data}")
+        logger.debug(
+            f"[{cls.__name__}] Creating instance with data:  converted_data")
+
         try:
             instance = cls(**converted_data)
             logger.debug(
@@ -104,10 +106,10 @@ class BaseRecord(BaseModelWithFrontend):
             date: lambda v: v.isoformat()
         }
 
-
 # =============================================================================
 # PORTFOLIO MODELS
 # =============================================================================
+
 
 class PortfolioSettings(BaseRecord):
     """Portfolio settings and configuration."""
@@ -259,14 +261,13 @@ class Position(BaseRecord):
         valid_sources = {'manual', 'robinhood', 'api'}
         if v.lower() not in valid_sources:
             raise ValueError(
-                f'Invalid source. Must be one of: {
-                    ", ".join(valid_sources)}')
+                f'Invalid source. Must be one of: {", ".join(valid_sources)}')
         return v.lower()
-
 
 # =============================================================================
 # ORDER MODELS
 # =============================================================================
+
 
 class Order(BaseRecord):
     """Trade order model."""
@@ -325,10 +326,10 @@ class Order(BaseRecord):
         except ValueError:
             raise ValueError('Date must be in YYYY-MM-DD format')
 
-
 # =============================================================================
 # DIVIDEND MODELS
 # =============================================================================
+
 
 class Dividend(BaseRecord):
     """Dividend payment model."""
@@ -382,10 +383,10 @@ class Dividend(BaseRecord):
             raise ValueError('State must be "paid" or "pending"')
         return v.lower()
 
-
 # =============================================================================
 # SYMBOL CACHE MODELS
 # =============================================================================
+
 
 class SymbolCache(BaseRecord):
     """Symbol market data cache model."""
@@ -442,10 +443,10 @@ class SymbolCache(BaseRecord):
             delta=market_data.get('delta')
         )
 
-
 # =============================================================================
 # PROFIT/LOSS MODELS
 # =============================================================================
+
 
 class ProfitLoss(BaseRecord):
     """Profit/Loss record model."""
@@ -532,10 +533,10 @@ class ProfitLossCache(BaseRecord):
             raise ValueError('Total must equal unrealized + realized')
         return self
 
-
 # =============================================================================
 # FRONTEND DATA MODELS
 # =============================================================================
+
 
 class PortfolioSummary(BaseModel):
     """Portfolio summary for frontend display."""
@@ -573,10 +574,10 @@ class MarketData(BaseModel):
             return round(v, 4)
         return v
 
-
 # =============================================================================
 # SCHEMA DEFINITIONS FOR DB_INIT
 # =============================================================================
+
 
 def get_collection_schemas() -> Dict[str, Dict[str, Any]]:
     """Get collection schemas for database initialization."""
@@ -666,10 +667,10 @@ def get_collection_schemas() -> Dict[str, Dict[str, Any]]:
         }
     }
 
-
 # =============================================================================
 # VALIDATION UTILITIES
 # =============================================================================
+
 
 def validate_portfolio_data(data: Dict[str, Any]) -> PortfolioSettings:
     """Validate and create PortfolioSettings from dictionary."""
@@ -705,10 +706,10 @@ def validate_profit_loss_cache_data(data: Dict[str, Any]) -> ProfitLossCache:
     """Validate and create ProfitLossCache from dictionary."""
     return ProfitLossCache(**data)
 
-
 # =============================================================================
 # DATA TRANSFORMATION UTILITIES
 # =============================================================================
+
 
 def transform_pocketbase_record(
         record: Dict[str, Any], model_class: type) -> BaseModel:
@@ -752,10 +753,10 @@ def transform_to_pocketbase_data(model: BaseModel) -> Dict[str, Any]:
 
     return clean_data
 
-
 # =============================================================================
 # MODEL REGISTRY
 # =============================================================================
+
 
 MODEL_REGISTRY = {
     'portfolio': PortfolioSettings,

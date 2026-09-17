@@ -7,8 +7,7 @@ import os
 import json
 import requests
 import shutil
-from market_workflow_cli import run_market_report
-from financial_workflow_cli import create_financial_report
+from server.services.report_workflow_service import generate_market_report as _service_market, generate_financial_report as _service_financial
 
 logger = get_server_logger("report")
 
@@ -95,61 +94,87 @@ def _validate_strategy(strategy: Optional[str]) -> None:
 
 
 def get_report_metadata(report_dir: str) -> Dict:
-    metadata_path = os.path.join(report_dir, "metadata.json")
-    if os.path.exists(metadata_path):
-        with open(metadata_path, 'r', encoding='utf-8') as f:
-            metadata = json.load(f)
-            metadata['dir'] = os.path.basename(report_dir)
-            if 'created' in metadata:
-                metadata['created'] = metadata['created']
-            if 'path' not in metadata:
-                metadata['path'] = f"static/results/{metadata['dir']}/index.html"
-            return metadata
-    return {'dir': os.path.basename(
-        report_dir), 'path': f"static/results/{os.path.basename(report_dir)}/index.html"}
+    try:
+        metadata_path = os.path.join(report_dir, "metadata.json")
+        if os.path.exists(metadata_path):
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                metadata = json.load(f)
+                metadata['dir'] = os.path.basename(report_dir)
+                if 'created' in metadata:
+                    metadata['created'] = metadata['created']
+                if 'path' not in metadata:
+                    metadata['path'] = f"static/results/{metadata['dir']}/index.html"
+                return metadata
+        return {
+            'dir': os.path.basename(report_dir),
+            'path': f"static/results/{os.path.basename(report_dir)}/index.html"}
+    except Exception as e:
+        logger.error(f"Error reading report metadata from {report_dir}: {e}")
+        return {
+            'dir': os.path.basename(report_dir),
+            'path': f"static/results/{os.path.basename(report_dir)}/index.html",
+            'error': str(e)}
 
 
 @router.get("/list")
 def list_reports() -> List[Dict]:
-    if not os.path.exists(REPORTS_DIR):
-        return []
-    report_dirs = [
-        os.path.join(
-            REPORTS_DIR,
-            d) for d in os.listdir(REPORTS_DIR) if os.path.isdir(
+    try:
+        if not os.path.exists(REPORTS_DIR):
+            return []
+        report_dirs = [
             os.path.join(
                 REPORTS_DIR,
-                d))]
-    reports = [get_report_metadata(d) for d in report_dirs]
-    reports.sort(key=lambda x: x.get('created', ''), reverse=True)
-    return reports
+                d) for d in os.listdir(REPORTS_DIR) if os.path.isdir(
+                os.path.join(
+                    REPORTS_DIR,
+                    d))]
+        reports = [get_report_metadata(d) for d in report_dirs]
+        reports.sort(key=lambda x: x.get('created', ''), reverse=True)
+        return reports
+    except Exception as e:
+        logger.error(f"Error listing reports: {e}")
+        return []
 
 
 @router.post("/clean")
 def clean_results():
-    if os.path.exists(REPORTS_DIR):
-        for item in os.listdir(REPORTS_DIR):
-            item_path = os.path.join(REPORTS_DIR, item)
-            try:
-                if os.path.isfile(item_path):
-                    os.unlink(item_path)
-                elif os.path.isdir(item_path):
-                    shutil.rmtree(item_path)
-            except Exception as e:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Error deleting {item_path}: {e}")
-    return {"message": "Results cleaned successfully"}
+    try:
+        if os.path.exists(REPORTS_DIR):
+            for item in os.listdir(REPORTS_DIR):
+                item_path = os.path.join(REPORTS_DIR, item)
+                try:
+                    if os.path.isfile(item_path):
+                        os.unlink(item_path)
+                    elif os.path.isdir(item_path):
+                        shutil.rmtree(item_path)
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Error deleting {item_path}: {e}")
+        return {"message": "Results cleaned successfully"}
+    except Exception as e:
+        logger.error(f"Error cleaning results: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error cleaning results: {e}")
 
 
 @router.post("/delete/{dir}")
 def delete_report(dir: str):
-    report_path = os.path.join(REPORTS_DIR, dir)
-    if os.path.exists(report_path) and os.path.commonprefix(
-            [os.path.abspath(report_path), REPORTS_DIR]) == REPORTS_DIR:
-        shutil.rmtree(report_path)
-        return {"message": "Report deleted successfully"}
-    raise HTTPException(status_code=404, detail="Report not found")
+    try:
+        report_path = os.path.join(REPORTS_DIR, dir)
+        if os.path.exists(report_path) and os.path.commonprefix(
+                [os.path.abspath(report_path), REPORTS_DIR]) == REPORTS_DIR:
+            shutil.rmtree(report_path)
+            return {"message": "Report deleted successfully"}
+        raise HTTPException(status_code=404, detail="Report not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting report {dir}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting report: {e}")
 
 
 @router.get("/data/{symbol}/{filename}")
@@ -182,7 +207,8 @@ def get_report_data(symbol: str, filename: str):
     file_path = os.path.join(REPORTS_DIR, latest_dir, filename)
 
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"File {filename} not found for {symbol}")
+        raise HTTPException(status_code=404,
+                            detail=f"File {filename} not found for {symbol}")
 
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -195,7 +221,8 @@ def get_report_data(symbol: str, filename: str):
 
 
 @router.get("/search-symbols")
-def search_symbols(query: str = Query(..., min_length=1, description="Symbol search query")):
+def search_symbols(query: str = Query(..., min_length=1,
+                   description="Symbol search query")):
     """Search for symbols using Polygon.io's ticker search API."""
     if not POLYGON_API_KEY:
         raise HTTPException(status_code=500, detail="Polygon API key not set")
@@ -224,33 +251,42 @@ def search_symbols(query: str = Query(..., min_length=1, description="Symbol sea
 
 
 @router.post("/generate-market")
-def generate_market_report_api(
+async def generate_market_report_api(
     output_dir: str = 'public/results',
         force_refresh: bool = False):
     """Trigger market report generation and return the report path."""
-    logger.info(f"[API] /api/report/generate-market called with output_dir={output_dir}, force_refresh={force_refresh}")
+    logger.info(
+        f"[API] /api/report/generate-market called with output_dir={output_dir}, force_refresh={force_refresh}")
     try:
-        path = run_market_report(
+        loop = asyncio.get_event_loop()
+        path = await loop.run_in_executor(None, lambda: _service_market(
             output_dir=output_dir,
-            force_refresh=force_refresh)
+            force_refresh=force_refresh))
         logger.info(f"[API] Market report generated at: {path}")
         return {"report_path": path}
     except Exception as e:
         logger.error(
             f"[API] Error generating market report: {e}",
             exc_info=True)
-        raise HTTPException(status_code=500,
-                            detail=f"Market report generation failed: {_clean_error_message(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Market report generation failed: {_clean_error_message(e)}")
 
 
 @router.post("/generate-finance")
 def generate_finance_report_api(
-        symbol: Optional[str] = None,
-        output_dir: str = 'public/results',
-        force_refresh: bool = False,
-        strategy: Optional[str] = Query(None, description="Optional backtest strategy to validate"),
-        start_date: Optional[str] = Query(None, description="Optional start date (YYYY-MM-DD)"),
-        end_date: Optional[str] = Query(None, description="Optional end date (YYYY-MM-DD)")):
+    symbol: Optional[str] = None,
+    output_dir: str = 'public/results',
+    force_refresh: bool = False,
+    strategy: Optional[str] = Query(
+        None,
+        description="Optional backtest strategy to validate"),
+        start_date: Optional[str] = Query(
+            None,
+            description="Optional start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(
+        None,
+        description="Optional end date (YYYY-MM-DD)")):
     """Trigger finance report generation and return the report path.
 
     Validates symbol, strategy and date range before delegating to the
@@ -261,17 +297,14 @@ def generate_finance_report_api(
     _validate_strategy(strategy)
     _validate_date_range(start_date, end_date)
 
-    logger.info(f"[API] /api/report/generate-finance called with symbol={symbol}, output_dir={output_dir}, force_refresh={force_refresh}, strategy={strategy}, start_date={start_date}, end_date={end_date}")
+    logger.info(
+        f"[API] /api/report/generate-finance called with symbol={symbol}, output_dir={output_dir}, force_refresh={force_refresh}, strategy={strategy}, start_date={start_date}, end_date={end_date}")
 
     try:
-        # Create a simple args object for the financial workflow
-        class Args:
-            def __init__(self, output_dir, force_refresh):
-                self.output_dir = output_dir
-                self.force_refresh = force_refresh
-
-        args = Args(output_dir, force_refresh)
-        path = create_financial_report(symbol, args)
+        path = _service_financial(
+            symbol=symbol,
+            output_dir=output_dir,
+            force_refresh=force_refresh)
         logger.info(f"[API] Finance report generated at: {path}")
         return {"report_path": path}
     except HTTPException:
@@ -280,5 +313,6 @@ def generate_finance_report_api(
         logger.error(
             f"[API] Error generating finance report for {symbol}: {e}",
             exc_info=True)
-        raise HTTPException(status_code=500,
-                            detail=f"Finance report generation failed for {symbol}: {_clean_error_message(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Finance report generation failed for {symbol}: {_clean_error_message(e)}")

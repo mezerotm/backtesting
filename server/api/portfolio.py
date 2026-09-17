@@ -31,8 +31,9 @@ async def get_portfolio_summary(user_id: str = Depends(
                 f"GET /summary failed - User: {user_id}, Error: {error_msg}")
             raise HTTPException(status_code=400, detail=error_msg)
 
-        logger.info(f"GET /summary successful - User: {user_id}, Positions: {
-                    len(result.get('data', {}).get('positions', []))}")
+        logger.info(
+            f"GET /summary successful - User: {user_id}, Positions: {len(result.get('data', {}).get('positions', []))}")
+
         return result["data"]
     except Exception as e:
         logger.error(
@@ -96,8 +97,7 @@ async def update_portfolio_settings(
                 except (TypeError, ValueError):
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Invalid value for {field}. Must be a valid number."
-                    )
+                        detail=f"Invalid value for {field}. Must be a valid number.")
 
         # Convert boolean fields
         if 'robinhood_enabled' in settings:
@@ -185,8 +185,9 @@ async def search_symbols(
             raise HTTPException(status_code=400, detail=error_msg)
 
         symbols_count = len(result.get("data", []))
-        logger.info(f"GET /search-symbols successful - User: {
-                    user_id}, Query: {query}, Results: {symbols_count}")
+        logger.info(
+            f"GET /search-symbols successful - User: {user_id}, Query: {query}, Results: {symbols_count}")
+
         return result["data"]
     except Exception as e:
         logger.error(
@@ -340,8 +341,9 @@ async def refresh_symbol_data(user_id: str = Depends(
             f"POST /refresh-symbols exception - User: {user_id}, Error: {str(e)}")
         raise
 
-
 # Now the parameterized routes (must come after specific routes)
+
+
 @router.get("/")
 async def get_user_positions(user_id: str = Depends(
         get_current_user_id)) -> Dict[str, Any]:
@@ -374,9 +376,7 @@ async def add_position(
 ) -> Dict[str, Any]:
     """Add a new position for the current user."""
     logger.info(
-        f"POST / - User: {user_id}, Symbol: {
-            position.symbol}, Quantity: {
-            position.quantity}")
+        f"POST / - User: {user_id}, Symbol: {position.symbol}, Quantity: {position.quantity}")
 
     try:
         result = await portfolio_service.create_position(user_id, position)
@@ -388,11 +388,7 @@ async def add_position(
             raise HTTPException(status_code=400, detail=error_msg)
 
         logger.info(
-            f"POST / successful - User: {user_id}, Symbol: {
-                position.symbol}, Position ID: {
-                result.get(
-                    'data',
-                    {}).get('id')}")
+            f"POST / successful - User: {user_id}, Symbol: {position.symbol}, Position ID: {result.get('data', {}).get('id')}")
         return result["data"]
     except Exception as e:
         logger.error(

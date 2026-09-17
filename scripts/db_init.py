@@ -91,8 +91,8 @@ def get_users_collection_id(pb):
             logger.error("Users collection not found in collections list")
             return None
         else:
-            logger.error(f"Failed to get collections: {
-                         response.status_code} - {response.text}")
+            logger.error(
+                f"Failed to get collections: {response.status_code} - {response.text}")
             return None
     except Exception as e:
         logger.error(f"Error getting users collection ID: {e}")
@@ -180,8 +180,8 @@ def init_database():
 
     # Debug: Show what credentials are loaded
     from config.backend.settings import POCKETBASE_EMAIL, POCKETBASE_PASSWORD
-    logger.info(f"Loaded credentials - Email: {POCKETBASE_EMAIL}, Password: {
-                '*' * len(POCKETBASE_PASSWORD) if POCKETBASE_PASSWORD else 'None'}")
+    logger.info(
+        f"Loaded credentials - Email: {POCKETBASE_EMAIL}, Password: {'*' * len(POCKETBASE_PASSWORD) if POCKETBASE_PASSWORD else 'None'}")
 
     with PocketBaseClient() as pb:
         if not pb.is_server_running():
@@ -221,9 +221,7 @@ def init_database():
             logger.info("🔧 Special handling for profit_loss collection...")
             profit_loss_fields = collections["profit_loss"]
             logger.info(
-                f"Profit loss amount field config: {
-                    profit_loss_fields.get(
-                        'amount', {})}")
+                f"Profit loss amount field config: {profit_loss_fields.get('amount', {})}")
 
             # Always recreate profit_loss collection to ensure proper schema
             if pb.collection_exists("profit_loss"):
@@ -269,8 +267,8 @@ def init_database():
                     logger.error(
                         f"❌ Failed to create collection: {collection_name}")
 
-        logger.info(f"Database initialization complete. Processed {
-                    created_count} collections.")
+        logger.info(
+            f"Database initialization complete. Processed {created_count} collections.")
         logger.info(
             "Note: Collections with user relations require user authentication to work properly.")
         return True

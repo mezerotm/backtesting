@@ -360,10 +360,8 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
             n = min(n, len(values_10y), len(values_2y))
             if not (len(labels) == len(values_10y) == len(values_2y)):
                 print(
-                    f"[DEBUG] Mismatched lengths: labels={
-                        len(labels)}, 10Y={
-                        len(values_10y)}, 2Y={
-                        len(values_2y)}. Trimming to {n}.")
+                    f"[DEBUG] Mismatched lengths: labels={len(labels)}, 10Y={len(values_10y)}, 2Y={len(values_2y)}. Trimming to {n}."
+                )
             labels = labels[:n]
             values_10y = values_10y[:n]
             values_2y = values_2y[:n]
@@ -371,9 +369,8 @@ def generate_bond_chart(data: Dict, output_dir: str) -> Optional[str]:
             n = min(n, len(values_10y))
             if not (len(labels) == len(values_10y)):
                 print(
-                    f"[DEBUG] Mismatched lengths: labels={
-                        len(labels)}, 10Y={
-                        len(values_10y)}. Trimming to {n}.")
+                    f"[DEBUG] Mismatched lengths: labels={len(labels)}, 10Y={len(values_10y)}. Trimming to {n}."
+                )
             labels = labels[:n]
             values_10y = values_10y[:n]
         print(f"[DEBUG] Chart labels: {labels}")
@@ -605,8 +602,8 @@ def generate_market_index_chart(
         # as default
         ticker = re.sub(r'[^A-Z]', '', index_name.upper())
         tv_symbol = f'AMEX:{ticker}'
-        logger.debug(f"Fallback TradingView symbol: {
-                     tv_symbol} for index {index_name}")
+        logger.debug(
+            f"Fallback TradingView symbol: {tv_symbol} for index {index_name}")
     logger.debug(f"Final TradingView symbol for {index_name}: {tv_symbol}")
     safe_name = index_name.lower().replace(' ', '_').replace('&', 'and')
     charts_dir = os.path.join(output_dir, 'charts')
@@ -643,8 +640,8 @@ def generate_market_index_chart(
     try:
         with open(chart_path, 'w', encoding='utf-8') as f:
             f.write(widget_html)
-        logger.info(f"TradingView chart for {
-                    index_name} saved to {chart_path}")
+        logger.info(
+            f"TradingView chart for { index_name} saved to {chart_path}")
         return os.path.relpath(chart_path, output_dir)
     except Exception as e:
         logger.error(

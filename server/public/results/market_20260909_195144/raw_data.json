@@ -1,0 +1,404 @@
+{
+  "generated_at": "2026-09-09 19:51:44",
+  "date": "September 09, 2026",
+  "current_year": 2026,
+  "now": "2026-09-09 19:51:44",
+  "gdp_chart_path": "charts/gdp_chart.html",
+  "inflation_chart_path": "charts/inflation_chart.html",
+  "unemployment_chart_path": "charts/unemployment_chart.html",
+  "bond_chart_path": "charts/bond_chart.html",
+  "interest_rates": {
+    "Federal Funds Rate": "3.63%",
+    "Last Updated": "2026-09-03",
+    "10-Year Treasury": "4.78%",
+    "30-Year Fixed Mortgage": "6.71%"
+  },
+  "indices": {
+    "Large Cap": [
+      {
+        "name": "S&P 500",
+        "value": "763.01",
+        "change": "N/A",
+        "direction": "neutral",
+        "description": "SPDR S&P 500 ETF",
+        "date": "2026-09-09",
+        "previous_date": null
+      },
+      {
+        "name": "Dow Jones",
+        "value": "524.77",
+        "change": "N/A",
+        "direction": "neutral",
+        "description": "SPDR Dow Jones Industrial Avg",
+        "date": "2026-09-09",
+        "previous_date": null
+      },
+      {
+        "name": "Nasdaq-100",
+        "value": "716.20",
+        "change": "N/A",
+        "direction": "neutral",
+        "description": "Invesco QQQ ETF",
+        "date": "2026-09-09",
+        "previous_date": null
+      }
+    ],
+    "Mid Cap": [
+      {
+        "name": "S&P 400 MidCap",
+        "value": "680.23",
+        "change": "N/A",
+        "direction": "neutral",
+        "description": "SPDR S&P MidCap 400 ETF",
+        "date": "2026-09-09",
+        "previous_date": null
+      }
+    ],
+    "Small Cap": [
+      {
+        "name": "Russell 2000",
+        "value": "290.69",
+        "change": "N/A",
+        "direction": "neutral",
+        "description": "iShares Russell 2000 ETF",
+        "date": "2026-09-09",
+        "previous_date": null
+      }
+    ],
+    "Growth": [
+      {
+        "name": "S&P 500 Growth",
+        "value": "139.38",
+        "change": "N/A",
+        "direction": "neutral",
+        "description": "iShares S&P 500 Growth ETF",
+        "date": "2026-09-09",
+        "previous_date": null
+      }
+    ],
+    "Value": [
+      {
+        "name": "S&P 500 Value",
+        "value": "234.32",
+        "change": "N/A",
+        "direction": "neutral",
+        "description": "iShares S&P 500 Value ETF",
+        "date": "2026-09-09",
+        "previous_date": null
+      }
+    ],
+    "FX": [
+      {
+        "name": "Dollar Index",
+        "value": "27.98",
+        "change": "N/A",
+        "direction": "neutral",
+        "description": "US Dollar Index ETF (UUP)",
+        "date": "2026-09-09",
+        "previous_date": null
+      }
+    ],
+    "Commodities": [
+      {
+        "name": "Oil (WTI)",
+        "value": "149.45",
+        "change": "N/A",
+        "direction": "neutral",
+        "description": "US Oil Fund ETF (USO)",
+        "date": "2026-09-09",
+        "previous_date": null
+      }
+    ],
+    "Volatility": [
+      {
+        "name": "VIX",
+        "value": "17.52",
+        "change": "N/A",
+        "direction": "neutral",
+        "description": "Short-term VIX futures ETF",
+        "date": "2026-09-09",
+        "previous_date": null
+      }
+    ],
+    "Rates": []
+  },
+  "economic_indicators": {
+    "GDP": {
+      "value": "1.5%",
+      "previous": "2.1%",
+      "change_rate": "-0.6%",
+      "trend": "accelerating_down",
+      "last_updated": "04/01/26",
+      "previous_date": "01/01/26",
+      "history": [
+        {
+          "date": "04/01/26",
+          "value": "1.5%",
+          "change": "-0.6%"
+        },
+        {
+          "date": "01/01/26",
+          "value": "2.1%",
+          "change": "+1.6%"
+        },
+        {
+          "date": "10/01/25",
+          "value": "0.5%",
+          "change": "-3.9%"
+        },
+        {
+          "date": "07/01/25",
+          "value": "4.4%",
+          "change": "+0.6%"
+        }
+      ]
+    },
+    "CPI": {
+      "value": "332.8",
+      "previous": "332.6",
+      "change_rate": "0.1%",
+      "trend": "up",
+      "last_updated": "07/01/26",
+      "history": [
+        {
+          "date": "07/01/26",
+          "value": "332.8",
+          "change": "0.1%"
+        },
+        {
+          "date": "06/01/26",
+          "value": "332.6",
+          "change": "-0.4%"
+        },
+        {
+          "date": "05/01/26",
+          "value": "334.0",
+          "change": "0.5%"
+        },
+        {
+          "date": "04/01/26",
+          "value": "332.4",
+          "change": "0.6%"
+        }
+      ]
+    },
+    "Inflation YoY": {
+      "value": "3.5%",
+      "previous": "3.7%",
+      "change_rate": "-0.2%",
+      "trend": "down",
+      "last_updated": "07/01/26",
+      "previous_date": "06/01/26",
+      "history": [
+        {
+          "date": "07/01/26",
+          "value": "3.5%",
+          "change": "-0.2%"
+        },
+        {
+          "date": "06/01/26",
+          "value": "3.7%",
+          "change": "-0.5%"
+        },
+        {
+          "date": "05/01/26",
+          "value": "4.3%",
+          "change": "+0.3%"
+        },
+        {
+          "date": "04/01/26",
+          "value": "3.9%",
+          "change": "-31874.6%"
+        }
+      ]
+    },
+    "Unemployment": {
+      "value": "4.1%",
+      "previous": "4.1%",
+      "change_rate": "0.0%",
+      "trend": "down",
+      "last_updated": "08/01/26",
+      "history": [
+        {
+          "date": "08/01/26",
+          "value": "4.1%",
+          "change": "0.0%"
+        },
+        {
+          "date": "07/01/26",
+          "value": "4.1%",
+          "change": "-2.4%"
+        },
+        {
+          "date": "06/01/26",
+          "value": "4.2%",
+          "change": "-2.3%"
+        },
+        {
+          "date": "05/01/26",
+          "value": "4.3%",
+          "change": "0.0%"
+        }
+      ]
+    },
+    "Last Updated": "2026-09-09"
+  },
+  "market_index_charts": {
+    "S&P 500": "charts/sandp_500_chart.html",
+    "Dow Jones": "charts/dow_jones_chart.html",
+    "Nasdaq-100": "charts/nasdaq-100_chart.html",
+    "S&P 400 MidCap": "charts/sandp_400_midcap_chart.html",
+    "Russell 2000": "charts/russell_2000_chart.html",
+    "S&P 500 Growth": "charts/sandp_500_growth_chart.html",
+    "S&P 500 Value": "charts/sandp_500_value_chart.html",
+    "Dollar Index": "charts/dollar_index_chart.html",
+    "Oil (WTI)": "charts/oil_(wti)_chart.html",
+    "VIX": "charts/vix_chart.html"
+  },
+  "ten_year_chart_path": "charts/ten_year_chart.html",
+  "two_year_chart_path": "charts/two_year_chart.html",
+  "style_box_heatmap_path": "charts/style_box_heatmap.html",
+  "gdp_history": {
+    "labels": [
+      "Q1 2026",
+      "Q2 2026",
+      "Q3 2025",
+      "Q4 2025",
+      "Q1 2025",
+      "Q2 2025",
+      "Q3 2024",
+      "Q4 2024"
+    ],
+    "values": [
+      1.5,
+      2.1,
+      0.5,
+      4.4,
+      3.8,
+      -0.6,
+      1.9,
+      3.3
+    ]
+  },
+  "inflation_history": {
+    "labels": [
+      "2026-07",
+      "2026-06",
+      "2026-05",
+      "2026-04",
+      "2026-03",
+      "2026-02",
+      "2026-01"
+    ],
+    "values": [
+      3.539751427193674,
+      3.7265298484186826,
+      4.270032656680247,
+      3.9470269087042724,
+      3.320205581223676,
+      2.6645890876940963,
+      2.8286797395498917
+    ]
+  },
+  "unemployment_history": {
+    "labels": [
+      "2026-08",
+      "2026-07",
+      "2026-06",
+      "2026-05",
+      "2026-04",
+      "2026-03",
+      "2026-02",
+      "2026-01"
+    ],
+    "values": [
+      4.1,
+      4.1,
+      4.2,
+      4.3,
+      4.3,
+      4.3,
+      4.4,
+      4.3
+    ]
+  },
+  "bond_history": {
+    "labels": [
+      "2026-09",
+      "2026-08",
+      "2026-07",
+      "2026-06",
+      "2026-05",
+      "2026-04",
+      "2026-03",
+      "2026-02",
+      "2026-01",
+      "2025-12",
+      "2025-11",
+      "2025-10",
+      "2025-09",
+      "2025-08",
+      "2025-07",
+      "2025-06",
+      "2025-05",
+      "2025-04",
+      "2025-03",
+      "2025-02",
+      "2025-01",
+      "2024-12",
+      "2024-11",
+      "2024-10"
+    ],
+    "values": [
+      4.68,
+      4.6,
+      4.47,
+      4.48,
+      4.32,
+      4.25,
+      4.13,
+      4.21,
+      4.14,
+      4.09,
+      4.06,
+      4.12,
+      4.26,
+      4.39,
+      4.38,
+      4.42,
+      4.28,
+      4.28,
+      4.45,
+      4.63,
+      4.39,
+      4.36,
+      4.1
+    ],
+    "values_2y": [
+      4.22,
+      4.22,
+      4.11,
+      4.0,
+      3.8,
+      3.71,
+      3.47,
+      3.54,
+      3.5,
+      3.55,
+      3.52,
+      3.57,
+      3.7,
+      3.88,
+      3.89,
+      3.92,
+      3.78,
+      3.97,
+      4.21,
+      4.27,
+      4.23,
+      4.26,
+      3.97
+    ],
+    "title": "Treasury Yields"
+  }
+}

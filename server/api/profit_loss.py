@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query, Body, Request
+from fastapi import APIRouter, HTTPException, Query, Body, Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from server.models import get_model_manager, ProfitLoss, ProfitLossCache, validate_profit_loss_data, validate_profit_loss_cache_data, transform_pocketbase_record, transform_to_pocketbase_data
-from server.api.auth import get_current_user_id
+from server.api.auth import get_current_user_id, security
 from config.backend.logger import get_api_logger
 from config.backend.settings import POLYGON_API_KEY
 import os
@@ -23,40 +24,39 @@ async def calculate_all_periods(request: Request = None):
     periods = ['1W', '1M', '3M', 'YTD', 'MAX']
     results = {}
 
-    # Load existing polygon cache to avoid API calls
-    polygon_cache = load_polygon_close_cache()
+    # Get all positions and orders once
+    positions = await get_positions(request)
+    orders = await get_orders(request)
+
+    # Use symbol_cache from PocketBase for current prices (same source as details endpoint)
+    model_manager = get_model_manager()
+    symbol_cache = model_manager.get_symbol_cache()
+    current_prices = {}
+    for entry in symbol_cache:
+        sym = entry.get("symbol")
+        price = entry.get("price")
+        if sym and price is not None:
+            current_prices[sym] = float(price)
 
     for period in periods:
         try:
-            positions = await get_positions(request)
-            orders = await get_orders(request)
             start_date, end_date = get_date_range(period)
 
-            # Calculate current unrealized P/L using existing cache data
+            # Calculate current unrealized P/L using PocketBase symbol cache
             current_unrealized = 0.0
             for pos in positions:
                 symbol = pos["symbol"]
-                if symbol in polygon_cache:
-                    # Get the most recent price from cache
-                    dates = sorted(polygon_cache[symbol].keys(), reverse=True)
-                    if dates:
-                        latest_price = polygon_cache[symbol][dates[0]]['price']
-                        current_unrealized += (latest_price -
-                                               pos["buy_price"]) * pos["quantity"]
+                if symbol in current_prices:
+                    latest_price = current_prices[symbol]
+                    current_unrealized += (latest_price -
+                                           pos["buy_price"]) * pos["quantity"]
 
-            # Calculate realized P/L (simplified - just sum from orders)
-            realized = 0.0
-            for order in orders:
-                if order.get('side') == 'sell':
-                    # Calculate P/L for sell orders
-                    buy_price = order.get('average_price', 0)
-                    sell_price = order.get('price', 0)
-                    quantity = order.get('quantity', 0)
-                    pl = (sell_price - buy_price) * quantity
-                    realized += pl
+            # Calculate realized P/L using proper FIFO calculation
+            # For MAX period, include all orders (no date filter)
+            pl_start = start_date if period != 'MAX' else None
+            pl_end = end_date if period != 'MAX' else None
+            realized = calculate_realized_pl(orders, pl_start, pl_end)
 
-            # For now, use current unrealized as the total change
-            # This is much faster than calculating historical changes
             total = realized + current_unrealized
 
             # Format decimals
@@ -76,11 +76,56 @@ async def calculate_all_periods(request: Request = None):
                 "error": str(e)
             }
 
+    # Save results to PocketBase cache records for the summary endpoint
     cache_data = {
         "last_updated": datetime.now().isoformat(),
         "periods": results
     }
-    save_pl_cache(cache_data)
+
+    try:
+        user_id = None
+        if request:
+            try:
+                user_id = await get_current_user_id(request)
+            except Exception:
+                logger.warning("Could not get user ID for cache save, skipping PocketBase save")
+        if user_id:
+            from config.backend.settings import POCKETBASE_URL
+            # Save directly to PocketBase via REST API
+            pb_url = POCKETBASE_URL.rstrip("/")
+            for period, data in results.items():
+                record = {
+                    "user": user_id,
+                    "period": period,
+                    "total": data["total"],
+                    "unrealized": data["unrealized"],
+                    "realized": data["realized"],
+                    "calculated_at": data["calculated_at"],
+                    "last_updated": datetime.now().isoformat()
+                }
+                try:
+                    # Check if record exists
+                    auth_header = request.headers.get("authorization", "")
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": auth_header
+                    }
+                    # Try to find existing record
+                    search_url = f"{pb_url}/api/collections/profit_loss_cache/records?filter=(user='{user_id}'%26%26period='{period}')"
+                    search_resp = requests.get(search_url, headers=headers, timeout=10)
+                    if search_resp.status_code == 200 and len(search_resp.json().get("items", [])) > 0:
+                        existing = search_resp.json()["items"][0]
+                        # Update
+                        update_url = f"{pb_url}/api/collections/profit_loss_cache/records/{existing['id']}"
+                        requests.patch(update_url, json=record, headers=headers, timeout=10)
+                    else:
+                        # Create
+                        requests.post(f"{pb_url}/api/collections/profit_loss_cache/records", json=record, headers=headers, timeout=10)
+                except Exception as e:
+                    logger.error(f"Error saving cache record for period {period}: {e}")
+    except Exception as e:
+        logger.error(f"Error saving P/L cache to PocketBase: {e}")
+
     return cache_data
 
 # Helper: get all positions
@@ -118,7 +163,6 @@ async def get_orders(request: Request = None, user_id: str = None):
     except Exception as e:
         logger.error(f"Error getting orders: {e}")
         return []
-
 
 # Cache for Polygon API calls to avoid repeated requests
 _polygon_cache = {}
@@ -208,8 +252,8 @@ def get_historical_price(symbol, target_date):
             return cached_data.get('price')
 
     # Try to get the exact date first
-    url = f"https://api.polygon.io/v2/aggs/ticker/{
-        symbol}/range/1/day/{date_str}/{date_str}"
+    url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/day/{date_str}/{date_str}"
+
     params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
 
     try:
@@ -252,8 +296,8 @@ def get_historical_price(symbol, target_date):
                 return price
 
     except Exception as e:
-        logger.error(f"Error getting historical price for {
-                     symbol} on {date_str}: {e}")
+        logger.error(
+            f"Error getting historical price for {symbol} on {date_str}: {e}")
 
     return None
 
@@ -443,7 +487,7 @@ def calculate_unrealized_pl_change(orders, start_date, end_date):
         if pos_data['quantity'] > 0:
             start_price = start_prices.get(symbol)
             if start_price is not None:
-                start_unrealized += (start_price - \
+                start_unrealized += (start_price -
                                      pos_data['avg_price']) * pos_data['quantity']
 
     # Calculate unrealized P/L at end
@@ -452,7 +496,7 @@ def calculate_unrealized_pl_change(orders, start_date, end_date):
         if pos_data['quantity'] > 0:
             end_price = end_prices.get(symbol)
             if end_price is not None:
-                end_unrealized += (end_price - \
+                end_unrealized += (end_price -
                                    pos_data['avg_price']) * pos_data['quantity']
 
     # Return the change in unrealized P/L
@@ -514,8 +558,9 @@ def get_polygon_trading_days(n_days=365):
         if d.weekday() < 5 and d.strftime('%Y-%m-%d') not in holidays:
             trading_days.append(d.strftime('%Y-%m-%d'))
         days_checked += 1
-    logger.debug(f"Using {len(trading_days)} trading days (most recent: {
-                 trading_days[0]}, oldest: {trading_days[-1]})")
+    logger.debug(
+        f"Using {len(trading_days)} trading days (most recent: {trading_days[0]}, oldest: {trading_days[-1]})")
+
     return trading_days
 
 
@@ -622,9 +667,7 @@ def fetch_closes_for_trading_days(symbol, trading_days):
     s.index = pd.to_datetime(s.index)
     s = s.sort_index()
     logger.debug(
-        f"{symbol}: fetched {
-            len(s)} closes for trading days, sample: {
-            s.head() if not s.empty else 'empty'}")
+        f"{symbol}: fetched {len(s)} closes for trading days, sample: {s.head() if not s.empty else 'empty'}")
     return s
 
 # NOTE: These helpers can be used for:
@@ -634,11 +677,17 @@ def fetch_closes_for_trading_days(symbol, trading_days):
 
 
 @router.get("/summary")
-async def get_profit_loss_summary(request: Request, period: str = Query(
+async def get_profit_loss_summary(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    period: str = Query(
         'YTD', description="Time period: 1W, 1M, 3M, YTD, MAX")) -> Dict:
-    """Get profit/loss summary from cached data in PocketBase."""
+    """Get profit/loss summary computed directly from positions and orders.
+
+    This avoids stale cached data by computing from current positions and
+    orders on every request. The result is also cached for subsequent reads.
+    """
     try:
-        user_id = await get_current_user_id(request)
+        user_id = await get_current_user_id(credentials)
         if not user_id:
             logger.warning("No user ID provided, returning empty summary")
             return {
@@ -649,64 +698,55 @@ async def get_profit_loss_summary(request: Request, period: str = Query(
                 "period": period
             }
 
+        # Compute directly from positions and orders
         model_manager = get_model_manager()
+        positions = model_manager.get_positions(user_id)
+        orders = model_manager.get_orders(user_id)
+        symbol_cache = model_manager.get_symbol_cache()
 
-        # Try to get cached data first
-        cache_records = model_manager.get_profit_loss_cache_records(user_id)
+        # Build current price lookup from symbol cache
+        current_prices = {}
+        for entry in symbol_cache:
+            sym = entry.get("symbol")
+            price = entry.get("price")
+            if sym and price is not None:
+                current_prices[sym] = float(price)
 
-        # Find the specific period in cache
-        cached_data = None
-        for record in cache_records:
-            if record.get("period") == period:
-                cached_data = record
-                break
+        # Calculate unrealized P/L from positions
+        total_unrealized = 0.0
+        for pos in positions:
+            symbol = pos["symbol"]
+            if symbol in current_prices and current_prices[symbol] > 0:
+                latest_price = current_prices[symbol]
+                total_unrealized += (latest_price -
+                                     pos["buy_price"]) * pos["quantity"]
+            else:
+                # Fallback to position's stored total_return when market price unavailable
+                tr = pos.get("total_return")
+                if tr:
+                    total_unrealized += float(tr)
 
-        if cached_data:
-            # Use cached data
-            result = {
-                "total": round(cached_data.get("total", 0.0), 2),
-                "unrealized": round(cached_data.get("unrealized", 0.0), 2),
-                "realized": round(cached_data.get("realized", 0.0), 2),
-                "calculated_at": cached_data.get("calculated_at", datetime.now().isoformat()),
-                "period": period
-            }
-            logger.info(
-                f"Retrieved cached profit/loss summary for user {user_id}, period {period}: {result}")
-            return result
-        else:
-            # Fallback to calculating from individual records if cache not
-            # available
-            logger.warning(f"No cached data found for period {
-                           period}, falling back to calculation")
-            profit_loss_records = model_manager.get_profit_loss_records(
-                user_id)
+        # Calculate realized P/L using FIFO (all orders, no date filter for MAX)
+        start_date, end_date = get_date_range(period)
+        # For MAX period, include all orders (no date filter)
+        if period == 'MAX':
+            start_date = None
+            end_date = None
+        total_realized = calculate_realized_pl(orders, start_date, end_date)
 
-            # Calculate summary from records
-            total_unrealized = 0.0
-            total_realized = 0.0
+        total = total_unrealized + total_realized
 
-            for record in profit_loss_records:
-                amount = record.get("amount", 0.0)
-                record_type = record.get("type", "")
+        result = {
+            "total": round(total, 2),
+            "unrealized": round(total_unrealized, 2),
+            "realized": round(total_realized, 2),
+            "calculated_at": datetime.now().isoformat(),
+            "period": period
+        }
 
-                if record_type == "Unrealized":
-                    total_unrealized += amount
-                elif record_type == "Realized":
-                    total_realized += amount
-
-            total = total_unrealized + total_realized
-
-            result = {
-                "total": round(total, 2),
-                "unrealized": round(total_unrealized, 2),
-                "realized": round(total_realized, 2),
-                "calculated_at": datetime.now().isoformat(),
-                "period": period
-            }
-
-            logger.info(
-                f"Calculated profit/loss summary for user {user_id}: {result}")
-            return result
+        logger.info(
+            f"Computed profit/loss summary for user {user_id}, period {period}: {result}")
+        return result
 
     except Exception as e:
         logger.error(f"Error getting profit/loss summary: {e}")
@@ -720,7 +760,9 @@ async def get_profit_loss_summary(request: Request, period: str = Query(
 
 
 @router.post("/refresh-cache")
-async def refresh_pl_cache(request: Request):
+async def refresh_pl_cache(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request = None):
     """Manually refresh the P/L cache by recalculating all periods."""
     try:
         cache_data = await calculate_all_periods(request)
@@ -785,8 +827,9 @@ async def get_profit_loss_chart(
             labels = [datetime.now().strftime('%Y-%m-%d')]
             values = [round(total_pl, 2)]
 
-            logger.info(f"Retrieved chart data for period {
-                        period}: total={total_pl}")
+            logger.info(
+                f"Retrieved chart data for period {period}: total={total_pl}")
+
             return {"labels": labels, "values": values, "period": period}
         else:
             # Fallback: create empty chart if no cached data
@@ -851,10 +894,10 @@ async def get_profit_loss_cache(request: Request) -> Dict:
 
 
 @router.get("/details")
-async def get_profit_loss_details(request: Request) -> List[Dict]:
+async def get_profit_loss_details(credentials: HTTPAuthorizationCredentials = Depends(security)) -> List[Dict]:
     """Get profit/loss details from cached data and current positions."""
     try:
-        user_id = await get_current_user_id(request)
+        user_id = await get_current_user_id(credentials)
         if not user_id:
             logger.warning("No user ID provided, returning empty details")
             return []
@@ -872,35 +915,69 @@ async def get_profit_loss_details(request: Request) -> List[Dict]:
             symbol = pos["symbol"]
             quantity = pos["quantity"]
             buy_price = pos["buy_price"]
+            total_return = pos.get("total_return", 0) or 0
 
             # Get latest price from symbol cache
+            latest_price = None
             symbol_data = [
                 r for r in symbol_cache if r.get("symbol") == symbol]
             if symbol_data:
-                latest_price = symbol_data[0].get("price", buy_price)
+                latest_price = symbol_data[0].get("price")
+            
+            if latest_price and latest_price > 0 and buy_price > 0:
                 unrealized_pl = (latest_price - buy_price) * quantity
+            elif total_return != 0:
+                # Use Robinhood's stored total_return when current price unavailable
+                unrealized_pl = float(total_return)
+            else:
+                # Skip — no data to calculate
+                continue
 
-                details.append({
-                    "symbol": symbol,
-                    "type": "Unrealized",
-                    "amount": round(unrealized_pl, 2)
-                })
+            details.append({
+                "symbol": symbol,
+                "type": "Unrealized",
+                "amount": round(unrealized_pl, 2)
+            })
 
-        # Add realized P/L from orders (simplified)
+        # Add realized P/L from orders (FIFO calculation per symbol)
         orders = model_manager.get_orders(user_id)
         realized_by_symbol = {}
 
+        # Group buy and sell orders by symbol
+        buy_orders_by_symbol = {}
+        sell_orders_by_symbol = {}
         for order in orders:
-            if order.get('type') == 'sell':
-                symbol = order.get('symbol', '')
-                if symbol not in realized_by_symbol:
-                    realized_by_symbol[symbol] = 0.0
-                # Simple P/L calculation for sell orders
-                buy_price = order.get('price', 0)
-                sell_price = order.get('price', 0)
-                quantity = order.get('quantity', 0)
-                pl = (sell_price - buy_price) * quantity
-                realized_by_symbol[symbol] += pl
+            symbol = order.get('symbol', '')
+            qty = order.get('quantity', 0)
+            if qty <= 0:
+                continue
+            if order.get('type') == 'buy':
+                buy_orders_by_symbol.setdefault(symbol, []).append(order)
+            elif order.get('type') == 'sell':
+                sell_orders_by_symbol.setdefault(symbol, []).append(order)
+
+        # FIFO matching per symbol
+        for symbol, sell_orders in sell_orders_by_symbol.items():
+            buy_orders = sorted(
+                buy_orders_by_symbol.get(symbol, []),
+                key=lambda x: x.get('date', '')
+            )
+            for sell_order in sell_orders:
+                sell_price = sell_order.get('price', 0)
+                sell_qty = sell_order.get('quantity', 0)
+                remaining = sell_qty
+                for buy_order in buy_orders:
+                    if remaining <= 0:
+                        break
+                    buy_qty = buy_order.get('quantity', 0)
+                    if buy_qty <= 0:
+                        continue
+                    match_qty = min(remaining, buy_qty)
+                    buy_price = buy_order.get('price', 0)
+                    pl = (sell_price - buy_price) * match_qty
+                    realized_by_symbol[symbol] = realized_by_symbol.get(symbol, 0.0) + pl
+                    buy_order['quantity'] = buy_qty - match_qty
+                    remaining -= match_qty
 
         # Add realized P/L entries
         for symbol, realized_pl in realized_by_symbol.items():
@@ -912,8 +989,8 @@ async def get_profit_loss_details(request: Request) -> List[Dict]:
                 })
 
         logger.info(
-            f"Retrieved {
-                len(details)} profit/loss details for user {user_id}")
+            f"Retrieved {len(details)} profit/loss details for user {user_id}")
+
         return details
     except Exception as e:
         logger.error(f"Error getting profit/loss details: {e}")

@@ -152,8 +152,8 @@ class MarketDataService:
             wait_time = 60 - (current_time - oldest_request) + 1
             if wait_time > 0:
                 logger.warning(
-                    f"Rate limit reached, waiting {
-                        wait_time:.1f} seconds...")
+                    f"Rate limit reached, waiting {wait_time:.1f} seconds...")
+
                 time.sleep(wait_time)
                 self._clean_request_history()
 
@@ -189,25 +189,26 @@ class MarketDataService:
                     # Rate limited - use exponential backoff
                     wait_time = (
                         self.rate_limit_config['exponential_backoff_base'] ** attempt) * 2
-                    logger.warning(f"Rate limited (429), waiting {wait_time}s before retry {
-                                   attempt + 1}/{self.rate_limit_config['max_retries']}")
+                    logger.warning(
+                        f"Rate limited (429), waiting {wait_time}s before retry {attempt + 1}/{self.rate_limit_config['max_retries']}")
+
                     time.sleep(wait_time)
                     if attempt == self.rate_limit_config['max_retries'] - 1:
                         logger.error(
-                            f"Failed after {
-                                self.rate_limit_config['max_retries']} attempts due to rate limiting")
+                            f"Failed after  self.rate_limit_config['max_retries'] attempts due to rate limiting")
+
                         return None
                 else:
                     logger.warning(
-                        f"API request failed with status {
-                            response.status_code}")
+                        f"API request failed with status  response.status_code")
+
                     return None
 
             except Exception as e:
                 if attempt == self.rate_limit_config['max_retries'] - 1:
                     logger.error(
-                        f"Request failed after {
-                            self.rate_limit_config['max_retries']} attempts: {e}")
+                        f"Request failed after {self.rate_limit_config['max_retries']} attempts: {e}")
+
                     return None
                 else:
                     wait_time = (
@@ -261,12 +262,10 @@ class MarketDataService:
             try:
                 # Create batch request URL
                 ids_param = ','.join(batch_ids)
-                crypto_url = f"https://api.coingecko.com/api/v3/simple/price?ids={
-                    ids_param}&vs_currencies=usd"
+                crypto_url = f"https://api.coingecko.com/api/v3/simple/price?ids= ids_param&vs_currencies=usd"
 
                 logger.info(
-                    f"Fetching batch crypto prices for {
-                        len(batch_ids)} symbols: {batch_symbols}")
+                    f"Fetching batch crypto prices for {len(batch_ids)} symbols: {batch_symbols}")
 
                 # Add delay between batches to respect rate limits
                 if i > 0:
@@ -302,8 +301,8 @@ class MarketDataService:
                                         'last_price'):
                                     result[symbol] = cached_data
                                     logger.info(
-                                        f"{symbol} (crypto): using cached price: ${
-                                            cached_data['last_price']}")
+                                        f"{symbol} (crypto): using cached price: $ cached_data['last_price']")
+
                             except Exception as cache_error:
                                 logger.warning(
                                     f"{symbol} (crypto): failed to get cached data: {cache_error}")
@@ -319,8 +318,8 @@ class MarketDataService:
                         if cached_data and cached_data.get('last_price'):
                             result[symbol] = cached_data
                             logger.info(
-                                f"{symbol} (crypto): using cached price as fallback: ${
-                                    cached_data['last_price']}")
+                                f"{symbol} (crypto): using cached price as fallback: $ cached_data['last_price']")
+
                     except Exception as cache_error:
                         logger.warning(
                             f"{symbol} (crypto): no fallback data available: {cache_error}")
@@ -343,8 +342,8 @@ class MarketDataService:
 
         for symbol in stock_symbols:
             try:
-                prev_url = f"https://api.polygon.io/v2/aggs/ticker/{
-                    symbol}/prev"
+                prev_url = f"https://api.polygon.io/v2/aggs/ticker/ symbol/prev"
+
                 prev_params = {"adjusted": "true", "apiKey": POLYGON_API_KEY}
                 prev_resp = requests.get(
                     prev_url, params=prev_params, timeout=10)
@@ -395,8 +394,8 @@ class MarketDataService:
         # Process crypto symbols in batches
         if crypto_symbols:
             logger.info(
-                f"Processing {
-                    len(crypto_symbols)} crypto symbols in batches...")
+                f"Processing {len(crypto_symbols)} crypto symbols in batches...")
+
             crypto_result = self.fetch_crypto_data_batch(crypto_symbols)
             result.update(crypto_result)
 
@@ -415,8 +414,8 @@ class MarketDataService:
         """Get historical crypto price from CoinGecko for a specific date with rate limiting"""
         try:
             # CoinGecko historical data endpoint
-            url = f"https://api.coingecko.com/api/v3/coins/{
-                symbol.lower()}/history"
+            url = f"https://api.coingecko.com/api/v3/coins/ symbol.lower()/history"
+
             params = {
                 'date': date,
                 'localization': 'false'
@@ -429,8 +428,9 @@ class MarketDataService:
 
             if data and 'market_data' in data and 'current_price' in data['market_data']:
                 price = data['market_data']['current_price']['usd']
-                logger.info(f"Historical price for {
-                            symbol} on {date}: ${price}")
+                logger.info(
+                    f"Historical price for {symbol} on {date}: ${price}")
+
                 return float(price)
             else:
                 logger.warning(
@@ -438,8 +438,9 @@ class MarketDataService:
                 return None
 
         except Exception as e:
-            logger.error(f"Error getting historical price for {
-                         symbol} on {date}: {e}")
+            logger.error(
+                f"Error getting historical price for {symbol} on {date}: {e}")
+
             return None
 
     def calculate_betas(self, stock_symbols: List[str]) -> Dict[str, float]:

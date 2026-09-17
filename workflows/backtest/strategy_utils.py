@@ -43,8 +43,7 @@ class StrategyUtils:
         if name is None:
             func_name = func.__name__ if hasattr(
                 func, '__name__') else 'indicator'
-            name = f"{func_name}({', '.join(str(a)
-                                            for a in args if not isinstance(a, pd.Series))})"
+            name = f"{func_name}({', '.join(str(a)for a in args if not isinstance(a, pd.Series))})"
 
         # Add indicator to the strategy
         indicator_args = {

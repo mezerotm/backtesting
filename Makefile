@@ -170,20 +170,60 @@ build-frontend:
 	@echo "Frontend built successfully!"
 	@echo "Assets ready for production serving"
 
-# Start FastAPI server (serves static and API)
+# Start FastAPI server (production — via Docker)
+# Production: finance-dashboard container on 127.0.0.1:9127
+# Docker restart: unless-stopped handles auto-recovery on crash.
+# For dev, use: make dev-server (direct uvicorn on a free port, e.g. 8001)
 server: results-dir syntax-check build-frontend
-	@echo "Starting production server..."
-	@echo "Backend: http://localhost:8000"
-	@echo "Frontend: http://localhost:8000"
-	@echo "PocketBase: http://127.0.0.1:8090/_/ (run 'make db-start' in another terminal)"
-	@echo "Opening API page in browser..."
-	@sleep 2 && xdg-open http://localhost:8000 || open http://localhost:8000 || start http://localhost:8000 || echo "Please manually open: http://localhost:8000"
-	$(PYTHON) -m server.main
+	@echo "=== Finance Dashboard — Production Server ==="
+	@echo "Production runs in Docker container: finance-dashboard"
+	@echo "  http://127.0.0.1:9127 (localhost, avoids Portainer :8000)"
+	@echo ""
+	@docker inspect finance-dashboard --format '{{.State.Status}}' 2>/dev/null | \
+		grep -q running && echo "Container is running." || \
+		( echo "Container is not running. Try: make server-start" )
+	@echo ""
+	@echo "Management commands:"
+	@echo "  make server-start    — Start Docker container (via systemd user service)"
+	@echo "  make server-restart  — Restart Docker container"
+	@echo "  make server-stop     — Stop Docker container"
+	@echo "  make server-status   — Show container status"
+	@echo "  make server-logs     — Tail container logs"
+	@echo "  make dev-server      — Development server with hot reload (host)"
+
+# Start the production server (Docker — via systemd user service)
+server-start:
+	@echo "Starting Docker container via systemd: finance-dashboard..."
+	@systemctl --user start finance-api.service 2>&1 || \
+		docker start finance-dashboard 2>&1
+	@echo "Container started or already running."
+	@echo "Local API: http://127.0.0.1:9127"
+
+# Stop the production server (Docker)
+server-stop:
+	@echo "Stopping Docker container: finance-dashboard..."
+	@docker stop finance-dashboard 2>&1
+	@echo "Container stopped."
+
+# Restart the production server (Docker)
+server-restart:
+	@echo "Restarting Docker container: finance-dashboard..."
+	@docker restart finance-dashboard 2>&1
+	@echo "Container restarted."
+
+# Show production server status (Docker)
+server-status:
+	@docker inspect finance-dashboard --format '{{.Name}} status={{.State.Status}} started={{.State.StartedAt}}' 2>&1
+
+# Tail production server logs (Docker)
+server-logs:
+	@docker logs finance-dashboard --tail 50 -f 2>&1
 
 # Development server with hot reload (backend only)
 dev-server: results-dir syntax-check
 	@echo "Starting backend development server with hot reload..."
 	@echo "Backend API: http://localhost:8000"
+	@echo "  (Port 8000 is shared with Portainer — stop Portainer if conflict)"
 	@echo "Frontend: http://localhost:3001 (run 'make dev-frontend' in another terminal)"
 	@echo "PocketBase: http://127.0.0.1:8090/_/ (run 'make db-start' in another terminal)"
 	@echo "Hot reload enabled - watching server/, config/, and workflows/ directories"
@@ -218,6 +258,6 @@ dev:
 
 
 .PHONY: setup backtest-nvda backtest-smci \
-	compare-active clean results-dir server ensure-venv activate-venv backtest-active \
+	compare-active clean results-dir server server-start server-stop server-restart server-status server-logs ensure-venv activate-venv backtest-active \
 	backtest-experimental compare-experimental dev debug-buy-hold market-check morning-check full-market-check debug-market-check install deps \
 	db-start db-reset db-backup db-restore db-init dev-frontend build-frontend dev-server

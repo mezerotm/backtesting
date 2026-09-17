@@ -44,13 +44,13 @@ class ModelManager:
 
     def get_portfolio_data(self, user_id: str) -> Dict[str, Any]:
         """Get portfolio data from PocketBase for a specific user."""
-        self.logger.info(f"Getting portfolio data for user {
-                         user_id} from PocketBase...")
+        self.logger.info(
+            f"Getting portfolio data for user {user_id} from PocketBase...")
         try:
             records = self.pb_client.get_records(
                 "portfolio", f"user='{user_id}'")
-            self.logger.info(f"Retrieved {len(records)} portfolio records for user {
-                             user_id} from PocketBase")
+            self.logger.info(
+                f"Retrieved {len(records)} portfolio records for user {user_id} from PocketBase")
 
             if records:
                 # Handle both Record objects (from SDK) and dictionaries (from
@@ -62,9 +62,7 @@ class ModelManager:
                     # REST API dictionary
                     portfolio_data = records[0]
                 self.logger.debug(
-                    f"Portfolio data keys: {
-                        list(
-                            portfolio_data.keys())}")
+                    f"Portfolio data keys: {list(portfolio_data.keys())}")
                 return portfolio_data
             else:
                 self.logger.warning(
@@ -77,12 +75,10 @@ class ModelManager:
     def update_portfolio_data(
             self, user_id: str, data: Dict[str, Any]) -> bool:
         """Update portfolio data in PocketBase for a specific user."""
-        self.logger.info(f"Updating portfolio data for user {
-                         user_id} in PocketBase...")
+        self.logger.info(
+            f"Updating portfolio data for user {user_id} in PocketBase...")
         self.logger.debug(
-            f"Update data keys: {
-                list(
-                    data.keys()) if data else 'None'}")
+            f"Update data keys: {list(data.keys()) if data else 'None'}")
 
         try:
             # Get portfolio record for specific user
@@ -122,8 +118,7 @@ class ModelManager:
         self.logger.info("Getting positions from PocketBase...")
         self.logger.debug(f"PocketBase client: {self.pb_client}")
         self.logger.debug(
-            f"PocketBase server running: {
-                self.pb_client.is_server_running()}")
+            f"PocketBase server running: {self.pb_client.is_server_running()}")
         self.logger.debug(f"PocketBase base URL: {self.pb_client.base_url}")
 
         try:
@@ -131,14 +126,13 @@ class ModelManager:
                 # Filter by user ID
                 records = self.pb_client.get_records(
                     "positions", f"user='{user_id}'")
-                self.logger.info(f"Retrieved {len(records)} positions for user {
-                                 user_id} from PocketBase")
+                self.logger.info(
+                    f"Retrieved {len(records)} positions for user {user_id} from PocketBase")
             else:
                 # Get all positions
                 records = self.pb_client.get_records("positions")
                 self.logger.info(
-                    f"Retrieved {
-                        len(records)} positions from PocketBase")
+                    f"Retrieved {len(records)} positions from PocketBase")
 
             if records:
                 # Handle both Record objects (from SDK) and dictionaries (from
@@ -150,9 +144,7 @@ class ModelManager:
                     # REST API dictionaries
                     positions = records
                 self.logger.debug(
-                    f"First position keys: {
-                        list(
-                            positions[0].keys())}")
+                    f"First position keys: {list(positions[0].keys())}")
                 return positions
             else:
                 if user_id:
@@ -215,14 +207,13 @@ class ModelManager:
                 # Filter by user ID
                 records = self.pb_client.get_records(
                     "orders", f"user='{user_id}'")
-                self.logger.info(f"Retrieved {len(records)} orders for user {
-                                 user_id} from PocketBase")
+                self.logger.info(
+                    f"Retrieved {len(records)} orders for user {user_id} from PocketBase")
             else:
                 # Get all orders
                 records = self.pb_client.get_records("orders")
                 self.logger.info(
-                    f"Retrieved {
-                        len(records)} orders from PocketBase")
+                    f"Retrieved {len(records)} orders from PocketBase")
 
             if records:
                 # Handle both Record objects (from SDK) and dictionaries (from
@@ -234,9 +225,7 @@ class ModelManager:
                     # REST API dictionaries
                     orders = records
                 self.logger.debug(
-                    f"First order keys: {
-                        list(
-                            orders[0].keys())}")
+                    f"First order keys: {list(orders[0].keys())}")
                 return orders
             else:
                 if user_id:
@@ -261,11 +250,11 @@ class ModelManager:
                     self.logger.debug(
                         f"Order {i + 1}/{len(orders)} added successfully")
                 else:
-                    self.logger.warning(f"Failed to add order {
-                                        i + 1}/{len(orders)}")
+                    self.logger.warning(
+                        f"Failed to add order {i + 1}/{len(orders)}")
 
-            self.logger.info(f"Orders added: {
-                             success_count}/{len(orders)} successful")
+            self.logger.info(
+                f"Orders added: {success_count}/{len(orders)} successful")
             return success_count == len(orders)
         except Exception as e:
             self.logger.error(f"Error adding orders: {e}")
@@ -281,14 +270,13 @@ class ModelManager:
                 # Filter by user ID
                 records = self.pb_client.get_records(
                     "dividends", f"user='{user_id}'")
-                self.logger.info(f"Retrieved {len(records)} dividends for user {
-                                 user_id} from PocketBase")
+                self.logger.info(
+                    f"Retrieved {len(records)} dividends for user {user_id} from PocketBase")
             else:
                 # Get all dividends
                 records = self.pb_client.get_records("dividends")
                 self.logger.info(
-                    f"Retrieved {
-                        len(records)} dividends from PocketBase")
+                    f"Retrieved {len(records)} dividends from PocketBase")
 
             if records:
                 # Handle both Record objects (from SDK) and dictionaries (from
@@ -300,9 +288,7 @@ class ModelManager:
                     # REST API dictionaries
                     dividends = records
                 self.logger.debug(
-                    f"First dividend keys: {
-                        list(
-                            dividends[0].keys())}")
+                    f"First dividend keys: {list(dividends[0].keys())}")
                 return dividends
             else:
                 if user_id:
@@ -327,11 +313,11 @@ class ModelManager:
                     self.logger.debug(
                         f"Dividend {i + 1}/{len(dividends)} added successfully")
                 else:
-                    self.logger.warning(f"Failed to add dividend {
-                                        i + 1}/{len(dividends)}")
+                    self.logger.warning(
+                        f"Failed to add dividend {i + 1}/{len(dividends)}")
 
-            self.logger.info(f"Dividends added: {
-                             success_count}/{len(dividends)} successful")
+            self.logger.info(
+                f"Dividends added: {success_count}/{len(dividends)} successful")
             return success_count == len(dividends)
         except Exception as e:
             self.logger.error(f"Error adding dividends: {e}")
@@ -344,8 +330,7 @@ class ModelManager:
         try:
             records = self.pb_client.get_records("symbol_cache")
             self.logger.info(
-                f"Retrieved {
-                    len(records)} symbol cache records from PocketBase")
+                f"Retrieved {len(records)} symbol cache records from PocketBase")
             if records:
                 # Handle both Record objects (from SDK) and dictionaries (from
                 # REST API)
@@ -356,9 +341,7 @@ class ModelManager:
                     # REST API dictionaries
                     symbol_cache = records
                 self.logger.debug(
-                    f"First symbol cache keys: {
-                        list(
-                            symbol_cache[0].keys())}")
+                    f"First symbol cache keys: {list(symbol_cache[0].keys())}")
                 return symbol_cache
             else:
                 self.logger.warning(
@@ -407,8 +390,7 @@ class ModelManager:
             self, symbol_data_list: List[Dict[str, Any]]) -> Dict[str, int]:
         """Upsert multiple symbol cache records in PocketBase with deduplication before save."""
         self.logger.info(
-            f"Upserting {
-                len(symbol_data_list)} symbol cache records...")
+            f"Upserting {len(symbol_data_list)} symbol cache records...")
 
         if not symbol_data_list:
             return {"created": 0, "updated": 0, "errors": 0}
@@ -482,9 +464,7 @@ class ModelManager:
 
                 except Exception as e:
                     self.logger.error(
-                        f"Error processing symbol cache record for {
-                            data.get(
-                                'symbol', 'unknown')}: {e}")
+                        f"Error processing symbol cache record for {data.get('symbol', 'unknown')}: {e}")
                     error_count += 1
 
             result = {
@@ -506,10 +486,7 @@ class ModelManager:
     def create_symbol_cache_record(self, data: Dict[str, Any]) -> bool:
         """Create a new symbol cache record in PocketBase."""
         self.logger.info(
-            f"Creating symbol cache record for symbol: {
-                data.get(
-                    'symbol',
-                    'unknown')}")
+            f"Creating symbol cache record for symbol: {data.get('symbol','unknown')}")
         self.logger.debug(f"Cache data keys: {list(data.keys())}")
 
         try:
@@ -525,8 +502,7 @@ class ModelManager:
             self, profit_loss_data: List[Dict[str, Any]], user_id: str) -> Dict[str, int]:
         """Upsert profit/loss records to PocketBase with duplicate prevention."""
         self.logger.info(
-            f"Upserting {
-                len(profit_loss_data)} profit/loss records for user {user_id}")
+            f"Upserting {len(profit_loss_data)} profit/loss records for user {user_id}")
         self.validation_logger.info(
             f"Starting profit/loss upsert for user {user_id}")
 
@@ -620,8 +596,7 @@ class ModelManager:
             self, cache_data: List[Dict[str, Any]], user_id: str) -> Dict[str, int]:
         """Upsert profit/loss cache records to PocketBase with duplicate prevention."""
         self.logger.info(
-            f"Upserting {
-                len(cache_data)} profit/loss cache records for user {user_id}")
+            f"Upserting {len(cache_data)} profit/loss cache records for user {user_id}")
         self.validation_logger.info(
             f"Starting profit/loss cache upsert for user {user_id}")
 
@@ -645,22 +620,18 @@ class ModelManager:
                 try:
                     # Add user_id if not present
                     record["user"] = user_id
-                    
+
                     # Ensure all required fields are present with defaults
                     record.setdefault("realized", 0.0)
                     record.setdefault("unrealized", 0.0)
                     record.setdefault("total", 0.0)
-                    record.setdefault("calculated_at", datetime.now().isoformat())
-                    record.setdefault("last_updated", datetime.now().isoformat())
+                    record.setdefault(
+                        "calculated_at", datetime.now().isoformat())
+                    record.setdefault(
+                        "last_updated", datetime.now().isoformat())
 
                     # Generate unique key
-                    key = f"{
-                        record.get(
-                            'user',
-                            '')}_{
-                        record.get(
-                            'period',
-                            '')}"
+                    key = f"{record.get('user','')}_{record.get('period','')}"
 
                     if key in existing_by_key:
                         # Update existing record
@@ -752,8 +723,7 @@ class ModelManager:
                     result.append(record)
 
             self.logger.info(
-                f"Retrieved {
-                    len(result)} profit/loss cache records from PocketBase")
+                f"Retrieved {len(result)} profit/loss cache records from PocketBase")
             return result
         except Exception as e:
             self.logger.error(f"Error getting profit/loss cache records: {e}")
@@ -782,8 +752,7 @@ class ModelManager:
                     profit_loss_records = records
 
                 self.logger.info(
-                    f"Retrieved {
-                        len(profit_loss_records)} profit/loss records from PocketBase")
+                    f"Retrieved {len(profit_loss_records)} profit/loss records from PocketBase")
                 return profit_loss_records
             else:
                 self.logger.warning(
@@ -815,12 +784,10 @@ class ModelManager:
                 records = self.pb_client.get_records(collection)
                 stats["collections"][collection] = {"count": len(records)}
                 self.logger.debug(
-                    f"Collection {collection}: {
-                        len(records)} records")
+                    f"Collection {collection}: {len(records)} records")
 
             self.logger.info(
-                f"System stats retrieved: PocketBase running={
-                    stats['pocketbase_running']}")
+                f"System stats retrieved: PocketBase running={stats['pocketbase_running']}")
             return stats
         except Exception as e:
             self.logger.error(f"Error getting system stats: {e}")
@@ -844,8 +811,7 @@ class ModelManager:
             Dict with counts: {'created': int, 'updated': int, 'deleted': int}
         """
         self.logger.info(
-            f"Upserting {
-                len(positions)} positions for user {user_id}...")
+            f"Upserting {len(positions)} positions for user {user_id}...")
 
         try:
             # Get existing positions for this user
@@ -928,8 +894,7 @@ class ModelManager:
             Dict with counts: {'created': int, 'updated': int}
         """
         self.logger.info(
-            f"Upserting {
-                len(orders)} orders for user {user_id}...")
+            f"Upserting {len(orders)} orders for user {user_id}...")
 
         try:
             # Get existing orders for this user
@@ -992,8 +957,7 @@ class ModelManager:
             Dict with counts: {'created': int, 'updated': int}
         """
         self.logger.info(
-            f"Upserting {
-                len(dividends)} dividends for user {user_id}...")
+            f"Upserting {len(dividends)} dividends for user {user_id}...")
 
         try:
             # Get existing dividends for this user
