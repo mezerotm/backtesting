@@ -68,8 +68,8 @@ def generate_market_report(
         fetcher = MarketDataFetcher()
         market_movers = fetcher.fetch_top_movers_and_news()
 
-        # --- Fetch today's events (top movers + news) ---
-        todays_events = fetcher.fetch_todays_events()
+        # --- Fetch macro events (Quad Witching, NFP, CPI, FOMC, key tickers) ---
+        macro_events = fetcher.fetch_macro_events()
 
         # --- Extract VIX value from indices ---
         vix_value = None
@@ -165,7 +165,8 @@ def generate_market_report(
             'inflation_data': data.get('inflation_history', {}),
             'unemployment_data': data.get('unemployment_history', {}),
             'bond_data': data.get('bond_history', {}),
-            'todays_events': todays_events,
+            'macro_events': macro_events,
+            'todays_events': data.get('economic_events', {}).get('events', []),
             'sentiment_data': sentiment_data,
             'vix_value': sentiment_data.get('vix', {}).get('value'),
             'market_index_charts': market_index_charts,

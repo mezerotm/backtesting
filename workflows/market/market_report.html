@@ -284,11 +284,37 @@
             </ul>
         </div>
         
-        <!-- Key Events -->
+        <!-- Macro Events -->
         <div class="bg-slate-900 p-4 rounded-lg border border-slate-700" style="max-height: 320px; overflow-y: auto;">
             <h3 class="text-lg font-semibold mb-3 text-slate-200">Today's Events</h3>
             <ul class="space-y-2">
-                {% if todays_events is defined and todays_events %}
+                {% if macro_events is defined and macro_events and macro_events.events %}
+                    {% for event in macro_events.events %}
+                    <li class="flex flex-col text-slate-300 mb-2">
+                        <div class="flex items-center gap-2">
+                            {% if event.importance == 'High' %}
+                                <span class="w-2 h-2 rounded-full bg-red-500 shrink-0" title="High importance"></span>
+                            {% elif event.importance == 'Medium' %}
+                                <span class="w-2 h-2 rounded-full bg-yellow-500 shrink-0" title="Medium importance"></span>
+                            {% else %}
+                                <span class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
+                            {% endif %}
+                            {% set desc = event.description %}
+                            {% set parts = desc.split(': ', 1) %}
+                            <span class="font-mono text-blue-400 text-xs">{{ parts[0] if parts|length > 1 else '' }}</span>
+                            <span class="font-semibold text-sm">{{ parts[1] if parts|length > 1 else desc }}</span>
+                            {% if event.actual %}
+                                <span class="text-xs text-green-400 font-medium">{{ event.actual }}</span>
+                            {% endif %}
+                        </div>
+                        {% if event.url %}
+                        <div class="ml-6 text-sm">
+                            <a href="{{ event.url }}" target="_blank" class="text-blue-300 hover:underline">Read more</a>
+                        </div>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                {% elif todays_events is defined and todays_events %}
                     {% for event in todays_events %}
                     <li class="flex flex-col text-slate-300 mb-2">
                         <div class="flex items-center gap-2">
@@ -309,7 +335,7 @@
                     </li>
                     {% endfor %}
                 {% else %}
-                <li class="text-slate-400">No major market movers or news found.</li>
+                <li class="text-slate-400">No major macro events or market movers found.</li>
                 {% endif %}
             </ul>
         </div>

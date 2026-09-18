@@ -168,24 +168,35 @@ class MarketDataFetcher(BaseFetcher):
                 value, change, direction = None, None, 'neutral'
                 try:
                     # Get the most recent valid day for current
+                    # Step 1: get current trading day data (uses @with_most_recent_data decorator)
                     current_agg, current_date = self.get_polygon_agg(
                         polygon_ticker)
                     prev_agg, prev_date = None, None
+
+                    # Step 2: find previous trading day by querying Polygon
+                    # directly (bypass the decorator which overrides date)
                     if current_date and current_agg:
-                        # Parse the current date as a datetime for comparison
                         current_dt = datetime.strptime(
                             current_date, '%Y-%m-%d')
                         attempted_prev_dates = []
                         for offset in range(1, 11):
                             prev_date_dt = current_dt - timedelta(days=offset)
                             try_date = prev_date_dt.strftime('%Y-%m-%d')
-                            agg, date = self.get_polygon_agg(
-                                polygon_ticker, date=try_date)
-                            # Check the actual date of the returned aggregation
+                            try:
+                                prev_aggs = self.client.get_aggs(
+                                    ticker=polygon_ticker,
+                                    multiplier=1,
+                                    timespan="day",
+                                    from_=try_date,
+                                    to=try_date,
+                                    adjusted=True
+                                )
+                                agg = prev_aggs[0] if prev_aggs else None
+                            except BaseException:
+                                agg = None
+                            # Determine actual trading date from Polygon's returned timestamp
                             agg_date = None
                             if agg and hasattr(agg, 'timestamp'):
-                                # Polygon returns timestamp in ms or as
-                                # datetime
                                 ts = getattr(agg, 'timestamp', None)
                                 if hasattr(ts, 'strftime'):
                                     agg_date = ts.strftime('%Y-%m-%d')
@@ -193,7 +204,7 @@ class MarketDataFetcher(BaseFetcher):
                                     agg_date = datetime.fromtimestamp(
                                         ts / 1000).strftime('%Y-%m-%d')
                             attempted_prev_dates.append(
-                                (try_date, date, agg_date, agg.close if agg else None))
+                                (try_date, agg_date, agg.close if agg else None))
                             # Only accept if agg_date is strictly before
                             # current_date
                             if agg and agg_date and agg_date < current_date:
@@ -452,9 +463,13 @@ class MarketDataFetcher(BaseFetcher):
 
                     if 'observations' in data and len(
                             data['observations']) >= 2:
+                        # Filter out '.' values AND track the original indices
+                        # so we can map indices back to actual dates
+                        raw_obs = data['observations']
                         observations = [
-                            float(
-                                obs['value']) for obs in data['observations'] if obs['value'] != '.']
+                            float(obs['value']) for obs in raw_obs if obs['value'] != '.']
+                        observation_dates = [
+                            obs['date'] for obs in raw_obs if obs['value'] != '.']
 
                         if len(observations) >= 2:
                             if name == 'GDP':
@@ -468,9 +483,9 @@ class MarketDataFetcher(BaseFetcher):
 
                                 # Format dates for display
                                 current_date = datetime.strptime(
-                                    data['observations'][0]['date'], '%Y-%m-%d')
+                                    observation_dates[0], '%Y-%m-%d')
                                 prev_date = datetime.strptime(
-                                    data['observations'][1]['date'], '%Y-%m-%d')
+                                    observation_dates[1], '%Y-%m-%d')
 
                                 # Determine trend
                                 if abs(current - previous) < 0.1:
@@ -491,7 +506,7 @@ class MarketDataFetcher(BaseFetcher):
                                     'previous_date': prev_date.strftime('%m/%d/%y'),
                                     'history': [
                                         {
-                                            'date': datetime.strptime(data['observations'][i]['date'], '%Y-%m-%d').strftime('%m/%d/%y'),
+                                            'date': datetime.strptime(observation_dates[i], '%Y-%m-%d').strftime('%m/%d/%y'),
                                             'value': f"{float(observations[i]):.1f}%",
                                             'change': f"{(float(observations[i]) - float(observations[i + 1 if i + 1 < len(observations) else i])):+.1f}%"
                                         }
@@ -501,60 +516,102 @@ class MarketDataFetcher(BaseFetcher):
 
                                 logger.info(f"GDP Results: {results[name]}")
 
-                            elif config.get('yoy', False) and len(observations) >= 13:
+                            elif config.get('yoy', False) and len(
+                                    observations) >= 13:
                                 # Calculate year-over-year change for inflation
-                                current = observations[0]
-                                year_ago = observations[12]  # 12 months ago
+                                # Use date-aware lookback to find the value ~12
+                                # months prior
+                                def _find_yoy_value(
+                                        obs_idx, obs_list, date_list):
+                                    """Find the value ~365 days before the observation at obs_idx."""
+                                    target_date = datetime.strptime(
+                                        date_list[obs_idx], '%Y-%m-%d')
+                                    target_year_ago = target_date - \
+                                        timedelta(days=365)
 
+                                    best_idx = None
+                                    best_diff = timedelta(days=365)
+                                    for j in range(obs_idx + 1, len(date_list)):
+                                        d = datetime.strptime(
+                                            date_list[j], '%Y-%m-%d')
+                                        diff = abs(
+                                            target_year_ago - d)
+                                        if diff < best_diff:
+                                            best_diff = diff
+                                            best_idx = j
+                                    # Only accept if within 45 days of 12 months
+                                    if best_idx is not None and best_diff.days < 45:
+                                        return obs_list[best_idx]
+                                    return None
+
+                                current = observations[0]
+                                year_ago = _find_yoy_value(
+                                    0, observations, observation_dates)
+
+                                current_date = datetime.strptime(
+                                    observation_dates[0], '%Y-%m-%d')
+                                # Determine approximate year-ago date for
+                                # logging only
                                 logger.info(
                                     f"Inflation Raw Values - Current: {current}, Year Ago: {year_ago}")
                                 logger.info(
-                                    f"Inflation Dates - Current: {data['observations'][0]['date']}, Year Ago: {data['observations'][12]['date']}")
+                                    f"Inflation Dates - Current: {observation_dates[0]}, Year Ago: year_ago_raw={year_ago}")
 
                                 # Validate values before calculation
-                                if current <= 0 or year_ago <= 0:
-                                    logger.error(
-                                        f"Invalid inflation values: current={current}, year_ago={year_ago}")
-                                    current_yoy = 0
-                                    prev_yoy = 0
-                                else:
-                                    current_yoy = (
-                                        (current / year_ago) - 1) * 100
+                                def _safe_yoy(curr_val, prev_val):
+                                    if curr_val is None or prev_val is None:
+                                        return 0
+                                    if prev_val <= 0.001 or curr_val <= 0:
+                                        logger.error(
+                                            f"Invalid inflation values: current={curr_val}, year_ago={prev_val}")
+                                        return 0
+                                    try:
+                                        result = (
+                                            (curr_val / prev_val) - 1) * 100
+                                        # Sanity check: CPI YoY should be
+                                        # roughly -5% to 15%
+                                        if result > 100 or result < -100:
+                                            logger.error(
+                                                f"Unrealistic YoY change {result:.1f}% for CPI values: current={curr_val}, prev={prev_val}")
+                                            return 0
+                                        return result
+                                    except (ZeroDivisionError,
+                                            ValueError):
+                                        return 0
+
+                                current_yoy = _safe_yoy(current, year_ago)
 
                                 previous = observations[1]
-                                prev_year_ago = observations[13] if len(
-                                    observations) > 13 else year_ago
+                                prev_year_ago = _find_yoy_value(
+                                    1, observations, observation_dates)
+                                prev_yoy = _safe_yoy(previous, prev_year_ago)
 
-                                # Validate previous values
-                                if previous <= 0 or prev_year_ago <= 0:
-                                    logger.error(
-                                        f"Invalid previous inflation values: previous={previous}, prev_year_ago={prev_year_ago}")
-                                    prev_yoy = 0
-                                else:
-                                    prev_yoy = (
-                                        (previous / prev_year_ago) - 1) * 100
-
-                                # Calculate historical YoY values with improved
-                                # precision
+                                # Calculate historical YoY values with
+                                # date-aware lookback
                                 historical_values = []
                                 for i in range(
-                                        min(12, len(observations) - 12)):  # Get up to 12 months of history
-                                    if i + 12 < len(observations):
-                                        curr = observations[i]
-                                        prev = observations[i + 12]
-                                        if curr > 0 and prev > 0:
-                                            yoy = ((curr / prev) - 1) * 100
+                                        min(12, len(observations) - 2)):
+                                    curr_val = observations[i]
+                                    prev_val = _find_yoy_value(
+                                        i, observations, observation_dates)
+                                    if curr_val is not None and prev_val is not None and curr_val > 0 and prev_val > 0.001:
+                                        yoy = ((curr_val / prev_val) - 1) * 100
+                                        if -100 < yoy < 100:
+                                            prev_m1_val = _find_yoy_value(
+                                                i + 1, observations, observation_dates) if i + 1 < len(observations) else prev_val
+                                            prev_m1_yoy = ((observations[i + 1] / prev_m1_val) - 1) * \
+                                                100 if prev_m1_val and prev_m1_val > 0.001 else 0
+                                            if prev_m1_yoy < -100 or prev_m1_yoy > 100:
+                                                prev_m1_yoy = 0
                                             historical_values.append({
-                                                'date': datetime.strptime(data['observations'][i]['date'], '%Y-%m-%d').strftime('%m/%d/%y'),
+                                                'date': datetime.strptime(observation_dates[i], '%Y-%m-%d').strftime('%m/%d/%y'),
                                                 'value': f"{yoy:.1f}%",
-                                                'change': f"{(yoy - ((observations[i + 1] / observations[i + 13] if i + 13 < len(observations) else prev) - 1) * 100):+.1f}%"
+                                                'change': f"{(yoy - prev_m1_yoy):+.1f}%"
                                             })
 
                                 # Format dates for display
-                                current_date = datetime.strptime(
-                                    data['observations'][0]['date'], '%Y-%m-%d')
                                 prev_date = datetime.strptime(
-                                    data['observations'][1]['date'], '%Y-%m-%d')
+                                    observation_dates[1], '%Y-%m-%d')
 
                                 # Determine trend with more granular thresholds
                                 if abs(current_yoy - prev_yoy) < 0.1:
@@ -582,30 +639,43 @@ class MarketDataFetcher(BaseFetcher):
                                 current = observations[0]
                                 previous = observations[1]
 
-                                # Calculate rate of change
-                                change = (
-                                    (current - previous) / abs(previous)) * 100 if previous != 0 else 0
+                                # Calculate rate of change with guard against
+                                # near-zero denominator
+                                if previous is not None and abs(previous) > 0.001:
+                                    change = (
+                                        (current - previous) / abs(previous)) * 100
+                                else:
+                                    change = 0.0
 
-                                # Get historical values
+                                # Get historical values with zero-division
+                                # guards
+                                def _safe_pct_change(val, base):
+                                    if base is None or val is None:
+                                        return 0.0
+                                    if abs(base) <= 0.001:
+                                        return 0.0
+                                    return ((val - base) / abs(base)) * 100
+
                                 historical_values = [
                                     {
-                                        'date': datetime.strptime(data['observations'][i]['date'], '%Y-%m-%d').strftime('%m/%d/%y'),
+                                        'date': datetime.strptime(observation_dates[i], '%Y-%m-%d').strftime('%m/%d/%y'),
                                         'value': config['transform'](observations[i]),
-                                        'change': config['change_transform'](((observations[i] - observations[i + 1 if i + 1 < len(observations) else i]) / abs(observations[i + 1 if i + 1 < len(observations) else i])) * 100)
+                                        'change': config['change_transform'](
+                                            _safe_pct_change(
+                                                observations[i],
+                                                observations[i + 1 if i + 1 < len(observations) else i]
+                                            ))
                                     }
                                     for i in range(min(4, len(observations)))
                                 ]
 
                                 # Determine trend based on last 4 observations
                                 if len(observations) >= 4:
-                                    changes = [((observations[i] -
-                                                 observations[i +
-                                                              1]) /
-                                                observations[i +
-                                                             1]) *
-                                               100 for i in range(len(observations) -
-                                                                  1)]
-                                    avg_change = sum(changes) / len(changes)
+                                    changes = [
+                                        _safe_pct_change(observations[i], observations[i + 1])
+                                        for i in range(len(observations) - 1)
+                                    ]
+                                    avg_change = sum(changes) / len(changes) if changes else 0
 
                                     if abs(avg_change) < 0.05:
                                         trend = 'stable'
@@ -622,7 +692,7 @@ class MarketDataFetcher(BaseFetcher):
                                     'change_rate': config['change_transform'](change),
                                     'trend': trend,
                                     'last_updated': datetime.strptime(
-                                        data['observations'][0]['date'],
+                                        observation_dates[0],
                                         '%Y-%m-%d').strftime('%m/%d/%y'),
                                     'history': historical_values}
                         else:
@@ -937,19 +1007,35 @@ class MarketDataFetcher(BaseFetcher):
             data = response.json()
 
             if 'observations' in data and len(data['observations']) > 0:
-                dates = [
-                    datetime.strptime(
-                        obs['date'],
-                        '%Y-%m-%d') for obs in data['observations']]
-                values = [float(obs['value'])
-                          for obs in data['observations'] if obs['value'] != '.']
+                # Filter out '.' values while tracking dates
+                raw_obs = data['observations']
+                dates = []
+                values = []
+                for obs in raw_obs:
+                    if obs['value'] != '.':
+                        dates.append(datetime.strptime(obs['date'], '%Y-%m-%d'))
+                        values.append(float(obs['value']))
 
-                # Calculate YoY change
+                # Calculate YoY change using date-aware lookback
                 yoy_values = []
                 for i in range(len(values)):
-                    if i + 12 < len(values):  # Need 12 months of data for YoY
-                        yoy = ((values[i] - values[i + 12]) /
-                               values[i + 12]) * 100
+                    # Find value ~365 days before
+                    target_date = dates[i]
+                    target_year_ago = target_date - timedelta(days=365)
+                    best_j = None
+                    best_diff = timedelta(days=365)
+                    for j in range(i + 1, len(dates)):
+                        diff = abs(target_year_ago - dates[j])
+                        if diff < best_diff:
+                            best_diff = diff
+                            best_j = j
+                    if best_j is not None and best_diff.days < 45:
+                        base = values[best_j]
+                        # Guard against near-zero bases
+                        if base > 0.001:
+                            yoy = ((values[i] - base) / base) * 100
+                        else:
+                            yoy = 0.0
                         yoy_values.append(yoy)
 
                 # Format for chart
@@ -1103,49 +1189,205 @@ class MarketDataFetcher(BaseFetcher):
             print(f"Error fetching top movers and news: {e}")
         return movers
 
-    def fetch_todays_events(self, limit=5):
-        movers = []
-        seen = set()
+    def _is_quad_witching(self) -> bool:
+        """Check if today is a Quad Witching day (3rd Friday of Mar/Jun/Sep/Dec)."""
+        et_time = datetime.now(pytz.timezone('US/Eastern'))
+        if et_time.weekday() != 4:  # Not Friday
+            return False
+        if et_time.month not in (3, 6, 9, 12):  # Not quarterly month
+            return False
+        # Check if it's the 3rd Friday
+        day = et_time.day
+        # 1st Friday = day 1-7; 2nd = day 8-14; 3rd = day 15-21
+        return 15 <= day <= 21
+
+    def _get_third_friday(self, year: int, month: int) -> datetime:
+        """Return the date of the 3rd Friday in a given month."""
+        from calendar import monthcalendar
+        cal = monthcalendar(year, month)
+        # monthcalendar returns weeks as lists of day numbers (0 = outside month)
+        # Find all Fridays (day 4 = Friday where weekday=4)
+        fridays = [week[4] for week in cal if week[4] != 0]
+        return datetime(year, month, fridays[2])  # 3rd Friday (index 2)
+
+    def fetch_macro_events(self) -> Dict:
+        """Fetch relevant macro events for the daily market check.
+        
+        Returns events with relevance markup: High (Quad Witching, FOMC, NFP, CPI)
+        and Medium (key tickers: BTCI, MU, NBIS).
+        """
+        et_now = datetime.now(pytz.timezone('US/Eastern'))
+        et_today = et_now.date()
+        events = []
+
+        # 1. Quad Witching (quarterly)
+        if self._is_quad_witching():
+            quarter_names = {3: 'Q1', 6: 'Q2', 9: 'Q3', 12: 'Q4'}
+            qname = quarter_names.get(et_now.month, '')
+            events.append({
+                'time': et_now.strftime('%H:%M'),
+                'country': 'US',
+                'description': f'⚠️ Quad Witching — {qname} options/futures expiration',
+                'importance': 'High',
+                'actual': f'{et_now.month}/{et_now.year}',
+                'forecast': None,
+                'previous': None,
+                'relevance': 'macro'
+            })
+        else:
+            # Show upcoming Quad Witching date if within 14 days
+            for q_month in (3, 6, 9, 12):
+                qw_date = self._get_third_friday(et_now.year, q_month)
+                days_until = (qw_date.date() - et_today).days
+                if 0 < days_until <= 14:
+                    quarter_names = {3: 'Q1', 6: 'Q2', 9: 'Q3', 12: 'Q4'}
+                    qname = quarter_names.get(q_month, '')
+                    events.append({
+                        'time': qw_date.strftime('%H:%M'),
+                        'country': 'US',
+                        'description': f'📅 Upcoming: Quad Witching — {qname} ({qw_date.strftime("%b %d")})',
+                        'importance': 'Medium',
+                        'actual': None,
+                        'forecast': None,
+                        'previous': None,
+                        'relevance': 'macro'
+                    })
+                    break
+
+        # 2. Recent NFP (Non-Farm Payrolls) — first Friday of current/previous month
         try:
-            # Get top gainers and losers
-            for direction in ['gainers', 'losers']:
-                url = f"https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/{direction}?apiKey={POLYGON_API_KEY}"
-                resp = requests.get(url)
-                resp.raise_for_status()
-                data = resp.json()
-                for item in data.get('tickers', []):
-                    ticker = item.get('ticker')
-                    if ticker and ticker not in seen:
-                        seen.add(ticker)
-                        movers.append({
-                            'ticker': ticker,
-                            'name': item.get('name', ticker),
-                            'change': item.get('todaysChangePerc', 0)
-                        })
-            # Sort by absolute % change, descending
-            movers = sorted(
-                movers,
-                key=lambda x: abs(
-                    x['change']),
-                reverse=True)[
-                :limit]
-            # Fetch news for each
-            for mover in movers:
-                news_url = f"https://api.polygon.io/v2/reference/news?ticker={mover['ticker']}&limit=1&apiKey={POLYGON_API_KEY}"
-                news_resp = requests.get(news_url)
-                news_data = news_resp.json()
-                if news_data.get('results'):
-                    news = news_data['results'][0]
-                    mover['headline'] = news.get('title', '')
-                    mover['url'] = news.get('article_url', '')
-                    mover['published_utc'] = news.get('published_utc', '')
-                else:
-                    mover['headline'] = ''
-                    mover['url'] = ''
-                    mover['published_utc'] = ''
+            if self.fred_api_key:
+                fr = requests.get(
+                    "https://api.stlouisfed.org/fred/series/observations",
+                    params={
+                        'series_id': 'PAYEMS',
+                        'api_key': self.fred_api_key,
+                        'file_type': 'json',
+                        'sort_order': 'desc',
+                        'limit': 2
+                    }
+                )
+                nfp_data = fr.json()
+                if nfp_data.get('observations'):
+                    latest = nfp_data['observations'][0]
+                    prev = nfp_data['observations'][1] if len(nfp_data['observations']) > 1 else None
+                    nfp_val = latest['value']
+                    nfp_date = datetime.strptime(latest['date'], '%Y-%m-%d')
+                    prev_val = prev['value'] if prev else None
+                    change_val = int(nfp_val) - int(prev_val) if prev_val else 0
+                    direction = '⬆️' if change_val > 0 else '⬇️' if change_val < 0 else '➡️'
+                    events.append({
+                        'time': nfp_date.strftime('%H:%M'),
+                        'country': 'US',
+                        'description': f'NFP: {nfp_val}K ({direction} {abs(change_val)}K from prev) — Employment Report',
+                        'importance': 'High',
+                        'actual': nfp_val,
+                        'forecast': None,
+                        'previous': prev_val,
+                        'relevance': 'macro'
+                    })
         except Exception as e:
-            print(f"Error fetching today's events: {e}")
-        return movers
+            logger.warning(f"Could not fetch NFP data: {e}")
+
+        # 3. Recent CPI
+        try:
+            if self.fred_api_key:
+                cpi_resp = requests.get(
+                    "https://api.stlouisfed.org/fred/series/observations",
+                    params={
+                        'series_id': 'CPIAUCSL',
+                        'api_key': self.fred_api_key,
+                        'file_type': 'json',
+                        'sort_order': 'desc',
+                        'limit': 13
+                    }
+                )
+                cpi_data = cpi_resp.json()
+                if cpi_data.get('observations'):
+                    obs = [o for o in cpi_data['observations'] if o['value'] != '.']
+                    if len(obs) >= 13:
+                        current_cpi = float(obs[0]['value'])
+                        year_ago_cpi = float(obs[12]['value'])
+                        yoy_change = round((current_cpi - year_ago_cpi) / year_ago_cpi * 100, 1)
+                        cpi_date = datetime.strptime(obs[0]['date'], '%Y-%m-%d')
+                        events.append({
+                            'time': cpi_date.strftime('%H:%M'),
+                            'country': 'US',
+                            'description': f'CPI YoY: {yoy_change}% (CPI: {current_cpi:.1f})',
+                            'importance': 'High',
+                            'actual': f'{yoy_change}%',
+                            'forecast': None,
+                            'previous': None,
+                            'relevance': 'macro'
+                        })
+        except Exception as e:
+            logger.warning(f"Could not fetch CPI data: {e}")
+
+        # 4. Recent FOMC announcement (approximate: check if rate decision exists)
+        try:
+            if self.fred_api_key:
+                fed_resp = requests.get(
+                    "https://api.stlouisfed.org/fred/series/observations",
+                    params={
+                        'series_id': 'FEDFUNDS',
+                        'api_key': self.fred_api_key,
+                        'file_type': 'json',
+                        'sort_order': 'desc',
+                        'limit': 2
+                    }
+                )
+                fed_data = fed_resp.json()
+                if fed_data.get('observations'):
+                    latest_fed = fed_data['observations'][0]
+                    fed_val = latest_fed['value']
+                    fed_date = datetime.strptime(latest_fed['date'], '%Y-%m-%d')
+                    # Check if the rate was updated this month (recent FOMC)
+                    if abs((et_today - fed_date.date()).days) <= 45:
+                        events.append({
+                            'time': fed_date.strftime('%H:%M'),
+                            'country': 'US',
+                            'description': f'Fed Funds Rate: {fed_val}% (latest FOMC decision)',
+                            'importance': 'High',
+                            'actual': fed_val,
+                            'forecast': None,
+                            'previous': None,
+                            'relevance': 'macro'
+                        })
+        except Exception as e:
+            logger.warning(f"Could not fetch FOMC data: {e}")
+
+        # 5. Key ticker news: BTCI, MU, NBIS
+        key_tickers = [
+            ('BTCI', 'BTCI (Berkshire Crypto)'),
+            ('MU', 'Micron Technology'),
+            ('NBIS', 'Nebius Group'),
+        ]
+        for ticker, display_name in key_tickers:
+            try:
+                news_url = f"https://api.polygon.io/v2/reference/news?ticker={ticker}&limit=1&apiKey={POLYGON_API_KEY}"
+                nr = requests.get(news_url)
+                nd = nr.json()
+                if nd.get('results'):
+                    news = nd['results'][0]
+                    pub_date = news.get('published_utc', '')[:10] if news.get('published_utc') else ''
+                    events.append({
+                        'time': pub_date,
+                        'country': 'US',
+                        'description': f'{display_name}: {news.get("title", "")}',
+                        'importance': 'Medium',
+                        'actual': None,
+                        'forecast': None,
+                        'previous': None,
+                        'url': news.get('article_url', ''),
+                        'relevance': 'ticker'
+                    })
+            except Exception as e:
+                logger.warning(f"Could not fetch news for {ticker}: {e}")
+
+        return {
+            'events': events,
+            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
 
     def fetch_index_history(
             self,

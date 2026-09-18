@@ -90,6 +90,10 @@ def generate_market_report(
         data["indices"] = data_fetcher.fetch_market_indices()
     if hasattr(data_fetcher, "fetch_economic_indicators"):
         data["economic_indicators"] = data_fetcher.fetch_economic_indicators()
+    if hasattr(data_fetcher, "fetch_market_status"):
+        data["market_status"] = data_fetcher.fetch_market_status()
+    if hasattr(data_fetcher, "fetch_economic_events"):
+        data["economic_events"] = data_fetcher.fetch_economic_events()
 
     # ── Generate market index charts ──
     market_index_charts: dict = {}
