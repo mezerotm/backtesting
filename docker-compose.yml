@@ -28,7 +28,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: finance-dashboard:latest
+    image: finance-dashboard:20260917
     container_name: finance-dashboard
     restart: unless-stopped
     networks:

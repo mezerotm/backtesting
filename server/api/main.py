@@ -20,6 +20,7 @@ from server.api.dashboard import router as dashboard_router
 from server.api.logs import router as logs_router
 from server.api.robinhood import router as robinhood_router
 from server.api.files import router as files_router
+from server.api.income import router as income_router
 
 # Initialize logger
 logger = get_api_logger("main")
@@ -87,6 +88,7 @@ app.include_router(dashboard_router)
 app.include_router(logs_router)
 app.include_router(robinhood_router)
 app.include_router(files_router)
+app.include_router(income_router)
 
 # Mount static files in production
 if not DEV_MODE:

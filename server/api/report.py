@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, HTTPException, Query
 from config.backend.logger import get_server_logger
 from config.backend.settings import POLYGON_API_KEY
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/api/report", tags=["report"])
 #   POST /api/report/generate-finance - Trigger financial report generation
 #   GET /api/report/data/{symbol}/{filename} - Serve JSON data files
 
-REPORTS_DIR = os.path.join("public", "results")
+REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "results")
 
 # Strategies the dashboard understands (class names from strategies/__init__.py).
 # Maps lowercase lookup key -> canonical class name for clear error messages.

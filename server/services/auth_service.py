@@ -19,25 +19,34 @@ class AuthService(BaseService):
 
     async def get_default_user_token(self) -> Dict[str, Any]:
         """Get an auth token for the single default user without password.
-        
-        Uses the PocketBase admin API to generate a user auth token 
-        for the single app user. Bypasses password verification since 
-        this is a single-user app.
+
+        Uses the PocketBase admin REST API to list users and create a
+        custom JWT.  Bypasses password verification since this is a
+        single-user app.  Does NOT read the SQLite file directly,
+        because PocketBase runs in a separate Docker container.
         """
         try:
-            import sqlite3
             self.log_operation("get_default_user_token")
 
-            # Read the single user directly from the db
-            db = sqlite3.connect("/app/pb_data/data.db")
-            row = db.execute("SELECT id, email FROM users LIMIT 1").fetchone()
-            db.close()
+            # Ensure admin is authenticated against the real PocketBase
+            self.pb_client.authenticate()
 
-            if not row:
+            # List users via the admin-authenticated REST API
+            users = self.pb_client.get_records("users")
+            if not users:
                 return self.handle_error(
-                    Exception("No user found in database"), "get_default_user_token")
+                    Exception("No user found in database"),
+                    "get_default_user_token"
+                )
 
-            user_id, email = row
+            user = users[0]
+            user_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+            email = user.get("email") if isinstance(user, dict) else getattr(user, "email", "")
+            if not user_id:
+                return self.handle_error(
+                    Exception("Invalid user record"),
+                    "get_default_user_token"
+                )
 
             # Generate the same JWT the authed path would
             access_token = self._create_access_token(
@@ -51,7 +60,7 @@ class AuthService(BaseService):
                     "user": {
                         "id": user_id,
                         "email": email,
-                        "name": ""
+                        "name": user.get("name", "") if isinstance(user, dict) else getattr(user, "name", ""),
                     }
                 }
             }
@@ -242,15 +251,6 @@ class AuthService(BaseService):
         try:
             # Ensure we're authenticated as admin
             if not self.pb_client.authenticate():
-                # Fall back to direct sqlite read
-                import sqlite3, os
-                pb_path = "/app/pb_data/data.db"
-                if os.path.exists(pb_path):
-                    db = sqlite3.connect(pb_path)
-                    row = db.execute("SELECT id, email FROM users WHERE id=?", (user_id,)).fetchone()
-                    db.close()
-                    if row:
-                        return {"id": row[0], "email": row[1], "name": ""}
                 self.logger.error("Failed to authenticate as admin")
                 return None
 

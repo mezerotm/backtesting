@@ -26,4 +26,4 @@ COPY workflows ./workflows
 COPY strategies ./strategies
 COPY public ./public
 EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "server.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--log-level", "error"]
+CMD ["sh", "-c", "rm -rf /app/server/public/results 2>/dev/null; ln -sfn /app/public/results /app/server/public/results 2>/dev/null; exec python -m uvicorn server.api.main:app --host 0.0.0.0 --port 8000 --workers 1 --log-level error"]

@@ -195,6 +195,13 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
 .toggle-switch input:checked + .toggle-track { background: var(--color-accent); border-color: var(--color-accent); }
 .toggle-switch input:checked + .toggle-track::after { left: 18px; background: white; }
 .toggle-switch:hover .toggle-track { border-color: var(--color-text-tertiary); }
+/* Compact toggle variant — for headers/dense areas */
+.toggle-switch-sm { gap: 4px; font-size: 11px; }
+.toggle-switch-sm .toggle-track { width: 28px; height: 16px; }
+.toggle-switch-sm .toggle-track::after { top: 2px; left: 2px; width: 10px; height: 10px; }
+.toggle-switch-sm input:checked + .toggle-track::after { left: 14px; }
+/* Disabled toggle */
+.toggle-switch input:disabled ~ .toggle-track { opacity: 0.4; cursor: not-allowed; }
 
 /* ═══════════════ Symbol Dropdown ═══════════════ */
 .symbol-dropdown { position: absolute; z-index: 50; width: 100%; margin-top: 2px; max-height: 220px; overflow-y: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-elevated); }
@@ -534,6 +541,11 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
             </h2>
             <div class="flex items-center gap-2" x-show="!widgetStates.portfolio.minimized">
               <span x-show="lastSyncTime" class="text-xs text-muted" x-text="'Last sync: ' + timeAgo(lastSyncTime)"></span>
+              <label class="toggle-switch toggle-switch-sm">
+                <input type="checkbox" x-model="showCrypto">
+                <span class="toggle-track"></span>
+                <span :class="showCrypto ? 'text-yellow' : 'text-muted'" style="font-weight:500">Crypto</span>
+              </label>
               <button class="btn-icon" @click="openPortfolioViewSettings()" title="View Settings"><i class="fa-solid fa-cog"></i></button>
               <button class="btn btn-primary btn-sm" @click="openAddPositionModal()"><i class="fa-solid fa-plus"></i> Add Position</button>
             </div>
@@ -608,6 +620,7 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
             <!-- Tabs -->
             <div class="flex gap-0" style="border-bottom:1px solid var(--color-border);margin-bottom:var(--space-4)">
               <button class="btn btn-sm" :class="divTab==='history'?'btn-primary':'btn-ghost'" @click="divTab='history'" style="border-radius:0;padding:8px 16px;font-size:13px">History</button>
+              <button class="btn btn-sm" :class="divTab==='income'?'btn-primary':'btn-ghost'" @click="divTab='income'" style="border-radius:0;padding:8px 16px;font-size:13px">Income</button>
               <button class="btn btn-sm" :class="divTab==='dca'?'btn-primary':'btn-ghost'" @click="divTab='dca'" style="border-radius:0;padding:8px 16px;font-size:13px">BTCI DCA</button>
             </div>
 
@@ -634,9 +647,9 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
                 <div style="margin-bottom:var(--space-3)">
                   <div class="flex items-center justify-between" style="margin-bottom:var(--space-2)">
                     <h3 style="font-size:13px;font-weight:600;text-transform:uppercase;color:var(--color-text-tertiary)">By Symbol</h3>
-                    <label class="toggle-switch" style="font-size:11px;gap:4px">
+                    <label class="toggle-switch toggle-switch-sm">
                       <input type="checkbox" x-model="hideLowDivSymbols">
-                      <span class="toggle-track" style="width:28px;height:16px"></span>
+                      <span class="toggle-track"></span>
                       <span class="text-xs text-muted">Hide &lt;$1k</span>
                     </label>
                   </div>
@@ -671,6 +684,73 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
               </div>
             </div>
 
+            <!-- Income Tab -->
+            <div x-show="divTab==='income'">
+              <div x-show="incomeLoading" class="loading-state"><span class="spinner"></span> Loading income history...</div>
+              <div x-show="!incomeLoading">
+                <!-- Period Selector -->
+                <div class="flex items-center gap-1" style="margin-bottom:var(--space-4)">
+                  <template x-for="p in incomePeriods" :key="p">
+                    <button class="btn btn-sm" :class="incomePeriod===p?'btn-primary':'btn-ghost'"
+                      @click="incomePeriod=p; loadIncomeHistory()"
+                      style="border-radius:0;padding:6px 14px;font-size:12px;min-width:40px"
+                      x-text="p"></button>
+                  </template>
+                </div>
+
+                <!-- Summary cards -->
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-bottom:var(--space-4)">
+                  <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
+                    <div style="font-size:1.4rem;font-weight:700" class="text-green" x-text="fmtCurrency(incomeSummary.total)"></div>
+                    <div class="text-xs text-muted">Total Income</div>
+                  </div>
+                  <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
+                    <div style="font-size:1.4rem;font-weight:700" class="text-green" x-text="fmtCurrency(incomeSummary.monthly_avg)"></div>
+                    <div class="text-xs text-muted">Monthly Avg</div>
+                  </div>
+                  <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
+                    <div style="font-size:1.4rem;font-weight:700" class="text-green" x-text="incomeBestMonth"></div>
+                    <div class="text-xs text-muted">Best Month</div>
+                  </div>
+                </div>
+
+                <!-- Bar Chart -->
+                <div x-show="incomeMonthly.length > 0" style="margin-bottom:var(--space-4)">
+                  <h3 style="font-size:13px;font-weight:600;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:var(--space-2)">Monthly Breakdown</h3>
+                  <div style="display:flex;align-items:end;gap:4px;height:100px;padding:var(--space-2) 0;border-bottom:1px solid var(--color-border)">
+                    <template x-for="m in incomeMonthly" :key="m.month">
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%;justify-content:end">
+                        <div style="width:100%;background:var(--color-accent);border-radius:3px 3px 0 0;transition:height .3s ease;min-height:2px;position:relative"
+                          :style="'height:' + Math.max(2, (m.total / incomeMax * 85)) + 'px'"
+                          :title="m.month + ': ' + fmtCurrency(m.total)">
+                        </div>
+                        <span style="font-size:8px;color:var(--color-text-tertiary);writing-mode:vertical-lr;text-orientation:mixed;transform:rotate(180deg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-height:20px" x-text="m.month.slice(5)"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+
+                <!-- Monthly table -->
+                <div x-show="incomeMonthly.length > 0" class="table-wrap" style="max-height:300px;border:1px solid var(--color-border);border-radius:var(--radius-md)">
+                  <table>
+                    <thead class="sticky-top"><tr><th>Month</th><th>Payments</th><th>Total</th><th>Sources</th></tr></thead>
+                    <tbody>
+                      <template x-for="m in incomeMonthly.slice().reverse()" :key="m.month">
+                        <tr>
+                          <td class="text-muted" style="font-weight:600" x-text="m.month"></td>
+                          <td class="num" x-text="m.count"></td>
+                          <td class="num text-green" x-text="fmtCurrency(m.total)"></td>
+                          <td style="font-size:11px;color:var(--color-text-tertiary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="Object.keys(m.sources).join(', ')"></td>
+                        </tr>
+                      </template>
+                      <tr x-show="incomeMonthly.length===0"><td colspan="4" class="text-center text-muted">No income data for this period.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div x-show="incomeMonthly.length === 0" class="text-center text-muted" style="padding:32px">No income data for this period.</div>
+              </div>
+            </div>
+
             <!-- DCA Tab -->
             <div x-show="divTab==='dca'">
               <div x-show="dcaLoading" class="loading-state"><span class="spinner"></span> Loading...</div>
@@ -688,6 +768,77 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
                   <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
                     <div style="font-size:1.3rem;font-weight:700" x-text="fmtCurrency(dcaMktVal)"></div>
                     <div class="text-xs text-muted">Market Value</div>
+                  </div>
+                </div>
+
+                <!-- Recurring Buy (Robinhood) -->
+                <div style="margin-bottom:var(--space-4);padding:var(--space-3);background:var(--color-surface-elevated);border-radius:var(--radius-lg)">
+                  <div class="flex items-center gap-2" style="margin-bottom:var(--space-3)">
+                    <i class="fa-solid fa-rotate" style="color:var(--color-accent);font-size:14px"></i>
+                    <h3 style="font-size:13px;font-weight:600;text-transform:uppercase;color:var(--color-text-tertiary)">Recurring Buy — Robinhood</h3>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-2);margin-bottom:var(--space-3)">
+                    <div style="background:var(--color-bg);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-size:1.1rem;font-weight:700" class="text-green" x-text="fmtCurrency(dcaDaily) + '/day'"></div>
+                      <div class="text-xs text-muted">Daily Buy</div>
+                    </div>
+                    <div style="background:var(--color-bg);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-size:1.1rem;font-weight:700" x-text="fmtCurrency(dcaCurrentPrice)"></div>
+                      <div class="text-xs text-muted">Current Price</div>
+                    </div>
+                    <div style="background:var(--color-bg);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-size:1.1rem;font-weight:700" x-text="dcaCurrentPrice > 0 ? (dcaDaily / dcaCurrentPrice).toFixed(4) + ' sh' : '—'"></div>
+                      <div class="text-xs text-muted">Shares/Day</div>
+                    </div>
+                    <div style="background:var(--color-bg);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
+                      <div style="font-size:1.1rem;font-weight:700" x-text="fmtCurrency(dcaDaily * 30) + '/mo'"></div>
+                      <div class="text-xs text-muted">Monthly Invest</div>
+                    </div>
+                  </div>
+
+                  <!-- Projected Holdings Table -->
+                  <h3 style="font-size:13px;font-weight:600;color:var(--color-text-tertiary);margin-bottom:var(--space-2)">Projected Holdings</h3>
+                  <div class="table-wrap">
+                    <table style="font-size:12px">
+                      <thead><tr><th>Horizon</th><th>Shares</th><th>Invested</th><th>Value</th><th>vs Today</th></tr></thead>
+                      <tbody>
+                        <tr>
+                          <td style="font-weight:600">Today</td>
+                          <td x-text="dcaShares.toFixed(2)"></td>
+                          <td x-text="fmtCurrency(dcaAvgPrice * dcaShares)"></td>
+                          <td x-text="fmtCurrency(dcaMktVal)"></td>
+                          <td :class="(dcaMktVal - dcaAvgPrice * dcaShares) >= 0 ? 'text-green' : 'text-red'" x-text="fmtCurrency(dcaMktVal - dcaAvgPrice * dcaShares)"></td>
+                        </tr>
+                        <tr>
+                          <td style="font-weight:600">1 Month</td>
+                          <td x-text="dcaProjShares['1mo'].toFixed(2)"></td>
+                          <td x-text="fmtCurrency(dcaAvgPrice * dcaShares + dcaProjInvested['1mo'])"></td>
+                          <td x-text="fmtCurrency(dcaProjValue['1mo'])"></td>
+                          <td :class="dcaProjValue['1mo'] >= dcaAvgPrice * dcaShares ? 'text-green' : 'text-red'">+<span x-text="dcaProjShares['1mo'] > dcaShares ? ((dcaProjShares['1mo'] - dcaShares) / dcaShares * 100).toFixed(1) + '%' : '0%'"></span></td>
+                        </tr>
+                        <tr>
+                          <td style="font-weight:600">3 Months</td>
+                          <td x-text="dcaProjShares['3mo'].toFixed(2)"></td>
+                          <td x-text="fmtCurrency(dcaAvgPrice * dcaShares + dcaProjInvested['3mo'])"></td>
+                          <td x-text="fmtCurrency(dcaProjValue['3mo'])"></td>
+                          <td class="text-green">+<span x-text="dcaProjShares['3mo'] > dcaShares ? ((dcaProjShares['3mo'] - dcaShares) / dcaShares * 100).toFixed(1) + '%' : '0%'"></span></td>
+                        </tr>
+                        <tr>
+                          <td style="font-weight:600">6 Months</td>
+                          <td x-text="dcaProjShares['6mo'].toFixed(2)"></td>
+                          <td x-text="fmtCurrency(dcaAvgPrice * dcaShares + dcaProjInvested['6mo'])"></td>
+                          <td x-text="fmtCurrency(dcaProjValue['6mo'])"></td>
+                          <td class="text-green">+<span x-text="((dcaProjShares['6mo'] - dcaShares) / dcaShares * 100).toFixed(1) + '%'"></span></td>
+                        </tr>
+                        <tr>
+                          <td style="font-weight:600">1 Year</td>
+                          <td x-text="dcaProjShares['1yr'].toFixed(2)"></td>
+                          <td x-text="fmtCurrency(dcaAvgPrice * dcaShares + dcaProjInvested['1yr'])"></td>
+                          <td x-text="fmtCurrency(dcaProjValue['1yr'])"></td>
+                          <td class="text-green">+<span x-text="((dcaProjShares['1yr'] - dcaShares) / dcaShares * 100).toFixed(1) + '%'"></span></td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
@@ -714,9 +865,9 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
                   </div>
                 </div>
 
-                <!-- DCA Simulator -->
+                <!-- What-If Simulator -->
                 <div style="margin-bottom:var(--space-4);padding:var(--space-3);background:var(--color-surface-elevated);border-radius:var(--radius-lg)">
-                  <h3 style="font-size:13px;font-weight:600;margin-bottom:var(--space-3)">DCA Simulator</h3>
+                  <h3 style="font-size:13px;font-weight:600;margin-bottom:var(--space-3)">What-If Simulator</h3>
                   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-3)">
                     <div>
                       <label class="text-xs text-muted">Daily Investment</label>
@@ -833,31 +984,27 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
                     <tbody>
                       <template x-for="r in filteredReports" :key="r.id">
                         <tr>
-                          <template x-if="r._is_generating">
-                            <td colspan="7">
-                              <div class="flex items-center gap-2" style="padding:4px 0;width:100%">
-                                <span class="spinner" style="color:var(--color-accent);flex-shrink:0"></span>
-                                <span style="color:var(--color-accent);font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                                  Generating <span x-text="r.reportType"></span> report for <span x-text="r.symbol"></span>
-                                  <template x-if="r.strategy &amp;&amp; r.strategy !== '&mdash;'"> &mdash; Strategy: <span x-text="r.strategy"></span></template>
-                                  <template x-if="r.timeframe &amp;&amp; r.timeframe !== '&mdash;'"> &mdash; <span x-text="r.timeframe"></span></template>
-                                  <template x-if="r.dateRange &amp;&amp; r.dateRange !== '&mdash;' &amp;&amp; r.dateRange !== 'Latest snapshot'"> &mdash; <span x-text="r.dateRange"></span></template>
-                                </span>
-                                <span style="color:var(--color-warning);font-size:11px;font-family:var(--font-mono);flex-shrink:0;margin-left:auto">started <span x-text="fmtElapsed(generatingElapsed)"></span> ago</span>
-                              </div>
-                            </td>
-                          </template>
-                          <template x-if="!r._is_generating">
-                            <>
-                              <td><div class="flex gap-1"><button class="btn-icon" style="width:26px;height:26px;font-size:11px" @click="viewReport(r)" title="View"><i class="fa-solid fa-eye"></i></button><button class="btn-icon" style="width:26px;height:26px;font-size:11px" @click="deleteReport(r)"><i class="fa-solid fa-trash"></i></button></div></td>
-                              <td x-text="r.symbol" style="font-weight:600"></td>
-                              <td class="text-muted" x-text="r.reportType"></td>
-                              <td class="text-muted" x-text="r.strategy"></td>
-                              <td class="text-muted" x-text="r.timeframe"></td>
-                              <td class="text-muted truncate" x-text="r.dateRange"></td>
-                              <td class="text-muted" x-text="fmtDate(r.created)"></td>
-                            </>
-                          </template>
+                          <!-- generating row — full width spinner -->
+                          <td colspan="7" x-show="r._is_generating">
+                            <div class="flex items-center gap-2" style="padding:4px 0;width:100%">
+                              <span class="spinner" style="color:var(--color-accent);flex-shrink:0"></span>
+                              <span style="color:var(--color-accent);font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                Generating <span x-text="r.reportType"></span> report for <span x-text="r.symbol"></span>
+                                <template x-if="r.strategy &amp;&amp; r.strategy !== '&mdash;'"> &mdash; Strategy: <span x-text="r.strategy"></span></template>
+                                <template x-if="r.timeframe &amp;&amp; r.timeframe !== '&mdash;'"> &mdash; <span x-text="r.timeframe"></span></template>
+                                <template x-if="r.dateRange &amp;&amp; r.dateRange !== '&mdash;' &amp;&amp; r.dateRange !== 'Latest snapshot'"> &mdash; <span x-text="r.dateRange"></span></template>
+                              </span>
+                              <span style="color:var(--color-warning);font-size:11px;font-family:var(--font-mono);flex-shrink:0;margin-left:auto">started <span x-text="fmtElapsed(generatingElapsed)"></span> ago</span>
+                            </div>
+                          </td>
+                          <!-- data cells — each with x-show to avoid multi-root x-if bug -->
+                          <td x-show="!r._is_generating"><div class="flex gap-1"><button class="btn-icon" style="width:26px;height:26px;font-size:11px" @click="viewReport(r)" title="View"><i class="fa-solid fa-eye"></i></button><button class="btn-icon" style="width:26px;height:26px;font-size:11px" @click="deleteReport(r)"><i class="fa-solid fa-trash"></i></button></div></td>
+                          <td x-show="!r._is_generating" style="font-weight:600" x-text="r.symbol"></td>
+                          <td x-show="!r._is_generating" class="text-muted" x-text="r.reportType"></td>
+                          <td x-show="!r._is_generating" class="text-muted" x-text="r.strategy"></td>
+                          <td x-show="!r._is_generating" class="text-muted" x-text="r.timeframe"></td>
+                          <td x-show="!r._is_generating" class="text-muted truncate" x-text="r.dateRange"></td>
+                          <td x-show="!r._is_generating" class="text-muted" x-text="fmtDate(r.created)"></td>
                         </tr>
                       </template>
                       <tr x-show="filteredReports.length===0">
@@ -962,6 +1109,23 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
         </div>
 
         <h4 style="font-size:14px;font-weight:600;margin-bottom:var(--space-3);margin-top:var(--space-5)">Robinhood Integration</h4>
+
+        <!-- Connection status banner -->
+        <div x-show="settingsForm.robinhood_enabled && rhStatusLoaded" style="margin-bottom:var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);font-size:12px;display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap"
+             :style="rhStatus.connection_status === 'success' ? 'background:var(--color-success-subtle);border:1px solid var(--color-success)' : rhStatus.connection_status === 'unknown' && rhStatus.has_credentials ? 'background:var(--color-warning-subtle);border:1px solid var(--color-warning)' : 'background:var(--color-error-subtle);border:1px solid var(--color-error)'">
+          <i :class="rhStatus.connection_status === 'success' ? 'fa-solid fa-circle-check text-green' : rhStatus.connection_status === 'unknown' && rhStatus.has_credentials ? 'fa-solid fa-circle-exclamation text-warning' : 'fa-solid fa-circle-xmark text-red'"></i>
+          <span style="font-weight:500">
+            <span x-text="rhStatus.has_credentials ? (rhStatus.connection_status === 'success' ? 'Connected' : rhStatus.connection_status === 'failed' ? 'Connection failed' : 'Checking...') : 'No credentials saved'"></span>
+          </span>
+          <span x-show="rhStatus.positions_count > 0" class="text-muted">| <span x-text="rhStatus.positions_count"></span> positions</span>
+          <span x-show="rhStatus.last_pull" class="text-muted">| Last sync: <span x-text="timeAgo(new Date(rhStatus.last_pull).getTime())"></span></span>
+          <button type="button" class="btn-icon" @click="refreshRhStatus()" title="Refresh status" style="margin-left:auto;font-size:11px"><i class="fa-solid fa-rotate"></i></button>
+        </div>
+        <div x-show="!settingsForm.robinhood_enabled && rhStatusLoaded" style="margin-bottom:var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);font-size:12px;background:var(--color-surface-elevated);display:flex;align-items:center;gap:var(--space-2);color:var(--color-text-tertiary)">
+          <i class="fa-solid fa-circle"></i>
+          <span>Robinhood integration is disabled</span>
+        </div>
+
         <div class="form-group" style="display:flex;align-items:center;gap:var(--space-2)">
           <input type="checkbox" id="rhEnabled" x-model="settingsForm.robinhood_enabled" style="width:auto">
           <label for="rhEnabled" style="margin:0">Enable Robinhood Integration</label>
@@ -1005,46 +1169,46 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
 
       <div style="margin-bottom:var(--space-5)">
         <h4 style="font-size:13px;font-weight:600;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:var(--space-3)">Column Visibility</h4>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
           <label class="toggle-switch">
             <input type="checkbox" x-model="portfolioViewSettings.columns.symbol" disabled>
             <span class="toggle-track"></span>
-            <span>Symbol</span>
+            <span style="white-space:nowrap">Symbol</span>
           </label>
           <label class="toggle-switch">
             <input type="checkbox" x-model="portfolioViewSettings.columns.notes">
             <span class="toggle-track"></span>
-            <span>Notes</span>
+            <span style="white-space:nowrap">Notes</span>
           </label>
           <label class="toggle-switch">
             <input type="checkbox" x-model="portfolioViewSettings.columns.avgBuyPrice">
             <span class="toggle-track"></span>
-            <span>Avg Buy Price</span>
+            <span style="white-space:nowrap">Avg Buy Price</span>
           </label>
           <label class="toggle-switch">
             <input type="checkbox" x-model="portfolioViewSettings.columns.percent">
             <span class="toggle-track"></span>
-            <span>% of Portfolio</span>
+            <span style="white-space:nowrap">% of Portfolio</span>
           </label>
           <label class="toggle-switch">
             <input type="checkbox" x-model="portfolioViewSettings.columns.todaysReturn">
             <span class="toggle-track"></span>
-            <span>Today's Return ($)</span>
+            <span style="white-space:nowrap">Today's Return ($)</span>
           </label>
           <label class="toggle-switch">
             <input type="checkbox" x-model="portfolioViewSettings.columns.totalReturn">
             <span class="toggle-track"></span>
-            <span>Total Return ($)</span>
+            <span style="white-space:nowrap">Total Return ($)</span>
           </label>
           <label class="toggle-switch">
             <input type="checkbox" x-model="portfolioViewSettings.columns.totalReturnPct">
             <span class="toggle-track"></span>
-            <span>Total Return %</span>
+            <span style="white-space:nowrap">Total Return %</span>
           </label>
           <label class="toggle-switch">
             <input type="checkbox" x-model="portfolioViewSettings.columns.marketValue">
             <span class="toggle-track"></span>
-            <span>Market Value</span>
+            <span style="white-space:nowrap">Market Value</span>
           </label>
         </div>
       </div>
@@ -1336,7 +1500,7 @@ async function apiDelete(url, timeoutMs = 30000) {
 // ════════════════════════════════════════════════════════════════
 const REPORT_TYPE_CAPS = {
   market: { label: 'Market Check', available: true, fields: ['timeframe','startDate','endDate'] },
-  finance: { label: 'Finance', available: true, fields: ['symbol','startDate','endDate'] },
+  finance: { label: 'Finance', available: true, fields: ['symbol','strategy','startDate','endDate'] },
   backtest: { label: 'Backtest', available: false, fields: ['symbol','strategy','startDate','endDate'] },
   comparison: { label: 'Comparison', available: false, fields: ['symbol','strategy','startDate','endDate'] }
 }
@@ -1379,6 +1543,7 @@ function app() {
     async fetchAllData() {
       if (this.currentView !== 'dashboard') return
       await this.fetchPortfolio()
+      await this.loadReports()
       /* orders/dividends/profitLoss are loaded inside fetchPortfolio via Promise.allSettled */
     },
     init() {
@@ -1396,8 +1561,12 @@ function app() {
       // Watch for dashboard view changes to load data
       this._viewWatch = setInterval(() => {
         if (this.currentView === 'dashboard' && !this._dataLoaded) {
-          this._dataLoaded = true
-          this.fetchAllData()
+          if (this.isAuthenticated) {
+            this._dataLoaded = true
+            this.fetchAllData()
+          } else {
+            // Auth not ready yet — check auth state is loading and wait
+          }
         }
       }, 300)
 
@@ -1487,6 +1656,11 @@ function app() {
       } catch (err) {
         localStorage.removeItem('accessToken')
         await this.autoLogin()
+        // Re-trigger data fetch if auto-login succeeded and we're on dashboard
+        if (this.isAuthenticated && this.currentView === 'dashboard') {
+          this._dataLoaded = false
+          this.fetchAllData()
+        }
       }
     },
 
@@ -1611,7 +1785,7 @@ function app() {
         saveWidgetStates(this.widgetStates)
         // Re-fetch data when expanding a widget if authenticated
         if (wasMinimized && this.isAuthenticated) {
-          if (name === 'dividends') this.loadDividends()
+          if (name === 'dividends') { this.loadDividends(); this.loadIncomeHistory() }
         }
       }
     },
@@ -1629,6 +1803,7 @@ function app() {
     // Portfolio view settings (persisted)
     portfolioViewSettings: { columns: {}, defaultSortCol: 'percent', defaultSortDir: 'desc' },
     showPortfolioViewSettings: false,
+    showCrypto: false,
     availableSymbols: [],
     availableStrategies: [],
 
@@ -1673,8 +1848,8 @@ function app() {
 
       const result = []
       if (cashPos) result.push(cashPos)
-      if (btcPos) result.push(btcPos)
-      result.push(...sorted)
+      if (btcPos && this.showCrypto) result.push(btcPos)
+      result.push(...sorted.filter(p => this.showCrypto || !p.is_crypto))
       return result
     },
 
@@ -1719,7 +1894,8 @@ function app() {
         }
         // Load secondary dashboard data in parallel
         await Promise.allSettled([
-          this.loadDividends()
+          this.loadDividends(),
+          this.loadIncomeHistory()
         ])
       } catch (err) {
         this.portfolioError = err.message || 'Failed to load portfolio'
@@ -1766,6 +1942,15 @@ function app() {
 
     // ── Portfolio: Settings Modal ──
     showSettingsModal: false,
+    rhStatus: { enabled: false, has_credentials: false, connection_status: 'unknown', positions_count: 0, last_pull: null },
+    rhStatusLoaded: false,
+    async refreshRhStatus() {
+      try {
+        const st = await apiGet('/api/robinhood/status')
+        this.rhStatus = st
+        this.rhStatusLoaded = true
+      } catch (e) { /* swallow */ }
+    },
     // ── Sync (async background) ──
     syncStatus: null,           // "running"/"done"/"error"/null
     syncProgress: '',
@@ -1827,6 +2012,8 @@ function app() {
         }
       }
       this.showSettingsModal = true
+      // Fetch Robinhood status in background
+      this.refreshRhStatus()
     },
 
     async saveSettings() {
@@ -1926,13 +2113,20 @@ function app() {
     dividends: [],
     dividendsLoading: false,
     divTab: 'history',
+    // Income History
+    incomeLoading: false,
+    incomePeriod: '1y',
+    incomePeriods: ['1m', '3m', '6m', '1y', '3y'],
+    incomeMonthly: [],
+    incomeSummary: { total: 0, monthly_avg: 0, best_month: null, months_count: 0 },
     // DCA state
     dcaLoading: false,
     dcaShares: 0,
     dcaAvgPrice: 0,
     dcaMktVal: 0,
+    dcaCurrentPrice: 0,
     dcaMonthlyDiv: 0,
-    dcaDaily: 2000,
+    dcaDaily: 2000,       // Actual recurring buy from Robinhood ($2k/day)
     dcaTargetPrice: 35,
     dcaDays: 365,
     hideLowDivSymbols: true,
@@ -1958,6 +2152,46 @@ function app() {
     get dcaSimProfit() {
       return this.dcaSimFinalVal - this.dcaTotalInvested
     },
+
+    // ── Actual Recurring Buy Projections ──
+    get dcaProjShares() {
+      // Shares accumulated per day at current price
+      const sharesPerDay = this.dcaCurrentPrice > 0 ? this.dcaDaily / this.dcaCurrentPrice : 0
+      return {
+        '1mo': this.dcaShares + sharesPerDay * 30,
+        '3mo': this.dcaShares + sharesPerDay * 90,
+        '6mo': this.dcaShares + sharesPerDay * 182,
+        '1yr': this.dcaShares + sharesPerDay * 365,
+      }
+    },
+    get dcaProjValue() {
+      const p = this.dcaCurrentPrice
+      const s = this.dcaProjShares
+      return {
+        '1mo': s['1mo'] * p,
+        '3mo': s['3mo'] * p,
+        '6mo': s['6mo'] * p,
+        '1yr': s['1yr'] * p,
+      }
+    },
+    get dcaProjInvested() {
+      return {
+        '1mo': this.dcaDaily * 30,
+        '3mo': this.dcaDaily * 90,
+        '6mo': this.dcaDaily * 182,
+        '1yr': this.dcaDaily * 365,
+      }
+    },
+    get incomeBestMonth() {
+      const b = this.incomeSummary.best_month
+      if (!b) return '—'
+      return b.month.slice(5) + ': ' + this.fmtCurrency(b.total)
+    },
+    get incomeMax() {
+      if (this.incomeMonthly.length === 0) return 1
+      return Math.max(...this.incomeMonthly.map(m => m.total), 1)
+    },
+
     get divTotalAll() {
       return this.dividends.reduce((s, d) => s + (d.amount || 0), 0)
     },
@@ -2005,6 +2239,7 @@ function app() {
             this.dcaShares = btci.amount || 0
             this.dcaAvgPrice = btci.avg_buy_price || 0
             this.dcaMktVal = btci.market_value || 0
+            this.dcaCurrentPrice = btci.current_price || 0
           }
           // Calculate median monthly dividend from last 6 months (resists spikes)
           const now = new Date()
@@ -2030,6 +2265,22 @@ function app() {
       } finally {
         this.dividendsLoading = false
         this.dcaLoading = false
+      }
+    },
+
+    async loadIncomeHistory() {
+      if (!this.isAuthenticated) return
+      this.incomeLoading = true
+      try {
+        const data = await apiGet('/api/income/history?period=' + this.incomePeriod)
+        this.incomeMonthly = Array.isArray(data.monthly) ? data.monthly : []
+        this.incomeSummary = data.summary || { total: 0, monthly_avg: 0, best_month: null, months_count: 0 }
+      } catch (err) {
+        this.incomeMonthly = []
+        this.incomeSummary = { total: 0, monthly_avg: 0, best_month: null, months_count: 0 }
+        Alpine.store('toast').show('Failed to load income history', 'error')
+      } finally {
+        this.incomeLoading = false
       }
     },
 
@@ -2155,7 +2406,7 @@ function app() {
         symbol: snapshot.symbol || '...',
         reportType: snapshot.reportType === 'market' ? 'Market Check' : 'Finance',
         reportTypeKey: snapshot.reportType,
-        strategy: snapshot.strategy || '—',
+        strategy: snapshot.reportType !== 'market' ? (snapshot.strategy || '—') : '—',
         timeframe: snapshot.timeframe || '—',
         dateRange: snapshot.startDate && snapshot.endDate ? snapshot.startDate + ' to ' + snapshot.endDate : (snapshot.reportType === 'market' ? 'Latest snapshot' : '—'),
         created: new Date()
@@ -2168,7 +2419,8 @@ function app() {
         params.append('force_refresh', 'false')
         params.append('timeframe', snapshot.timeframe || 'Daily')
         if (snapshot.symbol) params.append('symbol', snapshot.symbol)
-        if (snapshot.strategy) params.append('strategy', snapshot.strategy)
+        // Only send strategy for report types that use it (finance, not market)
+        if (snapshot.reportType !== 'market' && snapshot.strategy) params.append('strategy', snapshot.strategy)
         if (snapshot.startDate) params.append('start_date', snapshot.startDate)
         if (snapshot.endDate) params.append('end_date', snapshot.endDate)
 
@@ -2182,7 +2434,7 @@ function app() {
           throw new Error('Report type "' + snapshot.reportType + '" generation is not available yet')
         }
 
-        const resp = await apiPost(endpoint)
+        const resp = await apiPost(endpoint, undefined, 180000)
         this.reports = this.reports.filter(r => !r._is_generating)
         await this.loadReports()
 

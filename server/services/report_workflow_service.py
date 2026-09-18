@@ -36,8 +36,9 @@ from workflows.financial.financial_report_generator import (
 
 logger = logging.getLogger(__name__)
 
-# Project root — two levels up from server/services/
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Project root — the parent of server/ and public/
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # /app/server
+APP_ROOT = os.path.dirname(PROJECT_ROOT)  # /app
 
 
 # ── Market report ──────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ def generate_market_report(
     Returns:
         Absolute path to the generated ``index.html``.
     """
-    output_base_dir = os.path.join(PROJECT_ROOT, output_dir)
+    output_base_dir = os.path.join(APP_ROOT, output_dir)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     report_dir_name = f"market_{timestamp}"
@@ -210,6 +211,15 @@ def generate_market_report(
         )
         save_metadata(metadata, report_dir)
 
+        # Post-process: inject interpretation sidebar + signal badges
+        try:
+            import subprocess, sys
+            enhance_script = os.path.join(os.path.dirname(__file__), '../../scripts/enhance_market_report.py')
+            subprocess.run([sys.executable, enhance_script, report_path],
+                         capture_output=True, timeout=30)
+        except Exception:
+            logger.warning("Enhancement script failed (non-fatal)", exc_info=True)
+
         return report_path
 
     except Exception:
@@ -236,7 +246,7 @@ def generate_financial_report(
     Returns:
         Absolute path to the generated ``index.html``.
     """
-    output_base_dir = os.path.join(PROJECT_ROOT, output_dir)
+    output_base_dir = os.path.join(APP_ROOT, output_dir)
 
     today = datetime.now().strftime("%Y%m%d")
     report_dir_name = f"financial_{symbol}_{today}"
