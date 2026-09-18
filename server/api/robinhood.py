@@ -2,6 +2,7 @@ import asyncio
 import requests
 try:
     import robin_stocks.robinhood as r
+    from robin_stocks.helper import request_get
     ROBIN_STOCKS_AVAILABLE = True
 except ImportError as e:
     logger = get_api_logger("robinhood")
@@ -1619,3 +1620,100 @@ async def get_robinhood_status(
     except Exception as e:
         logger.error(f"Error getting Robinhood status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+RECURRING_SCHEDULES_URL = "https://bonfire.robinhood.com/recurring_schedules/"
+
+
+async def _fetch_recurring_investments(credentials: HTTPAuthorizationCredentials) -> list:
+    """Login to Robinhood and fetch recurring crypto investment schedules."""
+    if not ROBIN_STOCKS_AVAILABLE:
+        raise HTTPException(status_code=500, detail="robin_stocks library not available")
+
+    settings = await get_robinhood_settings(credentials)
+    if not settings.enabled:
+        raise HTTPException(status_code=500, detail="Robinhood integration is not enabled")
+
+    # Login (same pattern as pull_robinhood_data_internal)
+    try:
+        if settings.mfa:
+            try:
+                await _run_blocking(
+                    lambda: r.login(settings.username, settings.password, mfa_code=settings.mfa),
+                    timeout=30)
+            except Exception:
+                await _run_blocking(
+                    lambda: r.login(settings.username, settings.password, settings.mfa),
+                    timeout=30)
+        else:
+            await _run_blocking(
+                lambda: r.login(settings.username, settings.password),
+                timeout=30)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=500, detail="Robinhood login timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Robinhood login failed: {e}")
+
+    # Fetch recurring schedules for crypto
+    try:
+        schedules = await _run_blocking(
+            lambda: request_get(RECURRING_SCHEDULES_URL + "?asset_types=crypto"),
+            timeout=30)
+        logger.info(f"Fetched {len(schedules) if isinstance(schedules, list) else 'non-list'} recurring schedules")
+        return schedules if isinstance(schedules, list) else []
+    except asyncio.TimeoutError:
+        logger.error("Recurring schedules fetch timed out")
+        return []
+    except Exception as e:
+        logger.error(f"Failed to fetch recurring schedules: {e}")
+        return []
+
+
+@router.get("/recurring-investments")
+async def get_recurring_investments(
+        credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Fetch all crypto recurring investment schedules from Robinhood."""
+    try:
+        schedules = await _fetch_recurring_investments(credentials)
+        return {"success": True, "data": schedules}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in recurring-investments: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/dca-buy")
+async def get_dca_buy(
+        credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Fetch the BTCI recurring buy amount from Robinhood."""
+    try:
+        schedules = await _fetch_recurring_investments(credentials)
+        # Filter for BTCI schedules
+        for s in schedules:
+            currency_code = s.get("currency_code", "").upper()
+            if currency_code == "BTCI":
+                try:
+                    amount = float(s.get("amount", 0))
+                    schedule_id = s.get("id", "")
+                    logger.info(f"Found BTCI recurring buy: amount={amount}, schedule_id={schedule_id}")
+                    return {
+                        "success": True,
+                        "data": {
+                            "amount": amount,
+                            "schedule_id": schedule_id,
+                            "frequency": s.get("frequency", ""),
+                            "state": s.get("state", "")
+                        }
+                    }
+                except (ValueError, TypeError) as e:
+                    logger.error(f"Failed to parse BTCI amount: {e}")
+                    break
+
+        logger.info("No BTCI recurring buy found")
+        return {"success": True, "data": {"amount": 0, "schedule_id": None}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in dca-buy: {e}")
+        return {"success": False, "error": str(e)}

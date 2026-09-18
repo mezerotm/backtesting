@@ -670,8 +670,19 @@ class PocketBaseClient:
             return False
 
     def get_records(self, collection: str,
-                    filters: str = "") -> List[Dict[str, Any]]:
-        """Get records from a collection using REST API."""
+                    filters: str = "",
+                    limit: Optional[int] = None,
+                    skip: Optional[int] = None,
+                    sort: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get records from a collection using REST API.
+
+        Args:
+            collection: Collection name
+            filters: Optional PocketBase filter expression
+            limit: Max records to return (PocketBase default is all)
+            skip: Number of records to skip (PocketBase offset)
+            sort: Sort field(s), prefix with - for descending (e.g. '-payable_date')
+        """
         if not self.is_server_running():
             return []
 
@@ -680,11 +691,20 @@ class PocketBaseClient:
             if hasattr(self, '_admin_token') and self._admin_token:
                 headers["Authorization"] = f"Bearer {self._admin_token}"
 
-            url = f"{self.base_url}/api/collections/{collection}/records"
+            import urllib.parse
+            params = {}
             if filters:
-                import urllib.parse
-                encoded_filter = urllib.parse.quote(filters)
-                url += f"?filter={encoded_filter}"
+                params["filter"] = filters
+            if limit is not None:
+                params["limit"] = str(limit)
+            if skip is not None:
+                params["skip"] = str(skip)
+            if sort:
+                params["sort"] = sort
+
+            url = f"{self.base_url}/api/collections/{collection}/records"
+            if params:
+                url += "?" + urllib.parse.urlencode(params)
 
             response = requests.get(url, headers=headers, timeout=10)
 

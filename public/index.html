@@ -512,16 +512,10 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
             </button>
             <div x-show="showUserMenu" class="user-menu" @click.outside="showUserMenu = false">
               <button class="user-menu-item" @click="showSettingsModal = true; showUserMenu = false">
-                <i class="fa-solid fa-sliders-h" style="width:18px"></i> Portfolio Settings
+                <i class="fa-solid fa-sliders-h" style="width:18px"></i> Account Settings
               </button>
-              <button class="user-menu-item" @click="showPortfolioViewSettings = true; showUserMenu = false">
-                <i class="fa-solid fa-chart-pie" style="width:18px"></i> View Settings
-              </button>
-              <button class="user-menu-item" @click="generateReport(); showUserMenu = false">
-                <i class="fa-solid fa-file-invoice" style="width:18px"></i> Generate Report
-              </button>
-              <button class="user-menu-item" @click="cleanResults(); showUserMenu = false">
-                <i class="fa-solid fa-trash-can" style="width:18px"></i> Clean Results
+              <button class="user-menu-item" @click="showRobinhoodModal = true; showUserMenu = false">
+                <i class="fa-solid fa-robot" style="width:18px"></i> Robinhood Integration
               </button>
               <hr style="border:0;border-top:1px solid var(--color-border);margin:var(--space-1) 0">
               <button class="user-menu-item" @click="navigate('/'); showUserMenu = false">
@@ -628,18 +622,18 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
             <div x-show="divTab==='history'">
               <div x-show="dividendsLoading" class="loading-state"><span class="spinner"></span> Loading dividends...</div>
               <div x-show="!dividendsLoading">
-                <!-- Summary cards -->
+                <!-- Summary cards (from backend summary endpoint) -->
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-bottom:var(--space-4)">
                   <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
-                    <div style="font-size:1.4rem;font-weight:700" class="text-green" x-text="fmtCurrency(divTotalAll)"></div>
+                    <div style="font-size:1.4rem;font-weight:700" class="text-green" x-text="fmtCurrency(divSummary ? divSummary.total_all : 0)"></div>
                     <div class="text-xs text-muted">Total Earned</div>
                   </div>
                   <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
-                    <div style="font-size:1.4rem;font-weight:700" class="text-green" x-text="divTotalYear"></div>
+                    <div style="font-size:1.4rem;font-weight:700" class="text-green" x-text="divSummary ? fmtCurrency(divSummary.total_this_year) : '—'"></div>
                     <div class="text-xs text-muted">This Year</div>
                   </div>
                   <div style="background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center">
-                    <div style="font-size:1.4rem;font-weight:700" x-text="divCount"></div>
+                    <div style="font-size:1.4rem;font-weight:700" x-text="divSummary ? divSummary.total_dividends : 0"></div>
                     <div class="text-xs text-muted">Payments</div>
                   </div>
                 </div>
@@ -680,6 +674,13 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
                       <tr x-show="dividends.length===0"><td colspan="3" class="text-center text-muted">No dividends yet.</td></tr>
                     </tbody>
                   </table>
+                </div>
+                <!-- Load more button -->
+                <div x-show="dividendHasMore" style="text-align:center;margin-top:var(--space-2)">
+                  <button class="btn btn-sm btn-ghost" @click="loadMoreDividends()" :disabled="dividendLoadingMore">
+                    <span x-show="!dividendLoadingMore">Load 25 more</span>
+                    <span x-show="dividendLoadingMore"><span class="spinner" style="width:14px;height:14px;border-width:2px;vertical-align:middle"></span> Loading...</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -779,8 +780,9 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
                   </div>
                   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-2);margin-bottom:var(--space-3)">
                     <div style="background:var(--color-bg);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
-                      <div style="font-size:1.1rem;font-weight:700" class="text-green" x-text="fmtCurrency(dcaDaily) + '/day'"></div>
+                      <input type="number" x-model="dcaDaily" @input="saveDcaDaily()" step="10" min="0" style="width:100%;padding:4px 6px;font-size:1.1rem;font-weight:700;text-align:center;color:var(--color-green);background:transparent;border:1px solid var(--color-border);border-radius:var(--radius-md)" class="text-green">
                       <div class="text-xs text-muted">Daily Buy</div>
+                      <div class="text-xs" style="margin-top:2px" x-show="dcaSource!=='default'" x-text="dcaSource==='robinhood' ? 'Recurring Buy' : 'Manual'" :class="dcaSource==='robinhood' ? 'text-green' : 'text-muted'"></div>
                     </div>
                     <div style="background:var(--color-bg);border-radius:var(--radius-md);padding:var(--space-2);text-align:center">
                       <div style="font-size:1.1rem;font-weight:700" x-text="fmtCurrency(dcaCurrentPrice)"></div>
@@ -871,7 +873,7 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
                   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-3)">
                     <div>
                       <label class="text-xs text-muted">Daily Investment</label>
-                      <input type="number" x-model="dcaDaily" step="10" min="0" style="width:100%;padding:6px 8px;font-size:12px">
+                      <input type="number" x-model="dcaDaily" @input="saveDcaDaily()" step="10" min="0" style="width:100%;padding:6px 8px;font-size:12px">
                     </div>
                     <div>
                       <label class="text-xs text-muted">Target Price</label>
@@ -1082,7 +1084,7 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
   <div x-show="showSettingsModal" class="modal-overlay" @click="showSettingsModal = false">
     <div class="modal" @click.stop>
       <div class="modal-header">
-        <h3>Portfolio Settings</h3>
+        <h3>Account Settings</h3>
         <button class="btn-icon" @click="showSettingsModal = false"><i class="fa-solid fa-times"></i></button>
       </div>
       <!-- Syncing overlay — centered on screen, not modal -->
@@ -1108,24 +1110,38 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
           <input type="text" x-model="settingsForm.btc_avg_price" step="any" min="0" inputmode="decimal">
         </div>
 
-        <h4 style="font-size:14px;font-weight:600;margin-bottom:var(--space-3);margin-top:var(--space-5)">Robinhood Integration</h4>
-
-        <!-- Connection status banner -->
-        <div x-show="settingsForm.robinhood_enabled && rhStatusLoaded" style="margin-bottom:var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);font-size:12px;display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap"
-             :style="rhStatus.connection_status === 'success' ? 'background:var(--color-success-subtle);border:1px solid var(--color-success)' : rhStatus.connection_status === 'unknown' && rhStatus.has_credentials ? 'background:var(--color-warning-subtle);border:1px solid var(--color-warning)' : 'background:var(--color-error-subtle);border:1px solid var(--color-error)'">
-          <i :class="rhStatus.connection_status === 'success' ? 'fa-solid fa-circle-check text-green' : rhStatus.connection_status === 'unknown' && rhStatus.has_credentials ? 'fa-solid fa-circle-exclamation text-warning' : 'fa-solid fa-circle-xmark text-red'"></i>
-          <span style="font-weight:500">
-            <span x-text="rhStatus.has_credentials ? (rhStatus.connection_status === 'success' ? 'Connected' : rhStatus.connection_status === 'failed' ? 'Connection failed' : 'Checking...') : 'No credentials saved'"></span>
-          </span>
-          <span x-show="rhStatus.positions_count > 0" class="text-muted">| <span x-text="rhStatus.positions_count"></span> positions</span>
-          <span x-show="rhStatus.last_pull" class="text-muted">| Last sync: <span x-text="timeAgo(new Date(rhStatus.last_pull).getTime())"></span></span>
-          <button type="button" class="btn-icon" @click="refreshRhStatus()" title="Refresh status" style="margin-left:auto;font-size:11px"><i class="fa-solid fa-rotate"></i></button>
+        <hr style="border:0;border-top:1px solid var(--color-border);margin:var(--space-4) 0">
+        <div class="flex justify-end gap-2">
+          <button type="button" class="btn btn-ghost" @click="showSettingsModal = false" :disabled="syncStatus === 'running'">Cancel</button>
+          <button type="submit" class="btn btn-primary" :disabled="syncStatus === 'running'">Save</button>
         </div>
-        <div x-show="!settingsForm.robinhood_enabled && rhStatusLoaded" style="margin-bottom:var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);font-size:12px;background:var(--color-surface-elevated);display:flex;align-items:center;gap:var(--space-2);color:var(--color-text-tertiary)">
-          <i class="fa-solid fa-circle"></i>
-          <span>Robinhood integration is disabled</span>
-        </div>
+      </form>
+    </div>
+  </div>
 
+  <!-- ═══════════════ ROBINHOOD INTEGRATION MODAL ═══════════════ -->
+  <div x-show="showRobinhoodModal" class="modal-overlay" @click="showRobinhoodModal = false">
+    <div class="modal" @click.stop>
+      <div class="modal-header">
+        <h3>Robinhood Integration</h3>
+        <button class="btn-icon" @click="showRobinhoodModal = false"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <!-- Connection status banner -->
+      <div x-show="settingsForm.robinhood_enabled && rhStatusLoaded" style="margin-bottom:var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);font-size:12px;display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap"
+           :style="rhStatus.connection_status === 'success' ? 'background:var(--color-success-subtle);border:1px solid var(--color-success)' : rhStatus.connection_status === 'unknown' && rhStatus.has_credentials ? 'background:var(--color-warning-subtle);border:1px solid var(--color-warning)' : 'background:var(--color-error-subtle);border:1px solid var(--color-error)'">
+        <i :class="rhStatus.connection_status === 'success' ? 'fa-solid fa-circle-check text-green' : rhStatus.connection_status === 'unknown' && rhStatus.has_credentials ? 'fa-solid fa-circle-exclamation text-warning' : 'fa-solid fa-circle-xmark text-red'"></i>
+        <span style="font-weight:500">
+          <span x-text="rhStatus.has_credentials ? (rhStatus.connection_status === 'success' ? 'Connected' : rhStatus.connection_status === 'failed' ? 'Connection failed' : 'Checking...') : 'No credentials saved'"></span>
+        </span>
+        <span x-show="rhStatus.positions_count > 0" class="text-muted">| <span x-text="rhStatus.positions_count"></span> positions</span>
+        <span x-show="rhStatus.last_pull" class="text-muted">| Last sync: <span x-text="timeAgo(new Date(rhStatus.last_pull).getTime())"></span></span>
+        <button type="button" class="btn-icon" @click="refreshRhStatus()" title="Refresh status" style="margin-left:auto;font-size:11px"><i class="fa-solid fa-rotate"></i></button>
+      </div>
+      <div x-show="!settingsForm.robinhood_enabled && rhStatusLoaded" style="margin-bottom:var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);font-size:12px;background:var(--color-surface-elevated);display:flex;align-items:center;gap:var(--space-2);color:var(--color-text-tertiary)">
+        <i class="fa-solid fa-circle"></i>
+        <span>Robinhood integration is disabled</span>
+      </div>
+      <form @submit.prevent="saveRobinhoodSettings">
         <div class="form-group" style="display:flex;align-items:center;gap:var(--space-2)">
           <input type="checkbox" id="rhEnabled" x-model="settingsForm.robinhood_enabled" style="width:auto">
           <label for="rhEnabled" style="margin:0">Enable Robinhood Integration</label>
@@ -1152,7 +1168,7 @@ label { display: block; font-size: 13px; font-weight: 500; color: var(--color-te
         </div>
         <hr style="border:0;border-top:1px solid var(--color-border);margin:var(--space-4) 0">
         <div class="flex justify-end gap-2">
-          <button type="button" class="btn btn-ghost" @click="showSettingsModal = false" :disabled="syncStatus === 'running'">Cancel</button>
+          <button type="button" class="btn btn-ghost" @click="showRobinhoodModal = false" :disabled="syncStatus === 'running'">Cancel</button>
           <button type="submit" class="btn btn-primary" :disabled="syncStatus === 'running'">Save</button>
         </div>
       </form>
@@ -1595,6 +1611,18 @@ function app() {
           this.sortDir = parsed.defaultSortDir || 'desc'
         } catch (e) {}
       }
+
+      // Load DCA daily value from localStorage
+      const savedDcaDaily = localStorage.getItem('dcaDaily')
+      if (savedDcaDaily !== null) {
+        const parsed = parseInt(savedDcaDaily, 10)
+        if (!isNaN(parsed) && parsed >= 0) {
+          this.dcaDaily = parsed
+          this.dcaSource = 'manual'
+        }
+      }
+      // Fetch real BTCI recurring buy from Robinhood (overwrites if found)
+      this.fetchDcaFromRobinhood()
     },
     destroy() {
       if (this._healthInterval) clearInterval(this._healthInterval)
@@ -1942,6 +1970,7 @@ function app() {
 
     // ── Portfolio: Settings Modal ──
     showSettingsModal: false,
+    showRobinhoodModal: false,
     rhStatus: { enabled: false, has_credentials: false, connection_status: 'unknown', positions_count: 0, last_pull: null },
     rhStatusLoaded: false,
     async refreshRhStatus() {
@@ -1961,7 +1990,7 @@ function app() {
     syncElapsedTimer: null,     // setInterval handle for elapsed ticker
     syncPollInterval: null,     // setInterval handle for polling
     lastSyncTime: null,         // timestamp ms of last successful sync
-    settingsForm: { cash: '0', btc_dollar: '0', btc_avg_price: '0', robinhood_enabled: false, robinhood_username: '', robinhood_password: '', robinhood_mfa: '' },
+    settingsForm: { cash: '0', btc_dollar: '0', btc_avg_price: '0' },
 
     // ── Portfolio: View Settings ──
     openPortfolioViewSettings() {
@@ -1996,24 +2025,16 @@ function app() {
         this.settingsForm = {
           cash: (s.total_portfolio_cash || 0).toString(),
           btc_dollar: (s.total_portfolio_btc || 0).toString(),
-          btc_avg_price: (s.btc_avg_buy_price || 0).toString(),
-          robinhood_enabled: s.robinhood_enabled || false,
-          robinhood_username: s.robinhood_username || '',
-          robinhood_password: s.robinhood_password || '',
-          robinhood_mfa: s.robinhood_mfa || ''
+          btc_avg_price: (s.btc_avg_buy_price || 0).toString()
         }
       } catch (e) {
         this.settingsForm = {
           cash: (this.portfolioCash || 0).toString(),
           btc_dollar: (this.portfolioBTCDollar || 0).toString(),
-          btc_avg_price: (this.btcAvgBuyPrice || 0).toString(),
-          robinhood_enabled: false,
-          robinhood_username: '', robinhood_password: '', robinhood_mfa: ''
+          btc_avg_price: (this.btcAvgBuyPrice || 0).toString()
         }
       }
       this.showSettingsModal = true
-      // Fetch Robinhood status in background
-      this.refreshRhStatus()
     },
 
     async saveSettings() {
@@ -2029,11 +2050,7 @@ function app() {
         const result = await apiPut('/api/portfolio/settings', {
           total_portfolio_cash: cash,
           total_portfolio_btc: btc,
-          btc_avg_buy_price: btcPrice,
-          robinhood_enabled: this.settingsForm.robinhood_enabled,
-          robinhood_username: this.settingsForm.robinhood_username.trim() || null,
-          robinhood_password: this.settingsForm.robinhood_password.trim() || null,
-          robinhood_mfa: this.settingsForm.robinhood_mfa.trim() || null
+          btc_avg_buy_price: btcPrice
         })
         this.portfolioCash = cash
         this.portfolioBTCDollar = btc
@@ -2042,6 +2059,39 @@ function app() {
         Alpine.store('toast').show('Settings saved successfully', 'success')
       } catch (err) {
         Alpine.store('toast').show(err.message || 'Failed to save settings', 'error')
+      }
+    },
+
+    // ── Robinhood: Integration Modal ──
+    async openRobinhoodModal() {
+      try {
+        const s = await apiGet('/api/portfolio/settings')
+        this.settingsForm.robinhood_enabled = s.robinhood_enabled || false
+        this.settingsForm.robinhood_username = s.robinhood_username || ''
+        this.settingsForm.robinhood_password = s.robinhood_password || ''
+        this.settingsForm.robinhood_mfa = s.robinhood_mfa || ''
+      } catch (e) {
+        this.settingsForm.robinhood_enabled = false
+        this.settingsForm.robinhood_username = ''
+        this.settingsForm.robinhood_password = ''
+        this.settingsForm.robinhood_mfa = ''
+      }
+      this.showRobinhoodModal = true
+      this.refreshRhStatus()
+    },
+
+    async saveRobinhoodSettings() {
+      try {
+        await apiPut('/api/portfolio/settings', {
+          robinhood_enabled: this.settingsForm.robinhood_enabled,
+          robinhood_username: this.settingsForm.robinhood_username.trim() || null,
+          robinhood_password: this.settingsForm.robinhood_password.trim() || null,
+          robinhood_mfa: this.settingsForm.robinhood_mfa.trim() || null
+        })
+        this.showRobinhoodModal = false
+        Alpine.store('toast').show('Robinhood settings saved', 'success')
+      } catch (err) {
+        Alpine.store('toast').show(err.message || 'Failed to save Robinhood settings', 'error')
       }
     },
 
@@ -2112,6 +2162,10 @@ function app() {
     // ── Dividends + DCA ──
     dividends: [],
     dividendsLoading: false,
+    divSummary: null,
+    dividendLimit: 10,
+    dividendHasMore: true,
+    dividendLoadingMore: false,
     divTab: 'history',
     // Income History
     incomeLoading: false,
@@ -2126,7 +2180,8 @@ function app() {
     dcaMktVal: 0,
     dcaCurrentPrice: 0,
     dcaMonthlyDiv: 0,
-    dcaDaily: 2000,       // Actual recurring buy from Robinhood ($2k/day)
+    dcaDaily: 0,          // Loaded from localStorage in init() — set your daily BTCI buy amount
+    dcaSource: 'default', // 'robinhood' | 'manual' | 'default'
     dcaTargetPrice: 35,
     dcaDays: 365,
     hideLowDivSymbols: true,
@@ -2182,6 +2237,22 @@ function app() {
         '1yr': this.dcaDaily * 365,
       }
     },
+    saveDcaDaily() {
+      localStorage.setItem('dcaDaily', this.dcaDaily)
+      this.dcaSource = 'manual'
+    },
+    async fetchDcaFromRobinhood() {
+      try {
+        const res = await apiGet('/api/robinhood/dca-buy')
+        if (res && res.success && res.data && res.data.amount > 0) {
+          this.dcaDaily = res.data.amount
+          this.dcaSource = 'robinhood'
+          localStorage.setItem('dcaDaily', res.data.amount)
+        }
+      } catch (err) {
+        // Robinhood not available — keep existing (manual/default) value
+      }
+    },
     get incomeBestMonth() {
       const b = this.incomeSummary.best_month
       if (!b) return '—'
@@ -2224,14 +2295,21 @@ function app() {
 
     async loadDividends() {
       this.dividendsLoading = true
+      this.dividendHasMore = true
       this.dcaLoading = true
       try {
-        const [data, portfolio] = await Promise.allSettled([
-          apiGet('/api/dividends/'),
+        const [data, summary, portfolio] = await Promise.allSettled([
+          apiGet('/api/dividends/?limit=10&offset=0'),
+          apiGet('/api/dividends/summary'),
           apiGet('/api/portfolio/summary')
         ])
         if (data.status === 'fulfilled') {
-          this.dividends = Array.isArray(data.value) ? data.value : []
+          const items = Array.isArray(data.value) ? data.value : []
+          this.dividends = items
+          this.dividendHasMore = items.length >= 10
+        }
+        if (summary.status === 'fulfilled' && summary.value) {
+          this.divSummary = summary.value
         }
         if (portfolio.status === 'fulfilled') {
           const btci = (portfolio.value.positions || []).find(p => p.symbol === 'BTCI')
@@ -2265,6 +2343,22 @@ function app() {
       } finally {
         this.dividendsLoading = false
         this.dcaLoading = false
+      }
+    },
+
+    async loadMoreDividends() {
+      if (this.dividendLoadingMore || !this.dividendHasMore) return
+      this.dividendLoadingMore = true
+      try {
+        const offset = this.dividends.length
+        const data = await apiGet('/api/dividends/?limit=25&offset=' + offset)
+        const items = Array.isArray(data) ? data : []
+        this.dividends = this.dividends.concat(items)
+        this.dividendHasMore = items.length >= 25
+      } catch (err) {
+        Alpine.store('toast').show('Failed to load more dividends', 'error')
+      } finally {
+        this.dividendLoadingMore = false
       }
     },
 

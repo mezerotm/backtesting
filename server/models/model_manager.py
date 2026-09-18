@@ -261,22 +261,27 @@ class ModelManager:
             return False
 
     def get_dividends(
-            self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get dividends from PocketBase, optionally filtered by user ID."""
+            self, user_id: Optional[str] = None,
+            limit: Optional[int] = None,
+            offset: Optional[int] = None,
+            sort: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get dividends from PocketBase, optionally filtered by user ID and paginated."""
         self.logger.info("Getting dividends from PocketBase...")
 
         try:
             if user_id:
                 # Filter by user ID
                 records = self.pb_client.get_records(
-                    "dividends", f"user='{user_id}'")
+                    "dividends", f"user='{user_id}'",
+                    limit=limit, skip=offset, sort=sort)
                 self.logger.info(
-                    f"Retrieved {len(records)} dividends for user {user_id} from PocketBase")
+                    f"Retrieved {len(records)} dividends for user {user_id} from PocketBase (limit={limit}, offset={offset})")
             else:
                 # Get all dividends
-                records = self.pb_client.get_records("dividends")
+                records = self.pb_client.get_records(
+                    "dividends", limit=limit, skip=offset, sort=sort)
                 self.logger.info(
-                    f"Retrieved {len(records)} dividends from PocketBase")
+                    f"Retrieved {len(records)} dividends from PocketBase (limit={limit}, offset={offset})")
 
             if records:
                 # Handle both Record objects (from SDK) and dictionaries (from

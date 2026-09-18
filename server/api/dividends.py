@@ -12,10 +12,14 @@ router = APIRouter(prefix="/api/dividends", tags=["dividends"])
 
 
 @router.get("/")
-async def get_all_dividends(credentials: HTTPAuthorizationCredentials = Depends(security)) -> List[Dict]:
-    """Get all dividends from PocketBase."""
+async def get_all_dividends(
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        limit: int = 10,
+        offset: int = 0) -> List[Dict]:
+    """Get dividends from PocketBase with pagination (sorted by payable_date desc)."""
     try:
-        logger.info("Getting all dividends from PocketBase...")
+        logger.info(
+            f"Getting dividends from PocketBase (limit={limit}, offset={offset})...")
         model_manager = get_model_manager()
 
         # Get user ID from authenticated session
@@ -25,8 +29,9 @@ async def get_all_dividends(credentials: HTTPAuthorizationCredentials = Depends(
                 "No authenticated user found, returning empty dividends")
             return []
 
-        # Get raw dividends from PocketBase
-        raw_dividends = model_manager.get_dividends(user_id)
+        # Get raw dividends from PocketBase with pagination and sort
+        raw_dividends = model_manager.get_dividends(
+            user_id, limit=limit, offset=offset, sort="-payable_date")
         logger.info(
             f"Retrieved {len(raw_dividends)} dividends from PocketBase for user {user_id}")
 
@@ -130,6 +135,7 @@ async def get_dividends_summary(request: Request) -> Dict:
             logger.warning(
                 "No authenticated user found, returning empty summary")
             return {
+                "total_all": 0.0,
                 "total_this_year": 0.0,
                 "total_dividends": 0,
                 "received_dividends": 0
@@ -139,13 +145,16 @@ async def get_dividends_summary(request: Request) -> Dict:
         current_year = datetime.now().year
 
         total_this_year = 0.0
+        total_all = 0.0
         for d in dividends:
+            total_all += float(d.get('amount', 0))
             if d.get('state') == 'paid':
                 payable_date = d.get('payable_date', '')
                 if payable_date and payable_date.startswith(str(current_year)):
                     total_this_year += float(d.get('amount', 0))
 
         summary = {
+            "total_all": total_all,
             "total_this_year": total_this_year,
             "total_dividends": len(dividends),
             "received_dividends": len([d for d in dividends if d.get('state') == 'paid'])
