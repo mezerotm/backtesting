@@ -1,5 +1,6 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 import logging
 import json
 from jinja2 import Environment, FileSystemLoader
@@ -146,9 +147,10 @@ def generate_market_report(
                     style_box_data, report_dir)
 
         # Prepare template data
+        et_now = datetime.now(timezone.utc).astimezone(ZoneInfo('America/New_York'))
         template_data = {
-            'date': datetime.now().strftime('%B %d, %Y'),
-            'generated_at': datetime.now().strftime('%I:%M %p'),
+            'date': et_now.strftime('%B %d, %Y'),
+            'generated_at': et_now.strftime('%I:%M %p'),
             'market_status': data.get('market_status', {
                 'status': 'Unknown',
                 'hours': 'Status Unavailable'

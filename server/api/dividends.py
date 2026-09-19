@@ -15,11 +15,11 @@ router = APIRouter(prefix="/api/dividends", tags=["dividends"])
 async def get_all_dividends(
         credentials: HTTPAuthorizationCredentials = Depends(security),
         limit: int = 10,
-        offset: int = 0) -> List[Dict]:
+        page: int = 1) -> List[Dict]:
     """Get dividends from PocketBase with pagination (sorted by payable_date desc)."""
     try:
         logger.info(
-            f"Getting dividends from PocketBase (limit={limit}, offset={offset})...")
+            f"Getting dividends from PocketBase (limit={limit}, page={page})...")
         model_manager = get_model_manager()
 
         # Get user ID from authenticated session
@@ -31,9 +31,9 @@ async def get_all_dividends(
 
         # Get raw dividends from PocketBase with pagination and sort
         raw_dividends = model_manager.get_dividends(
-            user_id, limit=limit, offset=offset, sort="-payable_date")
+            user_id, limit=limit, page=page, sort="-payable_date")
         logger.info(
-            f"Retrieved {len(raw_dividends)} dividends from PocketBase for user {user_id}")
+            f"Retrieved {len(raw_dividends)} dividends from PocketBase for user {user_id} (limit={limit}, page={page})")
 
         # Return raw data directly — skip Pydantic validation (fields don't match)
         return raw_dividends

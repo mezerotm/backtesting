@@ -679,8 +679,8 @@ class PocketBaseClient:
         Args:
             collection: Collection name
             filters: Optional PocketBase filter expression
-            limit: Max records to return (PocketBase default is all)
-            skip: Number of records to skip (PocketBase offset)
+            limit: Max records to return (mapped to perPage — PocketBase default 30)
+            skip: Number of records to skip (mapped to page — page = skip/limit + 1)
             sort: Sort field(s), prefix with - for descending (e.g. '-payable_date')
         """
         if not self.is_server_running():
@@ -696,9 +696,10 @@ class PocketBaseClient:
             if filters:
                 params["filter"] = filters
             if limit is not None:
-                params["limit"] = str(limit)
-            if skip is not None:
-                params["skip"] = str(skip)
+                params["perPage"] = str(limit)
+            if skip is not None and skip > 0:
+                # skip is the page number (1-indexed)
+                params["page"] = str(skip)
             if sort:
                 params["sort"] = sort
 

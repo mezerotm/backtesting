@@ -12,7 +12,8 @@ Functions:
 
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 from workflows.market.market_data import MarketDataFetcher
@@ -59,7 +60,8 @@ def generate_market_report(
     """
     output_base_dir = os.path.join(APP_ROOT, output_dir)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    et_now = datetime.now(timezone.utc).astimezone(ZoneInfo('America/New_York'))
+    timestamp = et_now.strftime("%Y%m%d_%H%M%S")
     report_dir_name = f"market_{timestamp}"
     report_dir = os.path.join(output_base_dir, report_dir_name)
 
@@ -68,10 +70,10 @@ def generate_market_report(
     data_fetcher = MarketDataFetcher(force_refresh=force_refresh)
 
     data: dict = {
-        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "date": datetime.now().strftime("%B %d, %Y"),
-        "current_year": datetime.now().year,
-        "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "generated_at": et_now.strftime("%Y-%m-%d %H:%M:%S"),
+        "date": et_now.strftime("%B %d, %Y"),
+        "current_year": et_now.year,
+        "now": et_now.strftime("%Y-%m-%d %H:%M:%S"),
         "gdp_chart_path": None,
         "inflation_chart_path": None,
         "unemployment_chart_path": None,
@@ -208,8 +210,8 @@ def generate_market_report(
             directory_name=report_dir_name,
             additional_data={
                 "status": "finished",
-                "title": f"Market Analysis - {datetime.now().strftime('%Y-%m-%d')}",
-                "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "title": f"Market Analysis - {et_now.strftime('%Y-%m-%d')}",
+                "created": et_now.strftime("%Y-%m-%d %H:%M:%S"),
                 "report_type": "snapshot",
             },
         )

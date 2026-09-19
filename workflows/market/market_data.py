@@ -944,7 +944,7 @@ class MarketDataFetcher(BaseFetcher):
 
         if not events:
             logger.warning("No Polygon events found for today.")
-            return None
+            return {'events': [], 'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
         result = {
             'events': events,

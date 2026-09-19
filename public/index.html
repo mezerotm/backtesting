@@ -2163,7 +2163,7 @@ function app() {
     dividends: [],
     dividendsLoading: false,
     divSummary: null,
-    dividendLimit: 10,
+    dividendPage: 1,
     dividendHasMore: true,
     dividendLoadingMore: false,
     divTab: 'history',
@@ -2295,11 +2295,12 @@ function app() {
 
     async loadDividends() {
       this.dividendsLoading = true
+      this.dividendPage = 1
       this.dividendHasMore = true
       this.dcaLoading = true
       try {
         const [data, summary, portfolio] = await Promise.allSettled([
-          apiGet('/api/dividends/?limit=10&offset=0'),
+          apiGet('/api/dividends/?limit=10&page=1'),
           apiGet('/api/dividends/summary'),
           apiGet('/api/portfolio/summary')
         ])
@@ -2350,8 +2351,8 @@ function app() {
       if (this.dividendLoadingMore || !this.dividendHasMore) return
       this.dividendLoadingMore = true
       try {
-        const offset = this.dividends.length
-        const data = await apiGet('/api/dividends/?limit=25&offset=' + offset)
+        this.dividendPage++
+        const data = await apiGet('/api/dividends/?limit=25&page=' + this.dividendPage)
         const items = Array.isArray(data) ? data : []
         this.dividends = this.dividends.concat(items)
         this.dividendHasMore = items.length >= 25
